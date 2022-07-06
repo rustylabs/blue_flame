@@ -1,0 +1,52 @@
+#[allow(unused_imports)]
+use crate::object_settings::*;
+
+#[allow(unused_variables)]
+#[allow(dead_code)]
+#[allow(unused_imports)]
+pub fn main()
+{
+    #[derive(Debug)]
+    enum NewData
+    {
+        Id(u16),
+        Value(f32),
+        Name(String),
+    }
+
+    let list = vec![NewData::Id(10), NewData::Value(15f32), NewData::Name(String::from("Some Label"))];
+
+    for l in list.iter()
+    {
+        match l
+        {
+            NewData::Id(v) =>
+            {
+                println!("{v}");
+            },
+            NewData::Value(v) =>
+            {
+                println!("{v}");
+            },
+            NewData::Name(v) =>
+            {
+                println!("{v}");
+            },
+        }
+    }
+
+
+
+
+
+    enum ObjectSettings
+    {
+        //ObjectType(object_settings::radio_options::Fields),
+        Position(Vec<u32>),
+    }
+
+
+
+
+
+}
