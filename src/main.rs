@@ -28,6 +28,36 @@ impl Settings
     }
 }
 
+
+
+mod issues
+{
+    pub struct Issues
+    {
+        pub warning         : bool,
+        pub error           : bool,
+    }
+    impl Issues
+    {
+        pub fn init() -> Self
+        {
+            Self
+            {
+                warning     : false,
+                error       : false,
+            }
+        }
+    }
+
+    pub fn output_symbols() -> (&'static str, &'static str)
+    {
+        ("⚠", "⛔")
+    }
+}
+
+
+
+
 pub struct ObjectSettings
 {
     object_type         : Vec<object_settings::radio_options::Fields>,
@@ -54,7 +84,7 @@ pub struct Objects
     id          : u16,
     visible     : bool,
     selected    : bool,
-    label       : String,
+    label       : (String, issues::Issues),
 }
 impl Objects
 {
@@ -65,7 +95,7 @@ impl Objects
             id,
             visible     : true,
             selected    : true,
-            label       : format!("Object {id}"),
+            label       : (format!("object_{id}"), issues::Issues::init())
         }
     }
     fn change_choice(list: &mut [(Self, ObjectSettings)], choice_true: u16)
@@ -90,7 +120,63 @@ impl Objects
             item.0.id = i as u16;
         }
     }
+    // Checks for warnings and errors for labels and assigns the Issues variables appropriately
+    fn label_issue_checks(&mut self)
+    {
+        // Warning checking
+        for chars in self.label.0.chars()
+        {
+            let chars_num = chars as u8;
+
+            // Shows warning if using caps
+            if chars_num >= 65 && chars_num <= 90
+            {
+                self.label.1.warning = true;
+                break;
+            }
+            else
+            {
+                self.label.1.warning = false;
+            }
+
+        }
+
+        // Error checking
+        for (i, chars) in self.label.0.chars().enumerate()
+        {
+            let chars_num = chars as u8;
+            
+            // Check for variable name does not contain spaces otherwise show error
+            if (chars_num >= 58 && chars_num <= 64) || chars_num <= 47 || (chars_num >= 91 && chars_num <= 96 && chars_num != b'_') || chars_num >= 123
+            {
+                self.label.1.error = true;
+                break;
+            }
+            else
+            {
+                self.label.1.error = false;
+            }
+            // If number as first character
+            if i == 0 && (chars_num >= 48 && chars_num <= 57)
+            {
+                self.label.1.error = true;
+                break;
+            }
+            else
+            {
+                self.label.1.error = false;
+            }
+        }
+
+        if self.label.0.len() == 0
+        {
+            self.label.1.error = true;
+            self.label.1.warning = false;
+        }
+    }
 }
+
+
 
 
 #[macroquad::main("egui with macroquad")]
@@ -127,26 +213,46 @@ async fn main()
     //sql.save(&mut object_type, &mut position, &mut scale, &mut texture);
 
     sql.load(&mut objects);
+
     loop
     {
         clear_background(WHITE);
+
+        // Error checks
+
+        // Label error checking
+        for object in objects.iter_mut()
+        {
+            object.0.label_issue_checks();
+        }
+        
 
 
         // Left panel
         egui_macroquad::ui(|egui_ctx|
         {
+
             egui::SidePanel::left("Objects").show(egui_ctx, |ui|
             {
                 ui.set_width(ui.available_width());
 
-                // Create new object
-                if ui.button("➕ Create Object").clicked()
+                ui.horizontal(|ui|
                 {
-                    let len = objects.len() as u16;
+                    // Create new object
+                    if ui.button("➕ Create Object").clicked()
+                    {
+                        let len = objects.len() as u16;
 
-                    objects.push((Objects::init(len), ObjectSettings::init()));
-                    Objects::change_choice(&mut objects, len);
-                }
+                        objects.push((Objects::init(len), ObjectSettings::init()));
+                        Objects::change_choice(&mut objects, len);
+                    }
+                    if ui.button("💾 Save").clicked()
+                    {
+                        sql.save(&objects);
+                    }
+                });
+
+
                 ui.separator();
 
                 // Displays all objects button
@@ -158,7 +264,7 @@ async fn main()
                         {
                             ui.label("some stuff");
                         });
-                        if ui.selectable_label(objects[i].0.selected, &objects[i].0.label).clicked()
+                        if ui.selectable_label(objects[i].0.selected, &objects[i].0.label.0).clicked()
                         {
                             Objects::change_choice(&mut objects, i as u16);
                         }
@@ -168,6 +274,17 @@ async fn main()
                             ui.label("👁");
                         }
 
+                        // Checks if variable names are correct or not
+                        // Warnings
+                        if objects[i].0.label.1.warning == true
+                        {
+                            ui.label(issues::output_symbols().0);
+                        }
+                        // Errors
+                        if objects[i].0.label.1.error == true
+                        {
+                            ui.label(issues::output_symbols().1);
+                        }
                     });
                 }
             });
@@ -178,17 +295,19 @@ async fn main()
                 {
                     ui.set_width(ui.available_width());
 
-                    ui.horizontal(|ui|
+
+                    for object in objects.iter_mut()
                     {
-                        ui.label("Object name");
-                        for object in objects.iter_mut()
+
+                        if object.0.selected == true
                         {
-                            if object.0.selected == true
-                            {
-                                ui.add(egui::TextEdit::singleline(&mut object.0.label));
-                            }
+                            ui.label(format!("Object name: {} {}",
+                                if object.0.label.1.warning == true {issues::output_symbols().0} else {""},
+                                if object.0.label.1.error == true {issues::output_symbols().1} else {""},
+                            ));
+                            ui.add(egui::TextEdit::singleline(&mut object.0.label.0));
                         }
-                    });
+                    }
 
                     for object in objects.iter_mut()
                     {
@@ -205,13 +324,12 @@ async fn main()
                                     }
                                 }
                             });
+                            ui.separator();
 
                             ui.label("TextureMode");
-                            ui.horizontal(|ui|
-                            {
-                                ui.label("Location of Texture");
-                                ui.add(egui::TextEdit::singleline(&mut object.1.texture.data));
-                            });
+                            ui.label("Location of Texture");
+                            ui.add(egui::TextEdit::singleline(&mut object.1.texture.data));
+
 
                             // Radio buttons for texturemodes
                             for i in 0..object.1.texture.mode.len()
@@ -221,6 +339,7 @@ async fn main()
                                     object_settings::radio_options::change_choice(&mut object.1.texture.mode, i as u8);
                                 }
                             }
+                            ui.separator();
 
                             ui.label("Position");
                             ui.horizontal(|ui|
@@ -231,8 +350,9 @@ async fn main()
                                     ui.add(egui::DragValue::new(&mut position.value).speed(settings.slider_speed));
                                 }
                             });
+                            ui.separator();
 
-                            ui.label("Scale");
+                            //ui.label("Scale");
                             ui.horizontal(|ui|
                             {
                                 for scale in object.1.scale.iter_mut()
@@ -253,11 +373,8 @@ async fn main()
                         {
                             if objects[i].0.selected == true
                             {
-                                if ui.button("Save").clicked()
-                                {
-                                    sql.save(&objects);
-                                }
-                                if ui.button("Delete").clicked()
+
+                                if ui.button("🗑 Delete").clicked()
                                 {
                                     for j in 0..objects.len()
                                     {

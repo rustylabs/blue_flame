@@ -91,7 +91,7 @@ impl Sql
                             }
                             Value::Str(v) =>
                             {
-                                objects[j].0.label = v.clone();
+                                objects[j].0.label.0 = v.clone();
                             }
     
                             _ => panic!(),
@@ -234,7 +234,7 @@ impl Sql
                         object.0.id,
                         object.0.visible,
                         object.0.selected,
-                        object.0.label,
+                        object.0.label.0,
                     ));
                 }
 
