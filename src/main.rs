@@ -59,6 +59,11 @@ mod issues
     {
         pub fn labels(objects: &mut [(crate::Objects, crate::ObjectSettings)])
         {
+            if objects.len() == 1
+            {
+                objects[0].0.label.1.warning = false;
+                return;
+            }
             for i in 0..objects.len()
             {
                 for j in 0..objects.len()
@@ -121,7 +126,7 @@ impl Objects
             id,
             visible     : true,
             selected    : true,
-            label       : (format!("object_{id}"), issues::Issues::init())
+            label       : (format!("Object {id}"), issues::Issues::init())
         }
     }
     fn change_choice(list: &mut [(Self, ObjectSettings)], choice_true: u16)
