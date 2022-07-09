@@ -61,7 +61,7 @@ mod issues
         {
             if objects.len() == 1
             {
-                objects[0].0.label.1.warning = false;
+                objects[0].0.label.1.error = false;
                 return;
             }
             for i in 0..objects.len()
@@ -70,14 +70,14 @@ mod issues
                 {
                     if i != j
                     {
-                        if objects[i].0.label.1.warning != true && objects[i].0.label.0 == objects[j].0.label.0
+                        if objects[i].0.label.1.error != true && objects[i].0.label.0 == objects[j].0.label.0
                         {
-                            objects[i].0.label.1.warning = true;
+                            objects[i].0.label.1.error = true;
                             break;
                         }
                         else
                         {
-                            objects[i].0.label.1.warning = false;    
+                            objects[i].0.label.1.error = false;    
                         }
                     }
                 }
@@ -326,9 +326,9 @@ async fn main()
                                     ui.add(egui::DragValue::new(&mut position.value).speed(settings.slider_speed));
                                 }
                             });
-                            ui.separator();
+                            
 
-                            //ui.label("Scale");
+                            ui.label("Scale");
                             ui.horizontal(|ui|
                             {
                                 for scale in object.1.scale.iter_mut()
