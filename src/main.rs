@@ -32,6 +32,7 @@ impl Settings
 
 mod issues
 {
+
     pub struct Issues
     {
         pub warning         : bool,
@@ -52,6 +53,31 @@ mod issues
     pub fn output_symbols() -> (&'static str, &'static str)
     {
         ("⚠", "⛔")
+    }
+
+    pub mod issue_checks
+    {
+        pub fn labels(objects: &mut [(crate::Objects, crate::ObjectSettings)])
+        {
+            for i in 0..objects.len()
+            {
+                for j in 0..objects.len()
+                {
+                    if i != j
+                    {
+                        if objects[i].0.label.1.warning != true && objects[i].0.label.0 == objects[j].0.label.0
+                        {
+                            objects[i].0.label.1.warning = true;
+                            break;
+                        }
+                        else
+                        {
+                            objects[i].0.label.1.warning = false;    
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -121,59 +147,7 @@ impl Objects
         }
     }
     // Checks for warnings and errors for labels and assigns the Issues variables appropriately
-    fn label_issue_checks(&mut self)
-    {
-        // Warning checking
-        for chars in self.label.0.chars()
-        {
-            let chars_num = chars as u8;
 
-            // Shows warning if using caps
-            if chars_num >= 65 && chars_num <= 90
-            {
-                self.label.1.warning = true;
-                break;
-            }
-            else
-            {
-                self.label.1.warning = false;
-            }
-
-        }
-
-        // Error checking
-        for (i, chars) in self.label.0.chars().enumerate()
-        {
-            let chars_num = chars as u8;
-            
-            // Check for variable name does not contain spaces otherwise show error
-            if (chars_num >= 58 && chars_num <= 64) || chars_num <= 47 || (chars_num >= 91 && chars_num <= 96 && chars_num != b'_') || chars_num >= 123
-            {
-                self.label.1.error = true;
-                break;
-            }
-            else
-            {
-                self.label.1.error = false;
-            }
-            // If number as first character
-            if i == 0 && (chars_num >= 48 && chars_num <= 57)
-            {
-                self.label.1.error = true;
-                break;
-            }
-            else
-            {
-                self.label.1.error = false;
-            }
-        }
-
-        if self.label.0.len() == 0
-        {
-            self.label.1.error = true;
-            self.label.1.warning = false;
-        }
-    }
 }
 
 
@@ -221,10 +195,7 @@ async fn main()
         // Error checks
 
         // Label error checking
-        for object in objects.iter_mut()
-        {
-            object.0.label_issue_checks();
-        }
+        issues::issue_checks::labels(&mut objects);
         
 
 
