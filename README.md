@@ -1,4 +1,4 @@
-This is a game editor to the game engine [blue_flame](https://github.com/ElhamAryanpur/BlueEngine)
+This is a game editor to the game engine [BlueEngine](https://github.com/ElhamAryanpur/BlueEngine)
 
 Currently I am using macroquad renderer for egui however I will replace it with blue_engine renderer as soon as we port it over.
 
