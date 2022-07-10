@@ -204,10 +204,27 @@ async fn main()
         
 
 
-        // Left panel
+        // Menu bar
         egui_macroquad::ui(|egui_ctx|
         {
+            egui::TopBottomPanel::top("Menu Bar").show(egui_ctx, |ui|
+            {
 
+                egui::menu::bar(ui, |ui|
+                {
+                    ui.menu_button("File", |ui|
+                    {
+                        if ui.button("Open").clicked()
+                        {
+        
+                        }
+    
+                    });
+                });
+            });
+        
+
+            // Left panel
             egui::SidePanel::left("Objects").show(egui_ctx, |ui|
             {
                 ui.set_width(ui.available_width());
