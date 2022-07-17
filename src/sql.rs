@@ -48,7 +48,7 @@ impl Sql
                 {
                     println!("Table does not exist");
                     objects.push((Objects::init(0), ObjectSettings::init()));
-                    return
+                    return;
                 }
             }
         }
