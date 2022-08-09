@@ -1,0 +1,10 @@
+[package]
+name = "blue_flame"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+blue_engine = {features=["gui"], git="https://github.com/ElhamAryanpur/BlueEngine"}
+gluesql = "0.11"
