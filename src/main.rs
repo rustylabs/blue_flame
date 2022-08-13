@@ -1,4 +1,4 @@
-use blue_engine::{gui::{self, Condition}, header::{Engine, WindowDescriptor}, primitive_shapes::triangle};
+use blue_engine::{gui::{self, Condition}, header::{Engine, WindowDescriptor}, primitive_shapes::{triangle, square}};
 
 use std::process::exit;
 
@@ -28,9 +28,10 @@ impl EditorSettings
     }
 }
 
+// ObjectsAddtion - addtional information
 pub struct Objects
 {
-    id          : u16,
+    id          : u16, // Foreign key
     visible     : bool,
     selected    : bool,
     label       : (String, issues::Issues),
@@ -188,13 +189,12 @@ fn main()
             resizable       : true,
         }).unwrap();
     
-    let trig = triangle(blue_engine::header::ObjectSettings::default(), &mut engine)
+    let square = square(blue_engine::header::ObjectSettings::default(), &mut engine)
     .unwrap()
     .object_index;
 
     let mut color = [1f32, 1f32, 1f32, 1f32];
 
-    let mut test = String::new();
 
 
     // sql Variables
@@ -207,7 +207,7 @@ fn main()
 
     
     sql.load(&mut objects);
-    engine.update_loop(move |_, _, _, _, _, ui|
+    engine.update_loop(move |_, _, gameengine_objects, _, _, ui|
     {
         //let style = ui.style();
     
@@ -227,6 +227,13 @@ fn main()
 
                     objects.push((Objects::init(len), ObjectSettings::init()));
                     Objects::change_choice(&mut objects, len);
+
+                    // Create new object and store it into the game engine
+                    /*
+                    let test_shape = blue_engine::primitive_shapes::square(blue_engine::header::ObjectSettings::default(), &mut engine)
+                    .unwrap()
+                    .object_index;
+                    */
                 }
                 if ui.button("💾 Save") == true
                 {
@@ -253,7 +260,6 @@ fn main()
             .position([900f32, 20f32], Condition::FirstUseEver)
             .build(&ui, ||
             {
-
                 // name of object
                 for object in objects.iter_mut()
                 {
@@ -339,24 +345,12 @@ fn main()
                         }
                     }
                 }
+
+                gameengine_objects[square]
+                .change_color(color[0], color[1], color[2], color[3])
+                .unwrap();
             
             });
-
- 
-
-
-
-  
-
-
-
-
-        
-        /*
-        objects[trig]
-            .change_color(color[0], color[1], color[2], color[3])
-            .unwrap();
-        */
         
     }).unwrap();
 
