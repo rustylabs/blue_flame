@@ -28,10 +28,9 @@ impl EditorSettings
     }
 }
 
-// ObjectsAddtion - addtional information
 pub struct Objects
 {
-    id          : u16, // Foreign key
+    id          : u16,
     visible     : bool,
     selected    : bool,
     label       : (String, issues::Issues),
