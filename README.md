@@ -1,4 +1,4 @@
-![GitHub Logo](/assets/screenshots/blue_flame.png)
+![GitHub Logo](/assets/screenshots/)
 
 # About
 This is a game editor to the game engine [BlueEngine](https://github.com/ElhamAryanpur/BlueEngine)
