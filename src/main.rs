@@ -129,6 +129,10 @@ impl AlertWindow
     }
 }
 
+pub struct Scemes
+{
+    scene_name          : String,
+}
 
 mod issues
 {
@@ -194,6 +198,7 @@ struct Debug
 struct Sql
 {
     objects             : sql::objects::Sql,
+    //scenes              : sql::scenes::Sql,
     //projects            : sql::projects::Sql,
 }
 impl Sql
@@ -481,6 +486,7 @@ fn main()
                     ui.separator();
                 }
 
+                // Delete button
                 ui.horizontal(|ui|
                 {
                     for i in 0..objects.len()

@@ -70,6 +70,91 @@ pub mod projects
     }
 }
 
+// These could be levels, however you want to interpret it as
+pub mod scenes
+{
+    use super::*;
+    pub struct Sql
+    {
+        glue            : Glue<SledStorage>,
+        table_names     : [&'static str; 1],
+    }
+    impl Sql
+    {
+        pub fn init() -> Self
+        {
+            let storage         = SledStorage::new("project").unwrap();
+            Self
+            {
+                glue            : Glue::new(storage),
+                table_names     : ["Scenes"],
+            }
+        }
+        pub fn load(&mut self)
+        {
+            let mut sqls: Vec<String> = vec![];
+            for table_name in self.table_names.iter()
+            {
+                sqls.push(format!("SELECT * FROM {table_name}"));       //table_names     : ["Object", "ObjectType", "Position", "Scale", "Texture"]
+                //println!("table_name: {table_name}");
+            }
+
+            // rows[Select { labels: ["ObjectType", "Texture"], rows: [[I64(1), I64(1)]] }, Select { labels: ["x", "y", "z"], rows: [[I64(0), I64(61), I64(0)]] }]
+            let mut outputs: Vec<Payload> = vec![];
+            for sql in sqls
+            {
+                match self.glue.execute(sql)
+                {
+                    // (Objects::init(0), ObjectSettings::init())
+                    Ok(o) => 
+                    {
+                        outputs.push(o.into_iter().next().unwrap());
+                    }
+                    Err(_) =>
+                    {
+                        println!("Table does not exist");
+                        //objects.push((Objects::init(0), ObjectSettings::init()));
+                        return;
+                    }
+                }
+            }
+        }
+        pub fn save(&mut self)
+        {
+            let mut sqls: Vec<String> = vec![];
+
+            for table_name in self.table_names.iter()
+            {
+                sqls.push(format!("DROP TABLE IF EXISTS {table_name};"));
+
+                if table_name == &"Scenes"
+                {
+                    sqls.push(format!("CREATE TABLE {table_name} (scene_name TEXT, selected BOOLEAN);"));
+    
+                    /*
+                    for object in objects.iter()
+                    {
+                        sqls.push(format!("INSERT INTO {table_name} VALUES ({}, {}, {}, '{}')",
+                            object.0.id,
+                            object.0.visible,
+                            object.0.selected,
+                            object.0.label.0,
+                        ));
+                    }
+                    */
+    
+                }
+            }
+
+            // Executes sql commands
+            for sql in sqls
+            {
+                let _output = self.glue.execute(sql).unwrap();
+                //println!("{:?}", _output);
+            }
+        }
+    }
+}
 
 // use super::*;
 pub mod objects
@@ -106,6 +191,7 @@ pub mod objects
             }
     
     
+            // rows[Select { labels: ["ObjectType", "Texture"], rows: [[I64(1), I64(1)]] }, Select { labels: ["x", "y", "z"], rows: [[I64(0), I64(61), I64(0)]] }]
             let mut outputs: Vec<Payload> = vec![];
             for sql in sqls
             {
@@ -125,8 +211,13 @@ pub mod objects
                 }
             }
             //println!("rows{:?}", outputs);
-            // rows[Select { labels: ["object_type", "texture_mode"], rows: [[I64(1), I64(1)]] }, Select { labels: ["x", "y", "z"], rows: [[I64(0), I64(61), I64(0)]] }]
+            
     
+            //println!("{:?}", rows); // [[I64(1), I64(1)]] 2nd time: [[I64(0), I64(61), I64(0)]]
+            /*
+            Converts this: // rows[Select { labels: ["object_type", "texture_mode"], rows: [[I64(1), I64(1)]] }, Select { labels: ["x", "y", "z"], rows: [[I64(0), I64(61), I64(0)]] }]
+            To this: [[I64(1), I64(1)]] 2nd time: [[I64(0), I64(61), I64(0)]]
+            */
             for (i, output) in outputs.iter().enumerate()
             {
                 let rows = match &output
@@ -134,8 +225,7 @@ pub mod objects
                     Payload::Select{labels: _, rows} => rows,
                     _ => panic!(),
                 };
-                //println!("{:?}", rows); // [[I64(1), I64(1)]] 2nd time: [[I64(0), I64(61), I64(0)]]
-    
+                
                 // Object
                 if i == 0
                 {
@@ -371,7 +461,7 @@ pub mod objects
                 
             }
     
-            
+            // Executes sql commands
             for sql in sqls
             {
                 let _output = self.glue.execute(sql).unwrap();
