@@ -3,8 +3,8 @@ pub mod radio_options
 {
     pub struct Fields
     {
-        pub status          : bool,
         pub name            : &'static str,
+        pub status          : bool,
     }
 
 

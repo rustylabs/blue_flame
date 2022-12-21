@@ -240,9 +240,9 @@ checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 
 [[package]]
 name = "blue_engine"
-version = "0.4.16"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb3c3493dd68cfba052b59fe7af4a327feeabf8d4b3c8a8fa1938f24746b693b"
+checksum = "8187819a6d386786b2dc755bf0ee18669d6e9d6a6e7c933cbac9e0f1a90d4a57"
 dependencies = [
  "anyhow",
  "bytemuck",

@@ -113,11 +113,7 @@ pub mod scenes
                     Err(_) =>
                     {
                         println!("Table scenes does not exist");
-                        scenes.push(Scenes
-                        {
-                            scene_name      : String::from("Scene 0"),
-                            selected        : true,
-                        });
+                        scenes.push(Scenes::init(0));
                         return;
                     }
                 }
@@ -137,6 +133,7 @@ pub mod scenes
 
 
                 // Scenes [[I64(0), I64(61), I64(0)]]
+                let mut id: u16 = 0;
                 let mut scene_name: String = String::new();
                 let mut selected: bool = false;
                 if i == 0
@@ -147,6 +144,10 @@ pub mod scenes
                         {
                             match element
                             {
+                                Value::I64(v) =>
+                                {
+                                    id = *v as u16;
+                                }
                                 Value::Str(v) =>
                                 {
                                     scene_name = v.clone();
@@ -157,12 +158,13 @@ pub mod scenes
                                 }
                                 _ => panic!(),
                             }
-                            scenes.push(Scenes
-                            {
-                                scene_name: scene_name.clone(),
-                                selected,
-                            });
                         }
+                        scenes.push(Scenes
+                        {
+                            id,
+                            scene_name: scene_name.clone(),
+                            selected,
+                        });
                     }
                 }
 
@@ -179,11 +181,12 @@ pub mod scenes
 
                 if table_name == &"Scenes"
                 {
-                    sqls.push(format!("CREATE TABLE {table_name} (scene_name TEXT, selected BOOLEAN);"));
+                    sqls.push(format!("CREATE TABLE {table_name} (id INTEGER, scene_name TEXT, selected BOOLEAN);"));
 
                     for scene in scenes.iter()
                     {
-                        sqls.push(format!("INSERT INTO {table_name} VALUES ('{}', {})",
+                        sqls.push(format!("INSERT INTO {table_name} VALUES ({}, '{}', {})",
+                            scene.id,
                             scene.scene_name,
                             scene.selected,
                         ));

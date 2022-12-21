@@ -129,27 +129,25 @@ impl AlertWindow
     }
 }
 
-// What are we showing, objects or scenes and possibly maybe something else?
-struct CurrentView
-{
-    name        : &'static str,
-    selected    : bool,
-}
-impl CurrentView
-{
-    fn init() -> [Self; 2]
-    {
-        [
-            Self{name: "Objects", selected: true},
-            Self{name: "Scenes", selected: false},
-        ]
-    }
-}
+
 
 pub struct Scenes
 {
+    id                  : u16,
     scene_name          : String,
     selected            : bool,
+}
+impl Scenes
+{
+    fn init(id: u16) -> Self
+    {
+        Self
+        {
+            id,
+            scene_name          : format!("Scene {id}"),
+            selected            : true,
+        }
+    }
 }
 
 mod issues
@@ -236,7 +234,7 @@ fn main()
 {
     let editor_settings = EditorSettings::init();
 
-    let current_view = CurrentView::init();
+    let mut view_modes = object_settings::radio_options::init(&["Objects", "Scenes"]);
 
     let debug = Debug
     {
@@ -266,7 +264,7 @@ fn main()
         }).unwrap();
 
 
-    triangle("triangle", blue_engine::header::ObjectSettings::default(), &mut engine).unwrap();
+    
     //primitive_shapes::square("square", blue_engine::header::ObjectSettings::default(), &mut engine).unwrap();
 
 
@@ -298,7 +296,9 @@ fn main()
     // We add the gui as plugin, which runs once before everything else to fetch events, and once during render times for rendering and other stuff
     engine.plugins.push(Box::new(gui_context));
 
-    engine.update_loop(move |_, window, gameengine_objects, _, _, plugins|
+    //triangle("triangle", blue_engine::header::ObjectSettings::default(), &mut engine.renderer, &mut engine.objects).unwrap();
+
+    engine.update_loop(move |renderer, window, gameengine_objects, _, _, plugins|
     {
         // Label error checking
         issues::issue_checks::labels(&mut objects);
@@ -366,6 +366,21 @@ fn main()
 
                 ui.set_width(ui.available_width());
 
+                // Tabs for other Objects or Scenes view
+                ui.horizontal(|ui|
+                {
+                    ui.label("Current display:");
+                    for i in 0..view_modes.len()
+                    {
+                        if ui.selectable_label(view_modes[i].status, view_modes[i].name).clicked()
+                        {
+                            object_settings::radio_options::change_choice(&mut view_modes, i as u8);
+                        }
+                    }
+                    
+                });
+                
+                ui.separator();
                 // Shows the current scene we are using
                 for scene in scenes.iter()
                 {
@@ -380,19 +395,41 @@ fn main()
                 ui.separator();
                 ui.horizontal(|ui|
                 {
-                    // Create new object
-                    if ui.button("➕ Create Object").clicked()
+                    // Create new _ and save buttons
+                    for view_mode in view_modes.iter()
                     {
-                        let len = objects.len() as u16;
+                        
+                        if view_mode.name == "Objects" && view_mode.status == true
+                        {
+                            // Create new object
+                            if ui.button("➕ Create Object").clicked()
+                            {
+                                let len = objects.len() as u16;
 
-                        objects.push((Objects::init(len), ObjectSettings::init()));
-                        Objects::change_choice(&mut objects, len);
+                                objects.push((Objects::init(len), ObjectSettings::init()));
+                                Objects::change_choice(&mut objects, len);
+                            }
+                            if ui.button("💾 Save Objects").clicked()
+                            {
+                                sql.objects.save(&objects);
+                            }
+                        }
+                        else if view_mode.name == "Scenes" && view_mode.status == true
+                        {
+                            // Create new object
+                            if ui.button("➕ Create Scenes").clicked()
+                            {
+                                let len = scenes.len() as u16;
+
+                                scenes.push(Scenes::init(len));
+                            }
+                            if ui.button("💾 Save Scenes").clicked()
+                            {
+                                sql.scenes.save(&scenes);
+                            }
+                        }
                     }
-                    if ui.button("💾 Save").clicked()
-                    {
-                        sql.objects.save(&objects);
-                        sql.scenes.save(&scenes);
-                    }
+
                 });
 
 
@@ -541,7 +578,7 @@ fn main()
         &window);
             
         // Display shapes
-        
+        triangle("triangle", blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
 
 
         /*
