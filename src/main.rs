@@ -129,9 +129,27 @@ impl AlertWindow
     }
 }
 
-pub struct Scemes
+// What are we showing, objects or scenes and possibly maybe something else?
+struct CurrentView
+{
+    name        : &'static str,
+    selected    : bool,
+}
+impl CurrentView
+{
+    fn init() -> [Self; 2]
+    {
+        [
+            Self{name: "Objects", selected: true},
+            Self{name: "Scenes", selected: false},
+        ]
+    }
+}
+
+pub struct Scenes
 {
     scene_name          : String,
+    selected            : bool,
 }
 
 mod issues
@@ -198,7 +216,7 @@ struct Debug
 struct Sql
 {
     objects             : sql::objects::Sql,
-    //scenes              : sql::scenes::Sql,
+    scenes              : sql::scenes::Sql,
     //projects            : sql::projects::Sql,
 }
 impl Sql
@@ -208,6 +226,7 @@ impl Sql
         Self
         {
             objects             : sql::objects::Sql::init(),
+            scenes              : sql::scenes::Sql::init(),
             //projects            : sql::projects::Sql::init(),
         }
     }
@@ -216,6 +235,8 @@ impl Sql
 fn main()
 {
     let editor_settings = EditorSettings::init();
+
+    let current_view = CurrentView::init();
 
     let debug = Debug
     {
@@ -252,7 +273,7 @@ fn main()
     // Start the egui context
     //let gui_context = blue_engine::header::egui::EGUI::new(&engine.event_loop, &mut engine.renderer);
 
-    let mut color = [1f32, 1f32, 1f32, 1f32];
+    //let mut color = [1f32, 1f32, 1f32, 1f32];
 
 
 
@@ -262,20 +283,15 @@ fn main()
     // objects
     //let mut objects = vec![(Objects::init(0), ObjectSettings::init())];
     let mut objects: Vec<(Objects, ObjectSettings)> = Vec::new();
+    let mut scenes: Vec<Scenes> = Vec::new();
 
-    struct MyGUI
-    {
-        // Some variables you'd desire
-        color: [f32; 4],
-    }
 
-    
+
+    // Load all dbs into memory
+    sql.scenes.load(&mut scenes);
     sql.objects.load(&mut objects);
 
-    let my_gui = MyGUI
-    {
-        color: [1f32, 1f32, 1f32, 1f32],
-    };
+
     // Start the egui context
     let gui_context = blue_engine_egui::EGUI::new(&engine.event_loop, &mut engine.renderer);
 
@@ -350,6 +366,18 @@ fn main()
 
                 ui.set_width(ui.available_width());
 
+                // Shows the current scene we are using
+                for scene in scenes.iter()
+                {
+                    if scene.selected == true
+                    {
+                        ui.horizontal(|ui|
+                        {
+                            ui.label(format!("Current scene: {}", scene.scene_name));
+                        });
+                    }
+                }
+                ui.separator();
                 ui.horizontal(|ui|
                 {
                     // Create new object
@@ -363,6 +391,7 @@ fn main()
                     if ui.button("💾 Save").clicked()
                     {
                         sql.objects.save(&objects);
+                        sql.scenes.save(&scenes);
                     }
                 });
 

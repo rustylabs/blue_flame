@@ -3,7 +3,7 @@ use gluesql::sled_storage::sled::IVec;
 
 use crate::object_settings::*;
 
-use crate::{Objects, ObjectSettings};
+use crate::{Objects, ObjectSettings, Scenes};
 
 // Which project do you wanna open
 pub mod projects
@@ -83,14 +83,14 @@ pub mod scenes
     {
         pub fn init() -> Self
         {
-            let storage         = SledStorage::new("project").unwrap();
+            let storage         = SledStorage::new("scenes").unwrap();
             Self
             {
                 glue            : Glue::new(storage),
                 table_names     : ["Scenes"],
             }
         }
-        pub fn load(&mut self)
+        pub fn load(&mut self, scenes: &mut Vec<Scenes>)
         {
             let mut sqls: Vec<String> = vec![];
             for table_name in self.table_names.iter()
@@ -105,21 +105,71 @@ pub mod scenes
             {
                 match self.glue.execute(sql)
                 {
-                    // (Objects::init(0), ObjectSettings::init())
                     Ok(o) => 
                     {
                         outputs.push(o.into_iter().next().unwrap());
                     }
+                    // First time scene is being created
                     Err(_) =>
                     {
-                        println!("Table does not exist");
-                        //objects.push((Objects::init(0), ObjectSettings::init()));
+                        println!("Table scenes does not exist");
+                        scenes.push(Scenes
+                        {
+                            scene_name      : String::from("Scene 0"),
+                            selected        : true,
+                        });
                         return;
                     }
                 }
             }
+
+                        /*
+            Converts this: // rows[Select { labels: ["object_type", "texture_mode"], rows: [[I64(1), I64(1)]] }, Select { labels: ["x", "y", "z"], rows: [[I64(0), I64(61), I64(0)]] }]
+            To this: [[I64(1), I64(1)]] 2nd time: [[I64(0), I64(61), I64(0)]]
+            */
+            for (i, output) in outputs.iter().enumerate()
+            {
+                let rows = match &output
+                {
+                    Payload::Select{labels: _, rows} => rows,
+                    _ => panic!(),
+                };
+
+
+                // Scenes [[I64(0), I64(61), I64(0)]]
+                let mut scene_name: String = String::new();
+                let mut selected: bool = false;
+                if i == 0
+                {
+                    for row in rows.iter()
+                    {
+                        for element in row.iter()
+                        {
+                            match element
+                            {
+                                Value::Str(v) =>
+                                {
+                                    scene_name = v.clone();
+                                }
+                                Value::Bool(v) =>
+                                {
+                                    selected = *v;
+                                }
+                                _ => panic!(),
+                            }
+                            scenes.push(Scenes
+                            {
+                                scene_name: scene_name.clone(),
+                                selected,
+                            });
+                        }
+                    }
+                }
+
+
+            }
         }
-        pub fn save(&mut self)
+        pub fn save(&mut self, scenes: &[Scenes])
         {
             let mut sqls: Vec<String> = vec![];
 
@@ -130,19 +180,14 @@ pub mod scenes
                 if table_name == &"Scenes"
                 {
                     sqls.push(format!("CREATE TABLE {table_name} (scene_name TEXT, selected BOOLEAN);"));
-    
-                    /*
-                    for object in objects.iter()
+
+                    for scene in scenes.iter()
                     {
-                        sqls.push(format!("INSERT INTO {table_name} VALUES ({}, {}, {}, '{}')",
-                            object.0.id,
-                            object.0.visible,
-                            object.0.selected,
-                            object.0.label.0,
+                        sqls.push(format!("INSERT INTO {table_name} VALUES ('{}', {})",
+                            scene.scene_name,
+                            scene.selected,
                         ));
                     }
-                    */
-    
                 }
             }
 
