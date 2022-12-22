@@ -134,7 +134,8 @@ impl AlertWindow
 pub struct Scenes
 {
     id                  : u16,
-    scene_name          : String,
+    label               : String,
+    dir_save            : String,
     selected            : bool,
 }
 impl Scenes
@@ -144,12 +145,51 @@ impl Scenes
         Self
         {
             id,
-            scene_name          : format!("Scene {id}"),
+            label               : format!("Scene {id}"),
+            dir_save            : format!(""),
             selected            : true,
+        }
+    }
+    fn change_choice(list: &mut [(Self, SceneSettings)], choice_true: u16)
+    {
+        for (i, item) in list.iter_mut().enumerate()
+        {
+            if i as u16 == choice_true
+            {
+                item.0.selected = true;
+            }
+            else
+            {
+                item.0.selected = false;
+            }
+        }
+    }
+    // When user deletes the scenes, we need to re calculate ids
+    fn recalculate_id(list: &mut  [(Self, SceneSettings)])
+    {
+        for (i, item) in list.iter_mut().enumerate()
+        {
+            item.0.id = i as u16;
         }
     }
 }
 
+pub struct SceneSettings
+{
+    background_color        : u32,
+    high_power_mode         : bool,
+}
+impl SceneSettings
+{
+    fn default() -> Self
+    {
+        Self
+        {
+            background_color        : 0x4d4d4d,         // Similar to Godot's background color for 2D
+            high_power_mode         : true,
+        }
+    }
+}
 mod issues
 {
     pub struct Issues
@@ -278,10 +318,10 @@ fn main()
     // sql Variables
     let mut sql = Sql::init();
 
-    // objects
+    // objects & scenes
     //let mut objects = vec![(Objects::init(0), ObjectSettings::init())];
     let mut objects: Vec<(Objects, ObjectSettings)> = Vec::new();
-    let mut scenes: Vec<Scenes> = Vec::new();
+    let mut scenes: Vec<(Scenes, SceneSettings)> = Vec::new();
 
 
 
@@ -366,6 +406,24 @@ fn main()
 
                 ui.set_width(ui.available_width());
 
+                // Shows the current scene we are using
+                ui.horizontal(|ui|
+                {
+                    ui.label(format!("Current scene: {}", current_scene(&scenes)));
+                    fn current_scene(scenes: &[(Scenes, SceneSettings)]) -> String
+                    {
+                        for scene in scenes.iter()
+                        {
+                            if scene.0.selected == true
+                            {
+                                return scene.0.label.clone();
+                            }
+                        }
+                        return String::from("");
+                    }
+                });
+                ui.separator();
+
                 // Tabs for other Objects or Scenes view
                 ui.horizontal(|ui|
                 {
@@ -381,35 +439,23 @@ fn main()
                 });
                 
                 ui.separator();
-                // Shows the current scene we are using
-                for scene in scenes.iter()
-                {
-                    if scene.selected == true
-                    {
-                        ui.horizontal(|ui|
-                        {
-                            ui.label(format!("Current scene: {}", scene.scene_name));
-                        });
-                    }
-                }
-                ui.separator();
+
+                // Create new _ and save buttons
                 ui.horizontal(|ui|
                 {
-                    // Create new _ and save buttons
                     for view_mode in view_modes.iter()
                     {
-                        
                         if view_mode.name == "Objects" && view_mode.status == true
                         {
                             // Create new object
-                            if ui.button("➕ Create Object").clicked()
+                            if ui.button("➕ Create object").clicked()
                             {
                                 let len = objects.len() as u16;
 
                                 objects.push((Objects::init(len), ObjectSettings::init()));
                                 Objects::change_choice(&mut objects, len);
                             }
-                            if ui.button("💾 Save Objects").clicked()
+                            if ui.button("💾 Save current scene").clicked()
                             {
                                 sql.objects.save(&objects);
                             }
@@ -417,13 +463,14 @@ fn main()
                         else if view_mode.name == "Scenes" && view_mode.status == true
                         {
                             // Create new object
-                            if ui.button("➕ Create Scenes").clicked()
+                            if ui.button("➕ Create scene").clicked()
                             {
                                 let len = scenes.len() as u16;
 
-                                scenes.push(Scenes::init(len));
+                                scenes.push((Scenes::init(len), SceneSettings::default()));
+                                Scenes::change_choice(&mut scenes, len);
                             }
-                            if ui.button("💾 Save Scenes").clicked()
+                            if ui.button("💾 Save scene settings").clicked()
                             {
                                 sql.scenes.save(&scenes);
                             }
@@ -431,42 +478,76 @@ fn main()
                     }
 
                 });
+                for view_mode in view_modes.iter()
+                {
+                    if view_mode.name == "Scenes" && view_mode.status == true
+                    {
+                        if ui.button("Load scene").clicked()
+                        {
+                            
+                        }
+                    }
+                }
 
 
                 ui.separator();
 
-                // Displays all objects button
-                for i in 0..objects.len()
+                // Displays all objects/scenes button
+                for view_mode in view_modes.iter()
                 {
-                    ui.horizontal(|ui|
+                    if view_mode.name == "Objects" && view_mode.status == true
                     {
-                        ui.collapsing(format!("id: {}", &objects[i].0.id), |ui|
+                        for i in 0..objects.len()
                         {
-                            ui.label("some stuff");
-                        });
-                        if ui.selectable_label(objects[i].0.selected, &objects[i].0.label.0).clicked()
-                        {
-                            Objects::change_choice(&mut objects, i as u16);
+                            ui.horizontal(|ui|
+                            {
+                                ui.collapsing(format!("id: {}", &objects[i].0.id), |ui|
+                                {
+                                    ui.label("some stuff");
+                                });
+                                if ui.selectable_label(objects[i].0.selected, &objects[i].0.label.0).clicked()
+                                {
+                                    Objects::change_choice(&mut objects, i as u16);
+                                }
+                                ui.checkbox(&mut objects[i].0.visible, "");
+                                if objects[i].0.visible == true
+                                {
+                                    ui.label("👁");
+                                }
+        
+                                // Checks if variable names are correct or not
+                                // Warnings
+                                if objects[i].0.label.1.warning == true
+                                {
+                                    ui.label(issues::output_symbols().0);
+                                }
+                                // Errors
+                                if objects[i].0.label.1.error == true
+                                {
+                                    ui.label(issues::output_symbols().1);
+                                }
+        
+                            });
                         }
-                        ui.checkbox(&mut objects[i].0.visible, "");
-                        if objects[i].0.visible == true
+                    }
+                    else if view_mode.name == "Scenes" && view_mode.status == true
+                    {
+                        for i in 0..scenes.len()
                         {
-                            ui.label("👁");
+                            ui.horizontal(|ui|
+                            {
+                                ui.label(format!("id: {}", &scenes[i].0.id));
+                                if ui.selectable_label(scenes[i].0.selected, &scenes[i].0.label).clicked()
+                                {
+                                    Scenes::change_choice(&mut scenes, i as u16);
+                                }
+                            });
                         }
-
-                        // Checks if variable names are correct or not
-                        // Warnings
-                        if objects[i].0.label.1.warning == true
-                        {
-                            ui.label(issues::output_symbols().0);
-                        }
-                        // Errors
-                        if objects[i].0.label.1.error == true
-                        {
-                            ui.label(issues::output_symbols().1);
-                        }
-                    });
+                    }
+  
                 }
+
+
             });
 
             // Right side
@@ -477,75 +558,110 @@ fn main()
                 ui.set_width(ui.available_width());
 
 
-                for object in objects.iter_mut()
+                for view_mode in view_modes.iter()
                 {
-
-                    if object.0.selected == true
+                    if view_mode.name == "Objects" && view_mode.status == true
                     {
-                        ui.label(format!("Object name: {} {}",
-                            if object.0.label.1.warning == true {issues::output_symbols().0} else {""},
-                            if object.0.label.1.error == true {issues::output_symbols().1} else {""},
-                        ));
-                        ui.add(egui::TextEdit::singleline(&mut object.0.label.0));
-                    }
-                }
-
-                for object in objects.iter_mut()
-                {
-                    if object.0.selected == true
-                    {
-                        ui.label("Object type");
-                        ui.horizontal(|ui|
+                        for object in objects.iter_mut()
                         {
-                            for i in 0..object.1.object_type.len()
+                            if object.0.selected == true
                             {
-                                if ui.radio(object.1.object_type[i].status, object.1.object_type[i].name).clicked()
-                                {
-                                    object_settings::radio_options::change_choice(&mut object.1.object_type, i as u8);
-                                }
-                            }
-                        });
-                        ui.separator();
-
-                        ui.label("TextureMode");
-                        ui.label("Location of Texture");
-                        ui.add(egui::TextEdit::singleline(&mut object.1.texture.data));
-
-
-                        // Radio buttons for texturemodes
-                        for i in 0..object.1.texture.mode.len()
-                        {
-                            if ui.radio(object.1.texture.mode[i].status, object.1.texture.mode[i].name).clicked()
-                            {
-                                object_settings::radio_options::change_choice(&mut object.1.texture.mode, i as u8);
+                                ui.label(format!("Object name: {} {}",
+                                    if object.0.label.1.warning == true {issues::output_symbols().0} else {""},
+                                    if object.0.label.1.error == true {issues::output_symbols().1} else {""},
+                                ));
+                                ui.add(egui::TextEdit::singleline(&mut object.0.label.0));
                             }
                         }
-                        ui.separator();
-
-                        ui.label("Position");
-                        ui.horizontal(|ui|
+        
+                        for object in objects.iter_mut()
                         {
-                            for position in object.1.position.iter_mut()
+                            if object.0.selected == true
                             {
-                                ui.label(format!("{}:", position.axis as char));
-                                ui.add(egui::DragValue::new(&mut position.value).speed(editor_settings.slider_speed));
-                            }
-                        });
-                        ui.separator();
+                                ui.label("Object type");
+                                ui.horizontal(|ui|
+                                {
+                                    for i in 0..object.1.object_type.len()
+                                    {
+                                        if ui.radio(object.1.object_type[i].status, object.1.object_type[i].name).clicked()
+                                        {
+                                            object_settings::radio_options::change_choice(&mut object.1.object_type, i as u8);
+                                        }
+                                    }
+                                });
+                                ui.separator();
+        
+                                ui.label("TextureMode");
+                                ui.label("Location of Texture");
+                                ui.add(egui::TextEdit::singleline(&mut object.1.texture.data));
+        
+        
+                                // Radio buttons for texturemodes
+                                for i in 0..object.1.texture.mode.len()
+                                {
+                                    if ui.radio(object.1.texture.mode[i].status, object.1.texture.mode[i].name).clicked()
+                                    {
+                                        object_settings::radio_options::change_choice(&mut object.1.texture.mode, i as u8);
+                                    }
+                                }
+                                ui.separator();
+        
+                                ui.label("Position");
+                                ui.horizontal(|ui|
+                                {
+                                    for position in object.1.position.iter_mut()
+                                    {
+                                        ui.label(format!("{}:", position.axis as char));
+                                        ui.add(egui::DragValue::new(&mut position.value).speed(editor_settings.slider_speed));
+                                    }
+                                });
+                                ui.separator();
+        
+                                ui.label("Scale");
+                                ui.horizontal(|ui|
+                                {
+                                    for scale in object.1.scale.iter_mut()
+                                    {
+                                        ui.label(format!("{}:", scale.axis as char));
+                                        ui.add(egui::DragValue::new(&mut scale.value).speed(editor_settings.slider_speed));
+                                    }
+                                });
+                                
+                                
 
-                        ui.label("Scale");
-                        ui.horizontal(|ui|
+                            }
+                        }
+                    }
+                    else if view_mode.name == "Scenes" && view_mode.status == true
+                    {
+                        for scene in scenes.iter_mut()
                         {
-                            for scale in object.1.scale.iter_mut()
+                            if scene.0.selected == true
                             {
-                                ui.label(format!("{}:", scale.axis as char));
-                                ui.add(egui::DragValue::new(&mut scale.value).speed(editor_settings.slider_speed));
+                                ui.label("Scene name:");
+                                ui.add(egui::TextEdit::singleline(&mut scene.0.label));
+                                ui.separator();
+
+                                ui.label("Save location:");
+                                ui.horizontal(|ui|
+                                {
+                                    ui.label("dir_save: ");
+                                    ui.add(egui::TextEdit::singleline(&mut scene.0.dir_save));
+                                });
+                                ui.separator();
+                                
+                                ui.label("High Power Mode:");
+                                ui.horizontal(|ui|
+                                {
+                                    ui.checkbox(&mut scene.1.high_power_mode, "high_power_mode").clicked();
+                                });
                             }
-                        });
 
-
+                            
+                        }
                     }
                 }
+
 
                 for _ in 0..2
                 {
@@ -555,19 +671,40 @@ fn main()
                 // Delete button
                 ui.horizontal(|ui|
                 {
-                    for i in 0..objects.len()
+                    for view_mode in view_modes.iter()
                     {
-                        if objects[i].0.selected == true
+                        if view_mode.name == "Objects" && view_mode.status == true
                         {
-                            if ui.button("🗑 Delete").clicked()
+                            if ui.button("🗑 Delete object").clicked()
                             {
-                                objects.remove(i);
-                                Objects::recalculate_id(&mut objects);
-                                break;
+                                for i in 0..objects.len()
+                                {
+                                    if objects[i].0.selected == true
+                                    {
+                                        objects.remove(i);
+                                        Objects::recalculate_id(&mut objects);
+                                        break;
+                                    }
+                                }
                             }
                         }
-
+                        else if view_mode.name == "Scenes" && view_mode.status == true
+                        {
+                            if ui.button("🗑 Delete scene").clicked()
+                            {
+                                for i in 0..scenes.len()
+                                {
+                                    if scenes[i].0.selected == true
+                                    {
+                                        scenes.remove(i);
+                                        Scenes::recalculate_id(&mut scenes);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     }
+
 
                 });
 

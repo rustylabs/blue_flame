@@ -73,11 +73,13 @@ pub mod projects
 // These could be levels, however you want to interpret it as
 pub mod scenes
 {
+    use crate::SceneSettings;
+
     use super::*;
     pub struct Sql
     {
         glue            : Glue<SledStorage>,
-        table_names     : [&'static str; 1],
+        table_names     : [&'static str; 2],
     }
     impl Sql
     {
@@ -87,10 +89,10 @@ pub mod scenes
             Self
             {
                 glue            : Glue::new(storage),
-                table_names     : ["Scenes"],
+                table_names     : ["Scenes", "SceneSettings"],
             }
         }
-        pub fn load(&mut self, scenes: &mut Vec<Scenes>)
+        pub fn load(&mut self, scenes: &mut Vec<(Scenes, SceneSettings)>)
         {
             let mut sqls: Vec<String> = vec![];
             for table_name in self.table_names.iter()
@@ -113,13 +115,14 @@ pub mod scenes
                     Err(_) =>
                     {
                         println!("Table scenes does not exist");
-                        scenes.push(Scenes::init(0));
+                        scenes.push((Scenes::init(0), SceneSettings::default()));
                         return;
                     }
                 }
             }
 
-                        /*
+            /*
+            Get each individual tables
             Converts this: // rows[Select { labels: ["object_type", "texture_mode"], rows: [[I64(1), I64(1)]] }, Select { labels: ["x", "y", "z"], rows: [[I64(0), I64(61), I64(0)]] }]
             To this: [[I64(1), I64(1)]] 2nd time: [[I64(0), I64(61), I64(0)]]
             */
@@ -134,13 +137,20 @@ pub mod scenes
 
                 // Scenes [[I64(0), I64(61), I64(0)]]
                 let mut id: u16 = 0;
-                let mut scene_name: String = String::new();
+                let mut label: String = String::new();
+                let mut dir_save: String = String::new();
                 let mut selected: bool = false;
+
+                // SceneSettings
+                let mut background_color: u32 = 0;
+                let mut high_power_mode: bool = true;
+
+                // Scenes
                 if i == 0
                 {
                     for row in rows.iter()
                     {
-                        for element in row.iter()
+                        for (pos, element) in row.iter().enumerate()
                         {
                             match element
                             {
@@ -150,7 +160,14 @@ pub mod scenes
                                 }
                                 Value::Str(v) =>
                                 {
-                                    scene_name = v.clone();
+                                    if pos == 1
+                                    {
+                                        label = v.clone();
+                                    }
+                                    else if pos == 2
+                                    {
+                                        dir_save = v.clone();
+                                    }
                                 }
                                 Value::Bool(v) =>
                                 {
@@ -159,19 +176,56 @@ pub mod scenes
                                 _ => panic!(),
                             }
                         }
+                        /*
                         scenes.push(Scenes
                         {
                             id,
-                            scene_name: scene_name.clone(),
+                            label: label.clone(),
                             selected,
                         });
+                        */
                     }
                 }
+
+                // SceneSettings
+                else if i == 1
+                {
+                    for row in rows.iter()
+                    {
+                        for element in row.iter()
+                        {
+                            match element
+                            {
+                                // background_color
+                                Value::I64(v) =>
+                                {
+                                    background_color = *v as u32;
+                                }
+                                // high_power_mode
+                                Value::Bool(v) =>
+                                {
+                                    high_power_mode = *v;
+                                }
+                                _ => panic!(),
+                            }
+                        }
+                        /*
+                        scenes.push(Scenes
+                        {
+                            id,
+                            label: label.clone(),
+                            selected,
+                        });
+                        */
+                    }
+                }
+
+                scenes.push((Scenes{id, label, dir_save, selected}, SceneSettings{background_color, high_power_mode}));
 
 
             }
         }
-        pub fn save(&mut self, scenes: &[Scenes])
+        pub fn save(&mut self, scenes: &[(Scenes, SceneSettings)])
         {
             let mut sqls: Vec<String> = vec![];
 
@@ -181,14 +235,28 @@ pub mod scenes
 
                 if table_name == &"Scenes"
                 {
-                    sqls.push(format!("CREATE TABLE {table_name} (id INTEGER, scene_name TEXT, selected BOOLEAN);"));
+                    sqls.push(format!("CREATE TABLE {table_name} (id INTEGER, label TEXT, dir_save TEXT, selected BOOLEAN);"));
 
                     for scene in scenes.iter()
                     {
-                        sqls.push(format!("INSERT INTO {table_name} VALUES ({}, '{}', {})",
-                            scene.id,
-                            scene.scene_name,
-                            scene.selected,
+                        sqls.push(format!("INSERT INTO {table_name} VALUES ({}, '{}', '{}', {})",
+                            scene.0.id,
+                            scene.0.label,
+                            scene.0.dir_save,
+                            scene.0.selected,
+                        ));
+                    }
+                }
+
+                if table_name == &"SceneSettings"
+                {
+                    sqls.push(format!("CREATE TABLE {table_name} (background_color INTEGER, high_power_mode BOOLEAN);"));
+
+                    for scene in scenes.iter()
+                    {
+                        sqls.push(format!("INSERT INTO {table_name} VALUES ({}, {})",
+                            scene.1.background_color,
+                            scene.1.high_power_mode,
                         ));
                     }
                 }
