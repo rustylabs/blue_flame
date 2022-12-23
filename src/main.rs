@@ -1,4 +1,4 @@
-use blue_engine::{header::{Engine, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, primitive_shapes::{triangle, self}};
+use blue_engine::{header::{Engine, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, primitive_shapes::{triangle, self, square}};
 use blue_engine_egui::{self, egui};
 
 
@@ -484,7 +484,7 @@ fn main()
                     {
                         if ui.button("Load scene").clicked()
                         {
-                            
+
                         }
                     }
                 }
@@ -715,7 +715,33 @@ fn main()
         &window);
             
         // Display shapes
-        triangle("triangle", blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+        for object in objects.iter()
+        {
+            if object.0.visible == true
+            {
+                for current_shape in object.1.object_type.iter()
+                {
+                    let object_name = object.0.label.0.as_str();
+                    if current_shape.status == true
+                    {
+                        if current_shape.name == "Square"
+                        {
+                            square("square", blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+                        }
+                        else if current_shape.name == "Triangle"
+                        {
+                            triangle(object_name, blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+                        }
+                        else if current_shape.name == "Line"
+                        {
+    
+                        }
+                    }
+                }
+            }
+
+        }
+        
 
 
         /*
