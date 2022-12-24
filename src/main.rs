@@ -721,7 +721,7 @@ fn main()
             {
                 for current_shape in object.1.object_type.iter()
                 {
-                    let object_name = object.0.label.0.as_str();
+                    let object_name: &'static str = std::stringify!(object.0.label.0);
                     if current_shape.status == true
                     {
                         if current_shape.name == "Square"
