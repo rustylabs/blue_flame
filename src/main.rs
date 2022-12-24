@@ -338,6 +338,19 @@ fn main()
 
     //triangle("triangle", blue_engine::header::ObjectSettings::default(), &mut engine.renderer, &mut engine.objects).unwrap();
 
+    // init: draws shapes
+    for object in objects.iter()
+    {
+        for i in 0..object.1.object_type.len()
+        {
+            //println!("object's name: {}\tobject's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
+            if object_settings::object_actions::create_shape(object, i, &mut engine.renderer, &mut engine.objects) == true
+            {
+                break;
+            }
+        }
+    }
+    
     engine.update_loop(move |renderer, window, gameengine_objects, _, _, plugins|
     {
         // Label error checking
@@ -557,11 +570,13 @@ fn main()
 
                 ui.set_width(ui.available_width());
 
-
+                
                 for view_mode in view_modes.iter()
                 {
+                    
                     if view_mode.name == "Objects" && view_mode.status == true
                     {
+                        // Object name
                         for object in objects.iter_mut()
                         {
                             if object.0.selected == true
@@ -573,7 +588,7 @@ fn main()
                                 ui.add(egui::TextEdit::singleline(&mut object.0.label.0));
                             }
                         }
-        
+                        // Object type
                         for object in objects.iter_mut()
                         {
                             if object.0.selected == true
@@ -586,11 +601,33 @@ fn main()
                                         if ui.radio(object.1.object_type[i].status, object.1.object_type[i].name).clicked()
                                         {
                                             object_settings::radio_options::change_choice(&mut object.1.object_type, i as u8);
+
+                                            // Creates new object and/or changes object if the user clicks on some random choice button
+                                            object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects);
+                                            /*
+                                            if object.1.object_type[i].name == "Square" && object.1.object_type[i].status == true
+                                            {
+                                                square(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+                                            }
+                                            else if object.1.object_type[i].name == "Triangle" && object.1.object_type[i].status == true
+                                            {
+                                                triangle(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+                                            }
+                                            else if object.1.object_type[i].name == "Line" && object.1.object_type[i].status == true
+                                            {
+                                                //line(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+                                            }
+                                            else
+                                            {
+                                                panic!("Object Type's names are not right in the if statement comparison");
+                                            }
+                                            */
                                         }
                                     }
                                 });
                                 ui.separator();
         
+                                // Locatin of texture
                                 ui.label("TextureMode");
                                 ui.label("Location of Texture");
                                 ui.add(egui::TextEdit::singleline(&mut object.1.texture.data));
@@ -713,24 +750,28 @@ fn main()
             
         },
         &window);
+
+        //let object_name: &'static str = objects[0].0.label.0.as_str();
+
+        //triangle(object_name, blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
             
-        // Display shapes
+        // Creates shapes
+        /*
         for object in objects.iter()
         {
             if object.0.visible == true
             {
                 for current_shape in object.1.object_type.iter()
                 {
-                    let object_name = object.0.label.0.as_str();
                     if current_shape.status == true
                     {
                         if current_shape.name == "Square"
                         {
-                            square("square", blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+                            square(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
                         }
                         else if current_shape.name == "Triangle"
                         {
-                            triangle(object_name, blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+                            triangle(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
                         }
                         else if current_shape.name == "Line"
                         {
@@ -739,8 +780,8 @@ fn main()
                     }
                 }
             }
-
         }
+        */
         
 
 
@@ -750,8 +791,5 @@ fn main()
         .unwrap();
         */
         
-    }).unwrap();
-
-
-    
+    }).unwrap();    
 }

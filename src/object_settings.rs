@@ -1,3 +1,37 @@
+// perform actions
+pub mod object_actions
+{
+    use std::collections::HashMap;
+
+    use blue_engine::{header::{Engine, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, primitive_shapes::{triangle, self, square}, Renderer};
+    use crate::{Objects, ObjectSettings};
+    // Either puts new shape or changes shape
+    pub fn create_shape(object: &(crate::Objects, crate::ObjectSettings), i: usize, renderer: &mut Renderer, gameengine_objects: &mut HashMap<&'static str, blue_engine::header::Object>) -> bool
+    {
+        //println!("object's name: {}\tobject's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
+        if object.1.object_type[i].name == "Square" && object.1.object_type[i].status == true
+        {
+            square(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+            return true;
+        }
+        else if object.1.object_type[i].name == "Triangle" && object.1.object_type[i].status == true
+        {
+            triangle(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+            return true;
+        }
+        else if object.1.object_type[i].name == "Line" && object.1.object_type[i].status == true
+        {
+            //line(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+            return true;
+        }
+        else
+        {
+            println!("object's name: {}\tobject's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
+            panic!("Object Type's names are not right in the if statement comparison");
+        }
+    }
+}
+
 // Radio related stuff
 pub mod radio_options
 {
