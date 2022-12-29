@@ -8,28 +8,26 @@ pub mod object_actions
     // Either puts new shape or changes shape
     pub fn create_shape(object: &(Objects, ObjectSettings), i: usize, renderer: &mut Renderer, gameengine_objects: &mut HashMap<String, blue_engine::header::Object>) -> bool
     {
-        println!("create_shape() Object's type: {}\t\t Object's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
+        //println!("create_shape() Object's type: {}\t\t Object's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
         //println!("object's name: {}\tobject's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
         if object.1.object_type[i].name == "Square" && object.1.object_type[i].status == true
         {
             //square(object.0.label.0.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
-            ///*
             square(
                 object.0.label.0.clone(),
                 header::ObjectSettings
                 {
-                    size            : (0.5f32, 0.5f32, 0.5f32),
-                    //scale           : (object.1.scale[0].value, object.1.scale[1].value, object.1.scale[2].value),
-                    scale           : (0.1f32, 1f32, 1f32),
-                    position        : (object.1.position[0].value, object.1.position[1].value, object.1.position[2].value),
-                    color           : Array4{data: utils::default_resources::DEFAULT_COLOR},
-                    camera_effect   : true,
-                    shader_settings : ShaderSettings::default(),
+                    size                : (0.5f32, 0.5f32, 0.5f32),
+                    //scale               : (object.1.scale[0].value, object.1.scale[1].value, object.1.scale[2].value),
+                    scale               : (0.1f32, 1f32, 1f32),
+                    position            : (object.1.position[0].value, object.1.position[1].value, object.1.position[2].value),
+                    color               : Array4{data: utils::default_resources::DEFAULT_COLOR},
+                    camera_effect       : true,
+                    shader_settings     : ShaderSettings::default(),
                 },
                 renderer,
                 gameengine_objects,
                 ).unwrap();
-            //*/
             
             return true;
         }

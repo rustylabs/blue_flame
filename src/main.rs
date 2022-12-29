@@ -636,20 +636,32 @@ fn main()
                                 ui.label("Position");
                                 ui.horizontal(|ui|
                                 {
+                                    // Has user moved the shape or not
+                                    let mut update_position = false;
+                                    
                                     for position in object.1.position.iter_mut()
                                     {
                                         ui.label(format!("{}:", position.axis as char));
 
                                         // Use Response::changed or whatever to determine if the value has been changed
-                                        ui.add(egui::DragValue::new(&mut position.value).speed(editor_settings.slider_speed));
+                                        if ui.add(egui::DragValue::new(&mut position.value).speed(editor_settings.slider_speed)).changed()
+                                        {
+                                            //println!("Changed!");
+                                            update_position = true;
+                                        }
                                         
                                     }
-                                    // Updates the shape's position
-                                    gameengine_objects
-                                        .get_mut(&object.0.label.0)
-                                        //.get_mut("Object 0")
-                                        .unwrap()
-                                        .position(object.1.position[0].value, object.1.position[1].value, object.1.position[2].value);
+                                    // Updates the shape's position if the user has changed its value
+                                    if update_position == true
+                                    {
+                                        //println!("update_position: {update_position}");
+                                        gameengine_objects
+                                            .get_mut(&object.0.label.0)
+                                            //.get_mut("Object 0")
+                                            .unwrap()
+                                            .position(object.1.position[0].value, object.1.position[1].value, object.1.position[2].value);
+                                    }
+
                                     
                                 });
                                 ui.separator();
