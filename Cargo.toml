@@ -7,9 +7,8 @@ edition = "2021"
 
 [dependencies]
 # blue engine
-blue_engine = {version = "0.4.17", default-features = false}
-blue_engine_egui = "0.4.0"
+blue_engine = {version = "0.4.19", default-features = false}
+blue_engine_egui = "0.4.1"
 
 # sql
-#gluesql = "0.11"
 gluesql = "0.13"

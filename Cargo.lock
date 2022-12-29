@@ -240,9 +240,9 @@ checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 
 [[package]]
 name = "blue_engine"
-version = "0.4.17"
+version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8187819a6d386786b2dc755bf0ee18669d6e9d6a6e7c933cbac9e0f1a90d4a57"
+checksum = "3070cf7b3bbd0115f7e3fb05f3cb80308526144135b1bb13c192a5440beb73ad"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -257,9 +257,9 @@ dependencies = [
 
 [[package]]
 name = "blue_engine_egui"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a15d552f0821d45eb15ce9e2ae81573b70a494bed9560bba4df19dcd10e5479"
+checksum = "7cb6cebde153593c8ce9131d8b3dbe335e0b92c765805a29bb1e9f8cca40002c"
 dependencies = [
  "blue_engine",
  "egui",

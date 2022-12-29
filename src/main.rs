@@ -25,7 +25,7 @@ impl EditorSettings
             width               : 250f32,
             height              : 900f32,
             range               : 900_000_000f32,
-            slider_speed        : 1f32,
+            slider_speed        : 0.05f32,
         }
     }
 }
@@ -336,9 +336,9 @@ fn main()
     // We add the gui as plugin, which runs once before everything else to fetch events, and once during render times for rendering and other stuff
     engine.plugins.push(Box::new(gui_context));
 
-    //triangle("triangle", blue_engine::header::ObjectSettings::default(), &mut engine.renderer, &mut engine.objects).unwrap();
+    //triangle("Object 1", blue_engine::header::ObjectSettings::default(), &mut engine.renderer, &mut engine.objects).unwrap();
 
-    // init: draws shapes
+    // init: draws and updates shapes
     for object in objects.iter()
     {
         for i in 0..object.1.object_type.len()
@@ -350,7 +350,7 @@ fn main()
             }
         }
     }
-    
+    println!("----------Start of update_loop----------");
     engine.update_loop(move |renderer, window, gameengine_objects, _, _, plugins|
     {
         // Label error checking
@@ -467,6 +467,15 @@ fn main()
 
                                 objects.push((Objects::init(len), ObjectSettings::init()));
                                 Objects::change_choice(&mut objects, len);
+
+                                // Creates new object for the game engine
+                                for (i, object_type) in objects[len as usize].1.object_type.iter().enumerate()
+                                {
+                                    if object_type.status == true
+                                    {
+                                        object_settings::object_actions::create_shape(&objects[len as usize], i, renderer, gameengine_objects);
+                                    }
+                                }
                             }
                             if ui.button("💾 Save current scene").clicked()
                             {
@@ -573,7 +582,6 @@ fn main()
                 
                 for view_mode in view_modes.iter()
                 {
-                    
                     if view_mode.name == "Objects" && view_mode.status == true
                     {
                         // Object name
@@ -604,24 +612,6 @@ fn main()
 
                                             // Creates new object and/or changes object if the user clicks on some random choice button
                                             object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects);
-                                            /*
-                                            if object.1.object_type[i].name == "Square" && object.1.object_type[i].status == true
-                                            {
-                                                square(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
-                                            }
-                                            else if object.1.object_type[i].name == "Triangle" && object.1.object_type[i].status == true
-                                            {
-                                                triangle(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
-                                            }
-                                            else if object.1.object_type[i].name == "Line" && object.1.object_type[i].status == true
-                                            {
-                                                //line(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
-                                            }
-                                            else
-                                            {
-                                                panic!("Object Type's names are not right in the if statement comparison");
-                                            }
-                                            */
                                         }
                                     }
                                 });
@@ -649,8 +639,18 @@ fn main()
                                     for position in object.1.position.iter_mut()
                                     {
                                         ui.label(format!("{}:", position.axis as char));
+
+                                        // Use Response::changed or whatever to determine if the value has been changed
                                         ui.add(egui::DragValue::new(&mut position.value).speed(editor_settings.slider_speed));
+                                        
                                     }
+                                    // Updates the shape's position
+                                    gameengine_objects
+                                        .get_mut(&object.0.label.0)
+                                        //.get_mut("Object 0")
+                                        .unwrap()
+                                        .position(object.1.position[0].value, object.1.position[1].value, object.1.position[2].value);
+                                    
                                 });
                                 ui.separator();
         
@@ -693,7 +693,6 @@ fn main()
                                     ui.checkbox(&mut scene.1.high_power_mode, "high_power_mode").clicked();
                                 });
                             }
-
                             
                         }
                     }
