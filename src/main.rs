@@ -90,7 +90,7 @@ impl ObjectSettings
         {
             object_type         : object_settings::radio_options::init(&["Square", "Triangle", "Line"]),
             position            : object_settings::three_d_lables::Fields::init(0f32),
-            scale               : object_settings::three_d_lables::Fields::init(1f32),
+            scale               : object_settings::three_d_lables::Fields::init(100f32),
             texture             : object_settings::texture::Fields::init(),
         }
     }
@@ -666,15 +666,28 @@ fn main()
                                 });
                                 ui.separator();
         
-                                ui.label("Scale");
+                                ui.label("Resize");
                                 ui.horizontal(|ui|
-                                {
-                                    for scale in object.1.scale.iter_mut()
                                     {
-                                        ui.label(format!("{}:", scale.axis as char));
-                                        ui.add(egui::DragValue::new(&mut scale.value).speed(editor_settings.slider_speed));
-                                    }
-                                });
+                                        let mut update_scale = false;
+    
+                                        for scale in object.1.scale.iter_mut()
+                                        {
+                                            ui.label(format!("{}:", scale.axis as char));
+                                            if ui.add(egui::DragValue::new(&mut scale.value).speed(editor_settings.slider_speed)).changed()
+                                            {
+                                                update_scale = true;
+                                            }
+                                        }
+    
+                                        if update_scale == true
+                                        {
+                                            gameengine_objects
+                                                .get_mut(&object.0.label.0)
+                                                .unwrap()
+                                                .resize(object.1.scale[0].value, object.1.scale[1].value, object.1.scale[2].value, window.inner_size());
+                                        }
+                                    });
                                 
                                 
 

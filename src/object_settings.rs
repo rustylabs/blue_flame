@@ -3,10 +3,10 @@ pub mod object_actions
 {
     use std::collections::HashMap;
 
-    use blue_engine::{primitive_shapes::{triangle, square}, Renderer, ShaderSettings, utils, uniform_type::Array4, header};
+    use blue_engine::{primitive_shapes::{triangle, square}, Renderer, ShaderSettings, utils, uniform_type::Array4, header, ObjectStorage};
     use crate::{Objects, ObjectSettings};
     // Either puts new shape or changes shape
-    pub fn create_shape(object: &(Objects, ObjectSettings), i: usize, renderer: &mut Renderer, gameengine_objects: &mut HashMap<String, blue_engine::header::Object>) -> bool
+    pub fn create_shape(object: &(Objects, ObjectSettings), i: usize, renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage) -> bool
     {
         //println!("create_shape() Object's type: {}\t\t Object's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
         //println!("object's name: {}\tobject's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
@@ -15,16 +15,7 @@ pub mod object_actions
             //square(object.0.label.0.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
             square(
                 object.0.label.0.clone(),
-                header::ObjectSettings
-                {
-                    size                : (0.5f32, 0.5f32, 0.5f32),
-                    //scale               : (object.1.scale[0].value, object.1.scale[1].value, object.1.scale[2].value),
-                    scale               : (0.1f32, 1f32, 1f32),
-                    position            : (object.1.position[0].value, object.1.position[1].value, object.1.position[2].value),
-                    color               : Array4{data: utils::default_resources::DEFAULT_COLOR},
-                    camera_effect       : true,
-                    shader_settings     : ShaderSettings::default(),
-                },
+                header::ObjectSettings::default(),
                 renderer,
                 gameengine_objects,
                 ).unwrap();
@@ -116,6 +107,7 @@ pub mod radio_options
 
 pub mod three_d_lables
 {
+    #[derive(Debug, Clone, Copy)]
     pub struct Fields
     {
         pub axis            : u8, // is this either x, y or z?
