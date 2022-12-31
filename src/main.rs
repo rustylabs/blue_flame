@@ -79,7 +79,7 @@ pub struct ObjectSettings
 {
     object_type         : Vec<object_settings::radio_options::Fields>,
     position            : [object_settings::three_d_lables::Fields; 3],
-    scale               : [object_settings::three_d_lables::Fields; 3],
+    size                : [object_settings::three_d_lables::Fields; 3],
     texture             : object_settings::texture::Fields,
 }
 impl ObjectSettings
@@ -90,7 +90,7 @@ impl ObjectSettings
         {
             object_type         : object_settings::radio_options::init(&["Square", "Triangle", "Line"]),
             position            : object_settings::three_d_lables::Fields::init(0f32),
-            scale               : object_settings::three_d_lables::Fields::init(1f32),
+            size                : object_settings::three_d_lables::Fields::init(1f32),
             texture             : object_settings::texture::Fields::init(),
         }
     }
@@ -657,7 +657,6 @@ fn main()
                                         //println!("update_position: {update_position}");
                                         gameengine_objects
                                             .get_mut(&object.0.label.0)
-                                            //.get_mut("Object 0")
                                             .unwrap()
                                             .position(object.1.position[0].value, object.1.position[1].value, object.1.position[2].value);
                                     }
@@ -665,15 +664,38 @@ fn main()
                                     
                                 });
                                 ui.separator();
-        
-                                ui.label("Scale");
+
+                                ui.label("Size");
                                 ui.horizontal(|ui|
                                 {
-                                    for scale in object.1.scale.iter_mut()
+                                    // Has user moved the shape or not
+                                    let mut update_size = false;
+                                    
+                                    for size in object.1.size.iter_mut()
                                     {
-                                        ui.label(format!("{}:", scale.axis as char));
-                                        ui.add(egui::DragValue::new(&mut scale.value).speed(editor_settings.slider_speed));
+                                        ui.label(format!("{}:", size.axis as char));
+
+                                        // Use Response::changed or whatever to determine if the value has been changed
+                                        if ui.add(egui::DragValue::new(&mut size.value).speed(editor_settings.slider_speed)).changed()
+                                        {
+                                            //println!("Changed!");
+                                            update_size = true;
+                                        }
+                                        
                                     }
+                                    // Updates the shape's position if the user has changed its value
+                                    if update_size == true
+                                    {
+                                        //println!("update_position: {update_position}");
+                                        gameengine_objects
+                                            .get_mut(&object.0.label.0)
+                                            .unwrap()
+                                            .resize(object.1.size[0].value, object.1.size[1].value, object.1.size[2].value, window.inner_size());
+                                        
+                                        
+                                    }
+
+                                    
                                 });
                                 
                                 

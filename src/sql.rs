@@ -292,7 +292,7 @@ pub mod objects
             {
                 glue            : Glue::new(storage),
                 //table_names     : ["ObjectSettings", "Position"],
-                table_names     : ["Object", "ObjectType", "Position", "Scale", "Texture"],
+                table_names     : ["Object", "ObjectType", "Position", "Size", "Texture"],
                //table_names     : ["ObjectSettings", "Position", "Scale"],
             }
         }
@@ -416,7 +416,7 @@ pub mod objects
                         }
                     }
                 }
-                // Scale [[I64(0), I64(61), I64(0)]]
+                // Size [[I64(0), I64(61), I64(0)]]
                 else if i == 3
                 {
                     for (j, row) in rows.iter().enumerate()
@@ -427,7 +427,7 @@ pub mod objects
                             {
                                 Value::F64(v) =>
                                 {
-                                    objects[j].1.scale[pos].value = *v as f32;
+                                    objects[j].1.size[pos].value = *v as f32;
                                 }
                                 _ => panic!(),
                             }
@@ -547,16 +547,16 @@ pub mod objects
     
     
                 }
-                else if table_name == &"Scale"
+                else if table_name == &"Size"
                 {
                     sqls.push(format!("CREATE TABLE {table_name} (x FLOAT, y FLOAT, z FLOAT);"));
     
                     for object in objects.iter()
                     {
                         sqls.push(format!("INSERT INTO {table_name} VALUES ({}, {}, {})",
-                            object.1.scale[0].value,
-                            object.1.scale[1].value,
-                            object.1.scale[2].value,
+                            object.1.size[0].value,
+                            object.1.size[1].value,
+                            object.1.size[2].value,
                         ));
                     }
                 }
