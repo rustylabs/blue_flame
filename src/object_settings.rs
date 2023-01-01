@@ -2,23 +2,25 @@
 pub mod object_actions
 {
 
-    use blue_engine::{primitive_shapes::{triangle, square}, Renderer, ShaderSettings, utils, uniform_type::Array4, header, ObjectStorage};
+    use blue_engine::{primitive_shapes::{triangle, square}, Renderer, ShaderSettings, utils, uniform_type::Array4, header, ObjectStorage, Window, Engine};
     use crate::{Objects, ObjectSettings};
+    
     // Either puts new shape or changes shape
-    pub fn create_shape(object: &(Objects, ObjectSettings), i: usize, renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage) -> bool
+    pub fn create_shape(object: &(Objects, ObjectSettings), i: usize, renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window) -> bool
     {
         //println!("create_shape() Object's type: {}\t\t Object's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
         //println!("object's name: {}\tobject's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
         if object.1.object_type[i].name == "Square" && object.1.object_type[i].status == true
         {
             println!("object.1.size[0].value: {}", object.1.size[0].value);
-            //square(object.0.label.0.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+            square(object.0.label.0.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+            /*
             square(
                 object.0.label.0.clone(),
                 header::ObjectSettings
                 {
-                    //size                : (100f32, 100f32, 100f32),
-                    size                : (object.1.size[0].value, object.1.size[1].value, object.1.size[2].value),
+                    size                : (0.5f32, 0.5f32, 0.5f32),
+                    //scale               : (object.1.scale[0].value, object.1.scale[1].value, object.1.scale[2].value),
                     scale               : (1f32, 1f32, 1f32),
                     position            : (object.1.position[0].value, object.1.position[1].value, object.1.position[2].value),
                     color               : Array4{data: utils::default_resources::DEFAULT_COLOR},
@@ -26,14 +28,19 @@ pub mod object_actions
                     shader_settings     : ShaderSettings::default(),
                 },
                 renderer,
-                gameengine_objects,
+                gameengine_objects
                 ).unwrap();
+            */
+            update_shape(object, gameengine_objects, window);
+
+            //update_shape(object, gameengine_objects, window);
             
             return true;
         }
         else if object.1.object_type[i].name == "Triangle" && object.1.object_type[i].status == true
         {
             triangle(object.0.label.0.clone(), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+            update_shape(object, gameengine_objects, window);
             return true;
         }
         else if object.1.object_type[i].name == "Line" && object.1.object_type[i].status == true
@@ -48,8 +55,35 @@ pub mod object_actions
             return false;
             //panic!("Object Type's names are not right in the if statement comparison");
         }
+
+        fn update_shape(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, window: &Window)
+        {
+            update_shape::size(object, gameengine_objects, window);
+            update_shape::position(object, gameengine_objects);
+        }
+    }
+    pub mod update_shape
+    {
+        use blue_engine::{Renderer, ShaderSettings, uniform_type::Array4, header, ObjectStorage, Window};
+        use crate::{Objects, ObjectSettings};
+
+        pub fn size(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, window: &Window)
+        {
+            gameengine_objects
+                .get_mut(&object.0.label.0)
+                .unwrap()
+                .resize(object.1.size[0].value, object.1.size[1].value, object.1.size[2].value, window.inner_size());
+        }
+        pub fn position(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage)
+        {
+            gameengine_objects
+                .get_mut(&object.0.label.0)
+                .unwrap()
+                .position(object.1.position[0].value, object.1.position[1].value, object.1.position[2].value);
+        }
     }
 }
+
 
 // Radio related stuff
 pub mod radio_options

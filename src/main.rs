@@ -1,4 +1,4 @@
-use blue_engine::{header::{Engine, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, primitive_shapes::{triangle, self, square}};
+use blue_engine::{header::{Engine, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, primitive_shapes::{triangle, self, square}, Window};
 use blue_engine_egui::{self, egui};
 
 
@@ -90,7 +90,7 @@ impl ObjectSettings
         {
             object_type         : object_settings::radio_options::init(&["Square", "Triangle", "Line"]),
             position            : object_settings::three_d_lables::Fields::init(0f32),
-            size                : object_settings::three_d_lables::Fields::init(1f32),
+            size                : object_settings::three_d_lables::Fields::init(30f32),
             texture             : object_settings::texture::Fields::init(),
         }
     }
@@ -343,8 +343,9 @@ fn main()
     {
         for i in 0..object.1.object_type.len()
         {
+            //let window = Window;
             //println!("object's name: {}\tobject's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
-            if object_settings::object_actions::create_shape(object, i, &mut engine.renderer, &mut engine.objects) == true
+            if object_settings::object_actions::create_shape(object, i, &mut engine.renderer, &mut engine.objects, &mut engine.window) == true
             {
                 break;
             }
@@ -473,7 +474,7 @@ fn main()
                                 {
                                     if object_type.status == true
                                     {
-                                        object_settings::object_actions::create_shape(&objects[len as usize], i, renderer, gameengine_objects);
+                                        object_settings::object_actions::create_shape(&objects[len as usize], i, renderer, gameengine_objects, window);
                                     }
                                 }
                             }
@@ -611,7 +612,7 @@ fn main()
                                             object_settings::radio_options::change_choice(&mut object.1.object_type, i as u8);
 
                                             // Creates new object and/or changes object if the user clicks on some random choice button
-                                            object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects);
+                                            object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects, window);
                                         }
                                     }
                                 });
@@ -655,10 +656,13 @@ fn main()
                                     if update_position == true
                                     {
                                         //println!("update_position: {update_position}");
+                                        object_settings::object_actions::update_shape::position(&object, gameengine_objects);
+                                        /*
                                         gameengine_objects
                                             .get_mut(&object.0.label.0)
                                             .unwrap()
                                             .position(object.1.position[0].value, object.1.position[1].value, object.1.position[2].value);
+                                        */
                                     }
 
                                     
@@ -683,15 +687,17 @@ fn main()
                                         }
                                         
                                     }
-                                    // Updates the shape's position if the user has changed its value
+                                    // Updates the shape's size if the user has changed its value
                                     if update_size == true
                                     {
                                         //println!("update_position: {update_position}");
+                                        object_settings::object_actions::update_shape::size(&object, gameengine_objects, window);
+                                        /*
                                         gameengine_objects
                                             .get_mut(&object.0.label.0)
                                             .unwrap()
                                             .resize(object.1.size[0].value, object.1.size[1].value, object.1.size[2].value, window.inner_size());
-                                        
+                                        */
                                         
                                     }
 
