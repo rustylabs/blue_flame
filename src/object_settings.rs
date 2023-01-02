@@ -60,11 +60,12 @@ pub mod object_actions
         {
             update_shape::size(object, gameengine_objects, window);
             update_shape::position(object, gameengine_objects);
+            update_shape::color(object, gameengine_objects);
         }
     }
     pub mod update_shape
     {
-        use blue_engine::{Renderer, ShaderSettings, uniform_type::Array4, header, ObjectStorage, Window};
+        use blue_engine::{ObjectStorage, Window};
         use crate::{Objects, ObjectSettings};
 
         pub fn size(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, window: &Window)
@@ -80,6 +81,14 @@ pub mod object_actions
                 .get_mut(&object.0.label.0)
                 .unwrap()
                 .position(object.1.position[0].value, object.1.position[1].value, object.1.position[2].value);
+        }
+        pub fn color(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage)
+        {
+            gameengine_objects
+                .get_mut(&object.0.label.0)
+                .unwrap()
+                .set_uniform_color(object.1.color[0], object.1.color[1], object.1.color[2], object.1.color[3])
+                .unwrap();
         }
     }
 }

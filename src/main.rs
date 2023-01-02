@@ -81,6 +81,7 @@ pub struct ObjectSettings
     position            : [object_settings::three_d_lables::Fields; 3],
     size                : [object_settings::three_d_lables::Fields; 3],
     texture             : object_settings::texture::Fields,
+    color               : [f32; 4],
 }
 impl ObjectSettings
 {
@@ -92,6 +93,7 @@ impl ObjectSettings
             position            : object_settings::three_d_lables::Fields::init(0f32),
             size                : object_settings::three_d_lables::Fields::init(30f32),
             texture             : object_settings::texture::Fields::init(),
+            color               : [1f32, 1f32, 1f32, 1f32],
         }
     }
 }
@@ -632,6 +634,16 @@ fn main()
                                         object_settings::radio_options::change_choice(&mut object.1.texture.mode, i as u8);
                                     }
                                 }
+                                ui.separator();
+
+                                ui.label("Color");
+                                ui.horizontal(|ui|
+                                {
+                                    if ui.color_edit_button_rgba_unmultiplied(&mut object.1.color).changed()
+                                    {
+                                        object_settings::object_actions::update_shape::color(&object, gameengine_objects);
+                                    }
+                                });
                                 ui.separator();
         
                                 ui.label("Position");

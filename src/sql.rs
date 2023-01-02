@@ -281,7 +281,7 @@ pub mod objects
     pub struct Sql
     {
         glue            : Glue<SledStorage>,
-        table_names     : [&'static str; 5],
+        table_names     : [&'static str; 6],
     }
     impl Sql
     {
@@ -292,7 +292,7 @@ pub mod objects
             {
                 glue            : Glue::new(storage),
                 //table_names     : ["ObjectSettings", "Position"],
-                table_names     : ["Object", "ObjectType", "Position", "Size", "Texture"],
+                table_names     : ["Object", "ObjectType", "Position", "Size", "Texture", "Color"],
                //table_names     : ["ObjectSettings", "Position", "Scale"],
             }
         }
@@ -456,6 +456,24 @@ pub mod objects
                         }
                     }
                 }
+                // Color
+                else if i == 5
+                {
+                    for (j, row) in rows.iter().enumerate()
+                    {
+                        for (color_index, element) in row.iter().enumerate()
+                        {
+                            match element
+                            {
+                                Value::F64(v) =>
+                                {
+                                    objects[j].1.color[color_index] = *v as f32;
+                                }
+                                _ => panic!(),
+                            }
+                        }
+                    }
+                }
     
                 // Texture [[Str("name"), Str("location")]]
                 /*
@@ -544,8 +562,6 @@ pub mod objects
                             object.1.position[2].value,
                         ));
                     }
-    
-    
                 }
                 else if table_name == &"Size"
                 {
@@ -572,6 +588,20 @@ pub mod objects
                         ));
                     }
     
+                }
+                else if table_name == &"Color"
+                {
+                    sqls.push(format!("CREATE TABLE {table_name} (r FLOAT, g FLOAT, b FLOAT, a FLOAT);"));
+    
+                    for object in objects.iter()
+                    {
+                        sqls.push(format!("INSERT INTO {table_name} VALUES ({}, {}, {}, {})",
+                            object.1.color[0],
+                            object.1.color[1],
+                            object.1.color[2],
+                            object.1.color[3],
+                        ));
+                    }
                 }
                 
                 
