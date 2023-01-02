@@ -274,6 +274,9 @@ impl Sql
 
 fn main()
 {
+    // object's previous label just before it is modified
+    let mut label_backup = String::new();
+
     let editor_settings = EditorSettings::init();
 
     let mut view_modes = object_settings::radio_options::init(&["Objects", "Scenes"]);
@@ -353,6 +356,18 @@ fn main()
             }
         }
     }
+
+    // Determines the current object's name and the puts the name in the backup_label
+    for object in objects.iter()
+    {
+        if object.0.selected == true
+        {
+            label_backup = object.0.label.0.clone();
+            //println!("label_backup: {}", label_backup);
+            break;
+        }
+    }
+
     println!("----------Start of update_loop----------");
     engine.update_loop(move |renderer, window, gameengine_objects, _, _, plugins|
     {
@@ -533,6 +548,8 @@ fn main()
                                 if ui.selectable_label(objects[i].0.selected, &objects[i].0.label.0).clicked()
                                 {
                                     Objects::change_choice(&mut objects, i as u16);
+                                    label_backup = objects[i].0.label.0.clone();
+                                    //println!("label_backup: {}", label_backup);
                                 }
                                 ui.checkbox(&mut objects[i].0.visible, "");
                                 if objects[i].0.visible == true
@@ -596,7 +613,23 @@ fn main()
                                     if object.0.label.1.warning == true {issues::output_symbols().0} else {""},
                                     if object.0.label.1.error == true {issues::output_symbols().1} else {""},
                                 ));
-                                ui.add(egui::TextEdit::singleline(&mut object.0.label.0));
+                                if ui.add(egui::TextEdit::singleline(&mut object.0.label.0)).changed()
+                                {
+                                    // Destroys hashmap
+                                    object_settings::object_actions::destroy_hashmap(&label_backup, gameengine_objects);
+                                    
+                                    // Determines the current shape
+                                    for (i, current_shape) in object.1.object_type.iter().enumerate()
+                                    {
+                                        if current_shape.status == true
+                                        {
+                                            object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects, window);
+                                            break;
+                                        }
+                                    }
+                                    label_backup = object.0.label.0.clone();
+                                    println!("label_backup {}", label_backup);
+                                }
                             }
                         }
                         // Object type

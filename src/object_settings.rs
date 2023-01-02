@@ -12,7 +12,7 @@ pub mod object_actions
         //println!("object's name: {}\tobject's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
         if object.1.object_type[i].name == "Square" && object.1.object_type[i].status == true
         {
-            println!("object.1.size[0].value: {}", object.1.size[0].value);
+            //println!("object.1.size[0].value: {}", object.1.size[0].value);
             square(object.0.label.0.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
             /*
             square(
@@ -50,8 +50,8 @@ pub mod object_actions
         }
         else
         {
-            println!("Error on create_shape()");
-            println!("Object's name: {}\t\tObject's type: {}\t\tObject's status: {}", object.0.label.0, object.1.object_type[i].name, object.1.object_type[i].status);
+            //println!("Error on create_shape()");
+            //println!("Object's name: {}\t\tObject's type: {}\t\tObject's status: {}", object.0.label.0, object.1.object_type[i].name, object.1.object_type[i].status);
             return false;
             //panic!("Object Type's names are not right in the if statement comparison");
         }
@@ -62,6 +62,12 @@ pub mod object_actions
             update_shape::position(object, gameengine_objects);
             update_shape::color(object, gameengine_objects);
         }
+    }
+    // Destroys old hashmap stored in game engine
+    pub fn destroy_hashmap(label_backup: &str, gameengine_objects: &mut ObjectStorage)
+    {
+        gameengine_objects
+            .remove(label_backup);
     }
     pub mod update_shape
     {
