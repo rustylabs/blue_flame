@@ -281,7 +281,7 @@ pub mod objects
     pub struct Sql
     {
         glue            : Glue<SledStorage>,
-        table_names     : [&'static str; 6],
+        table_names     : [&'static str; 7],
     }
     impl Sql
     {
@@ -292,7 +292,7 @@ pub mod objects
             {
                 glue            : Glue::new(storage),
                 //table_names     : ["ObjectSettings", "Position"],
-                table_names     : ["Object", "ObjectType", "Position", "Size", "Texture", "Color"],
+                table_names     : ["Object" /*0*/, "ObjectType" /*1*/, "Position" /*2*/, "Size" /*3*/, "Rotation" /*4*/, "Texture" /*5*/, "Color" /*6*/],
                //table_names     : ["ObjectSettings", "Position", "Scale"],
             }
         }
@@ -434,8 +434,26 @@ pub mod objects
                         }
                     }
                 }
-                // Texture [[Str("name"), Str("location")]]
+                // Rotation [[I64(0), I64(61), I64(0)]]
                 else if i == 4
+                {
+                    for (j, row) in rows.iter().enumerate()
+                    {
+                        for (pos, element) in row.iter().enumerate()
+                        {
+                            match element
+                            {
+                                Value::F64(v) =>
+                                {
+                                    objects[j].1.rotation[pos].value = *v as f32;
+                                }
+                                _ => panic!(),
+                            }
+                        }
+                    }
+                }
+                // Texture [[Str("name"), Str("location")]]
+                else if i == 5
                 {
                     for (j, row) in rows.iter().enumerate()
                     {
@@ -457,7 +475,7 @@ pub mod objects
                     }
                 }
                 // Color
-                else if i == 5
+                else if i == 6
                 {
                     for (j, row) in rows.iter().enumerate()
                     {
@@ -573,6 +591,19 @@ pub mod objects
                             object.1.size[0].value,
                             object.1.size[1].value,
                             object.1.size[2].value,
+                        ));
+                    }
+                }
+                else if table_name == &"Rotation"
+                {
+                    sqls.push(format!("CREATE TABLE {table_name} (x FLOAT, y FLOAT, z FLOAT);"));
+    
+                    for object in objects.iter()
+                    {
+                        sqls.push(format!("INSERT INTO {table_name} VALUES ({}, {}, {})",
+                            object.1.rotation[0].value,
+                            object.1.rotation[1].value,
+                            object.1.rotation[2].value,
                         ));
                     }
                 }

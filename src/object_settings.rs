@@ -61,6 +61,12 @@ pub mod object_actions
             update_shape::size(object, gameengine_objects, window);
             update_shape::position(object, gameengine_objects);
             update_shape::color(object, gameengine_objects);
+
+            for rotation in object.1.rotation.iter()
+            {
+                update_shape::rotation(&object.0.label.0, rotation, gameengine_objects)
+            }
+            
         }
     }
     // Destroys old hashmap stored in game engine
@@ -95,6 +101,29 @@ pub mod object_actions
                 .unwrap()
                 .set_uniform_color(object.1.color[0], object.1.color[1], object.1.color[2], object.1.color[3])
                 .unwrap();
+        }
+        pub fn rotation(object_label: &str, rotation: &crate::object_settings::three_d_lables::Fields, gameengine_objects: &mut ObjectStorage)
+        {
+            let axis = match rotation.axis
+            {
+                b'x'        => blue_engine::RotateAxis::X,
+                b'y'        => blue_engine::RotateAxis::Y,
+                b'z'        => blue_engine::RotateAxis::Z,
+
+                _           => panic!(),
+            };
+
+            gameengine_objects
+                .get_mut(object_label)
+                .unwrap()
+                .rotate(rotation.value, axis);
+            /*
+            gameengine_objects
+                .get_mut(&object.0.label.0)
+                .unwrap()
+                .rotate(10f32, blue_engine::RotateAxis::X)
+            */
+            
         }
     }
 }

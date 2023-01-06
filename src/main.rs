@@ -80,6 +80,7 @@ pub struct ObjectSettings
     object_type         : Vec<object_settings::radio_options::Fields>,
     position            : [object_settings::three_d_lables::Fields; 3],
     size                : [object_settings::three_d_lables::Fields; 3],
+    rotation            : [object_settings::three_d_lables::Fields; 3],
     texture             : object_settings::texture::Fields,
     color               : [f32; 4],
 }
@@ -92,6 +93,7 @@ impl ObjectSettings
             object_type         : object_settings::radio_options::init(&["Square", "Triangle", "Line"]),
             position            : object_settings::three_d_lables::Fields::init(0f32),
             size                : object_settings::three_d_lables::Fields::init(30f32),
+            rotation            : object_settings::three_d_lables::Fields::init(0f32),
             texture             : object_settings::texture::Fields::init(),
             color               : [1f32, 1f32, 1f32, 1f32],
         }
@@ -612,7 +614,7 @@ fn main()
                                 ui.label(format!("Object name: {} {}",
                                     if object.0.label.1.warning == true {issues::output_symbols().0} else {""},
                                     if object.0.label.1.error == true {issues::output_symbols().1} else {""},
-                                ));
+                                )   );
                                 if ui.add(egui::TextEdit::singleline(&mut object.0.label.0)).changed()
                                 {
                                     // Destroys hashmap
@@ -748,8 +750,26 @@ fn main()
 
                                     
                                 });
-                                
-                                
+                                ui.separator();
+
+                                ui.label("Rotation");
+                                ui.horizontal(|ui|
+                                {
+                                    
+                                    for rotation in object.1.rotation.iter_mut()
+                                    {
+                                        ui.label(format!("{}:", rotation.axis as char));
+
+                                        // Use Response::changed or whatever to determine if the value has been changed
+                                        if ui.add(egui::DragValue::new(&mut rotation.value).speed(editor_settings.slider_speed)).changed()
+                                        {
+                                            object_settings::object_actions::update_shape::rotation(&object.0.label.0, rotation, gameengine_objects)
+                                        }
+                                        
+                                    }
+
+                                    
+                                });
 
                             }
                         }
