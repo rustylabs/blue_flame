@@ -307,7 +307,7 @@ fn main()
             title               : "Blue Flame",
             decorations         : true,
             resizable           : true,
-            power_preference    : PowerPreference::LowPower
+            power_preference    : PowerPreference::LowPower,
         }).unwrap();
 
 
@@ -822,6 +822,7 @@ fn main()
                                 {
                                     if objects[i].0.selected == true
                                     {
+                                        object_settings::object_actions::destroy_hashmap(&objects[i].0.label.0, gameengine_objects);
                                         objects.remove(i);
                                         Objects::recalculate_id(&mut objects);
                                         break;
