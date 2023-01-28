@@ -6,7 +6,7 @@ use std::process::exit;
 
 
 pub mod object_settings;
-pub mod sql;
+pub mod db;
 mod practice;
 
 struct EditorSettings
@@ -255,20 +255,20 @@ struct Debug
     resolution          : bool,
 }
 
-struct Sql
+struct Db
 {
-    objects             : sql::objects::Sql,
-    scenes              : sql::scenes::Sql,
+    objects             : db::objects::Sql,
+    scenes              : db::scenes::Sql,
     //projects            : sql::projects::Sql,
 }
-impl Sql
+impl Db
 {
     fn init() -> Self
     {
         Self
         {
-            objects             : sql::objects::Sql::init(),
-            scenes              : sql::scenes::Sql::init(),
+            objects             : db::objects::Sql::init(),
+            scenes              : db::scenes::Sql::init(),
             //projects            : sql::projects::Sql::init(),
         }
     }
@@ -323,7 +323,7 @@ fn main()
 
 
     // sql Variables
-    let mut sql = Sql::init();
+    let mut db = Db::init();
 
     // objects & scenes
     //let mut objects = vec![(Objects::init(0), ObjectSettings::init())];
@@ -333,8 +333,8 @@ fn main()
 
 
     // Load all dbs into memory
-    sql.scenes.load(&mut scenes);
-    sql.objects.load(&mut objects);
+    db.scenes.load(&mut scenes);
+    db.objects.load(&mut objects);
 
 
     // Start the egui context
@@ -410,7 +410,7 @@ fn main()
                             {
                                 if list.label == "💾 Save"
                                 {
-                                    sql.objects.save(&objects);
+                                    db.objects.save(&objects);
                                     break;
                                 }
 
@@ -499,7 +499,7 @@ fn main()
                             }
                             if ui.button("💾 Save current scene").clicked()
                             {
-                                sql.objects.save(&objects);
+                                db.objects.save(&objects);
                             }
                         }
                         else if view_mode.name == "Scenes" && view_mode.status == true
@@ -514,7 +514,7 @@ fn main()
                             }
                             if ui.button("💾 Save scene settings").clicked()
                             {
-                                sql.scenes.save(&scenes);
+                                db.scenes.save(&scenes);
                             }
                         }
                     }
