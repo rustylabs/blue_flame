@@ -494,8 +494,6 @@ fn main()
                                     if object_type.status == true
                                     {
                                         object_settings::object_actions::create_shape(&objects[len as usize], i, renderer, gameengine_objects, window);
-                                        //Test
-                                        
                                     }
                                 }
                             }
