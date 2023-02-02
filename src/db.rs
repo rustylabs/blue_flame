@@ -1,3 +1,7 @@
+/* Notes
+For ast-builder check out https://github.com/gluesql/gluesql/tree/main/test-suite/src/ast_builder
+*/
+
 use gluesql::prelude::*;
 //use gluesql::sled_storage::sled::IVec;
 
@@ -18,54 +22,118 @@ pub mod projects
     {
         pub fn init() -> Self
         {
-            let storage         = SledStorage::new("project").unwrap();
+            let storage         = SledStorage::new("projects").unwrap();
             Self
             {
                 glue            : Glue::new(storage),
                 //table_names     : ["ObjectSettings", "Position"],
-                table_names     : ["ProjectName"],
+                table_names     : ["ProjectInfo"],
                //table_names     : ["ObjectSettings", "Position", "Scale"],
             }
         }
-        pub fn save(&mut self)
+        pub fn load(&mut self, projects: &mut Vec<crate::Projects>)
         {
-            /* Example
-            pub fn save(&mut self, objects: &[(crate::Objects, crate::ObjectSettings)])
+            let mut sqls: Vec<String> = vec![];
+            for table_name in self.table_names.iter()
+            {
+                sqls.push(format!("SELECT * FROM {table_name}"));       //table_names     : ["Object", "ObjectType", "Position", "Scale", "Texture"]
+                //println!("table_name: {table_name}");
+            }
+    
+    
+            // rows[Select { labels: ["ObjectType", "Texture"], rows: [[I64(1), I64(1)]] }, Select { labels: ["x", "y", "z"], rows: [[I64(0), I64(61), I64(0)]] }]
+            let mut outputs: Vec<Payload> = vec![];
+            for sql in sqls
+            {
+                match self.glue.execute(sql)
+                {
+                    // (Objects::init(0), ObjectSettings::init())
+                    Ok(o) => 
+                    {
+                        outputs.push(o.into_iter().next().unwrap());
+                    }
+                    Err(_) =>
+                    {
+                        println!("Table does not exist");
+                        return;
+                    }
+                }
+            }
+            //println!("rows{:?}", outputs);
+            
+    
+            //println!("{:?}", rows); // [[I64(1), I64(1)]] 2nd time: [[I64(0), I64(61), I64(0)]]
+            /*
+            Converts this: // rows[Select { labels: ["object_type", "texture_mode"], rows: [[I64(1), I64(1)]] }, Select { labels: ["x", "y", "z"], rows: [[I64(0), I64(61), I64(0)]] }]
+            To this: [[I64(1), I64(1)]] 2nd time: [[I64(0), I64(61), I64(0)]]
+            */
+            for (i, output) in outputs.iter().enumerate()
+            {
+                let rows = match &output
+                {
+                    Payload::Select{labels: _, rows} => rows,
+                    _ => panic!(),
+                };
+                
+                // ProjectInfo
+                if i == 0
+                {
+                    // Rows
+                    for (j, row) in rows.iter().enumerate()
+                    {
+                        projects.push(crate::Projects::init());
+                        for (pos, element) in row.iter().enumerate()
+                        {
+                            match element
+                            {
+                                Value::Str(v) =>
+                                {
+                                    if pos == 0
+                                    {
+                                        projects[j].name = v.clone();
+                                    }
+                                    else if pos == 1
+                                    {
+                                        projects[j].dir = v.clone();
+                                    }
+                                    
+                                }
+        
+                                _ => panic!(),
+                            };
+                        }
+                    }
+                }
+            }
+        }
+        pub fn save(&mut self, projects: &[crate::Projects])
+        {
             let mut sqls: Vec<String> = vec![];
             for table_name in self.table_names.iter()
             {
                 sqls.push(format!("DROP TABLE IF EXISTS {table_name};"));
-                
-                if table_name == &"Object"
+
+                if table_name == &"ProjectInfo"
                 {
-                    sqls.push(format!("CREATE TABLE {table_name} (id INTEGER, visible BOOLEAN, selected BOOLEAN, label TEXT);"));
+                    sqls.push(format!("CREATE TABLE {table_name} (name TEXT, dir TEXT);"));
     
-                    for object in objects.iter()
+                    for project in projects.iter()
                     {
-                        sqls.push(format!("INSERT INTO {table_name} VALUES ({}, {}, {}, '{}')",
-                            object.0.id,
-                            object.0.visible,
-                            object.0.selected,
-                            object.0.label.0,
+                        sqls.push(format!("INSERT INTO {table_name} VALUES ('{}', '{}')",
+                            project.name,
+                            project.dir,
+
                         ));
                     }
-            */
+                }
+            }
 
-            /* Query builder
-                let actual = table("Bar")
-                .select()
-                .filter(col("id").is_null())
-                .group_by("id, (a + name)")
-                .build();
-            let expected = "
-                SELECT * FROM Bar
-                WHERE id IS NULL
-                GROUP BY id, (a + name)";  
-
-            */
-            
-
-
+            // Executes sql commands
+            for sql in sqls
+            {
+                let _output = self.glue.execute(sql).unwrap();
+                //println!("{:?}", _output);
+            }
         }
     }
 }
@@ -277,7 +345,6 @@ pub mod objects
 {
     use super::*;
 
-
     pub struct Sql
     {
         glue            : Glue<SledStorage>,
@@ -287,7 +354,7 @@ pub mod objects
     {
         pub fn init() -> Self
         {
-            let storage         = SledStorage::new("project").unwrap();
+            let storage         = SledStorage::new("objects").unwrap();
             Self
             {
                 glue            : Glue::new(storage),

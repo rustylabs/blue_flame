@@ -194,6 +194,46 @@ impl SceneSettings
         }
     }
 }
+// Stores all the projects you are working on
+pub struct Projects
+{
+    name        : String,
+    dir         : String,
+    status      : bool,
+}
+impl Projects
+{
+    fn init() -> Self
+    {
+        Self
+        {
+            name        : String::new(),
+            dir         : String::new(),
+            status      : false,
+        }
+    }
+    pub fn change_choice(list: &mut [Self], choice_true: u8)
+    {
+        for (i, item) in list.iter_mut().enumerate()
+        {
+            if i as u8 == choice_true
+            {
+                item.status = true;
+            }
+            else
+            {
+                item.status = false;
+            }
+        }
+    }
+}
+
+enum EditorModes
+{
+    Projects((bool, &'static str)),
+    Main,
+}
+
 mod issues
 {
     pub struct Issues
@@ -259,6 +299,7 @@ struct Db
 {
     objects             : db::objects::Sql,
     scenes              : db::scenes::Sql,
+    projects            : db::projects::Sql,
     //projects            : sql::projects::Sql,
 }
 impl Db
@@ -269,15 +310,29 @@ impl Db
         {
             objects             : db::objects::Sql::init(),
             scenes              : db::scenes::Sql::init(),
+            projects            : db::projects::Sql::init(),
             //projects            : sql::projects::Sql::init(),
         }
     }
 }
 
+
+// Determines what "mode" we are in, for example projects we want to see or the main game editor?
+
 fn main()
 {
+
     // object's previous label just before it is modified
     let mut label_backup = String::new();
+
+    let mut editor_modes =
+    [
+        (true, EditorModes::Projects((false, "Create objects"))), 
+        (false, EditorModes::Main),
+    ];
+
+    // Opens the projects window up
+    let mut open_projects = true;
 
     let editor_settings = EditorSettings::init();
 
@@ -329,12 +384,14 @@ fn main()
     //let mut objects = vec![(Objects::init(0), ObjectSettings::init())];
     let mut objects: Vec<(Objects, ObjectSettings)> = Vec::new();
     let mut scenes: Vec<(Scenes, SceneSettings)> = Vec::new();
+    let mut projects: Vec<Projects> = Vec::new();
 
 
 
     // Load all dbs into memory
     db.scenes.load(&mut scenes);
     db.objects.load(&mut objects);
+    db.projects.load(&mut projects);
 
 
     // Start the egui context
@@ -373,6 +430,7 @@ fn main()
     println!("----------Start of update_loop----------");
     engine.update_loop(move |renderer, window, gameengine_objects, _, _, plugins|
     {
+
         // Label error checking
         issues::issue_checks::labels(&mut objects);
 
@@ -385,15 +443,90 @@ fn main()
         // ui function will provide the context
         egui_plugin.ui(|ctx|
         {
-            // One of the settings menu
+            // Shows your project upon startup
+            egui::Window::new("Projects")
+            .fixed_pos(egui::pos2(400f32, 50f32))
+            .fixed_size(egui::vec2(1000f32, 1000f32))
+            .open(&mut open_projects)
+            .show(ctx, |ui|
+            {
+                // Show all projects
+                for i in 0..projects.len()
+                {
+                    if ui.selectable_label(projects[i].status, format!("{}: {}", projects[i].name, projects[i].dir)).clicked()
+                    {
+                        Projects::change_choice(&mut projects, i as u8);
+                    }
+                }
+
+                // Shows label where the user can input the new project and extra buttons such as "done" or whatever
+                for editor_mode in editor_modes.iter_mut()
+                {
+                    if let (_, EditorModes::Projects((val, _))) = editor_mode
+                    {
+                        if *val == true
+                        {
+
+                            let len = projects.len() - 1;
+                            
+                            ui.horizontal(|ui|
+                            {
+                                ui.add(egui::TextEdit::singleline(&mut projects[len].name));
+                                ui.add(egui::TextEdit::singleline(&mut projects[len].dir));
+                            });
+
+                            // Shows extra buttons
+                            ui.horizontal(|ui|
+                            {
+                                if ui.button("💾 Save").clicked()
+                                {
+                                    *val = false;
+                                }
+                                if ui.button("⛔ Cancel").clicked()
+                                {
+                                    *val = false;
+                                    projects.pop();
+                                }
+                            });
+
+                        }
+                    }
+                }
+
+                ui.horizontal(|ui|
+                {
+                    if ui.button("Load scene").clicked()
+                    {
+    
+                    }
+                    if ui.button("➕ Create new project").clicked()
+                    {
+                        projects.push(Projects::init());
+
+                        for editor_mode in editor_modes.iter_mut()
+                        {
+                            if let (_, EditorModes::Projects((val, _))) = editor_mode
+                            {
+                                *val = true;
+                            }
+                        }
+
+                    }
+                });
+
+            });
+
+
+            // One of the settings menu if opened
             egui::Window::new(AlertWindow::whats_enabled(&alert_window.1))
             .fixed_pos(egui::pos2(400f32, 50f32))
             .fixed_size(egui::vec2(100f32, 200f32))
             .open(&mut alert_window.0)
-            .show(ctx, |ui| ui.label(""));
+            .show(ctx, |ui|
             {
-                
-            }
+                ui.label("")
+            });
+
             // Menu bar
             egui::TopBottomPanel::top("Menu Bar").show(ctx, |ui|
             {
@@ -614,7 +747,7 @@ fn main()
                                 ui.label(format!("Object name: {} {}",
                                     if object.0.label.1.warning == true {issues::output_symbols().0} else {""},
                                     if object.0.label.1.error == true {issues::output_symbols().1} else {""},
-                                )   );
+                                ));
                                 if ui.add(egui::TextEdit::singleline(&mut object.0.label.0)).changed()
                                 {
                                     // Destroys hashmap
