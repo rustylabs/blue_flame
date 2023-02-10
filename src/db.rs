@@ -98,6 +98,7 @@ pub mod projects
                                     }
                                     
                                 }
+                                Value::Bool(v) => projects[j].status = *v,
         
                                 _ => panic!(),
                             };
@@ -115,13 +116,14 @@ pub mod projects
 
                 if table_name == &"ProjectInfo"
                 {
-                    sqls.push(format!("CREATE TABLE {table_name} (name TEXT, dir TEXT);"));
+                    sqls.push(format!("CREATE TABLE {table_name} (name TEXT, dir TEXT, game_type , status BOOLEAN);"));
     
                     for project in projects.iter()
                     {
-                        sqls.push(format!("INSERT INTO {table_name} VALUES ('{}', '{}')",
+                        sqls.push(format!("INSERT INTO {table_name} VALUES ('{}', '{}', {})",
                             project.name,
                             project.dir,
+                            project.status,
 
                         ));
                     }
@@ -132,7 +134,7 @@ pub mod projects
             for sql in sqls
             {
                 let _output = self.glue.execute(sql).unwrap();
-                //println!("{:?}", _output);
+                println!("{:?}", _output);
             }
         }
     }
