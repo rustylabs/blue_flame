@@ -360,7 +360,7 @@ fn main()
 
     let debug = Debug
     {
-        practice        : false,
+        practice        : true,
         resolution      : true,
     };
 

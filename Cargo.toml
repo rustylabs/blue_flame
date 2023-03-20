@@ -12,3 +12,7 @@ blue_engine_egui = "0.4.1"
 
 # sql
 gluesql = "0.13"
+
+# Db shit
+postcard = {verison = "1.0.4", features = ["use-std"]}
+serde = "1.0.157"

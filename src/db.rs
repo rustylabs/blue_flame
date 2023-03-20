@@ -5,6 +5,7 @@ For ast-builder check out https://github.com/gluesql/gluesql/tree/main/test-suit
 use gluesql::prelude::*;
 //use gluesql::sled_storage::sled::IVec;
 
+
 use crate::object_settings::*;
 
 use crate::{Objects, ObjectSettings, Scenes};
@@ -146,6 +147,13 @@ pub mod scenes
     use crate::SceneSettings;
 
     use super::*;
+
+    pub struct Db
+    {
+        
+    }
+
+
     pub struct Sql
     {
         glue            : Glue<SledStorage>,

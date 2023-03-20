@@ -1,8 +1,54 @@
 #[allow(unused_variables)]
 #[allow(dead_code)]
 #[allow(unused_imports)]
+
+use postcard;
+use serde;
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct Object
+{
+    x       : u16,
+    y       : u16,
+    z       : [u16; 3],
+}
 pub fn main()
 {
+
+    /* Solutions
+    - https://users.rust-lang.org/t/using-postcard-and-serde-how-do-i-append-version-number/91131
+
+     */
+    //const VERSION: &'static str = "0.0.1";
+    const VERSION: f32= 0.1;
+
+    let rect = Object{x: 10, y: 20, z: [10, 20, 30]};
+
+    save(&rect, VERSION);
+
+    fn save(object: &Object, version: f32)
+    {
+        #[derive(Debug, serde::Serialize, serde::Deserialize)]
+        struct Data<T>
+        {
+            version     : f32,
+            object      : T,
+        }
+
+        let data = match postcard::to_stdvec(&Data::<&Object>{version, object})
+        {
+            Ok(d)           => d,
+            Err(e)            => {println!("Error on save: {e}"); return;}
+        };
+
+        let value: Data<Object> = match postcard::from_bytes(&data)
+        {
+            Ok(d)      => d,
+            Err(e)            => {println!("Error on load: {e}"); return;},
+        };
+
+        println!("version: {:?}", value);
+    }
 
     /* postcard
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
