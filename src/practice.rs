@@ -11,7 +11,15 @@ struct Object
     x       : u16,
     y       : u16,
     z       : [u16; 3],
+    square  : Square,
 }
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct Square
+{
+    width       : u32,
+    height      : u32,
+}
+
 pub fn main()
 {
 
@@ -22,32 +30,41 @@ pub fn main()
     //const VERSION: &'static str = "0.0.1";
     const VERSION: f32= 0.1;
 
-    let rect = Object{x: 10, y: 20, z: [10, 20, 30]};
+    let rect = Object{x: 10, y: 20, z: [10, 20, 30], square: Square{width: 10, height: 20}};
 
     save(&rect, VERSION);
 
     fn save(object: &Object, version: f32)
     {
+        /*
         #[derive(Debug, serde::Serialize, serde::Deserialize)]
         struct Data<T>
         {
             version     : f32,
             object      : T,
         }
+        */
 
-        let data = match postcard::to_stdvec(&Data::<&Object>{version, object})
+        //let data = match postcard::to_stdvec(&Data::<&Object>{version, object})
+        let data = match postcard::to_stdvec(&(version, object))
         {
             Ok(d)           => d,
             Err(e)            => {println!("Error on save: {e}"); return;}
         };
 
-        let value: Data<Object> = match postcard::from_bytes(&data)
+
+        //let value: Data<Object> = match postcard::from_bytes(&data)
+        let value: (f32, Object) = match postcard::from_bytes(&data)
         {
-            Ok(d)      => d,
+            Ok(d)     => d,
             Err(e)            => {println!("Error on load: {e}"); return;},
         };
 
-        println!("version: {:?}", value);
+        let version = value.0;
+        let object = value.1;
+
+        println!("version: {}", version);
+        println!("Object: {:?}", object);
     }
 
     /* postcard
