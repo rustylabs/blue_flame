@@ -14,6 +14,12 @@ struct Object
     square  : Square,
 }
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct Object1
+{
+    square      : Square,
+    a           : [u16; 3],
+}
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Square
 {
     width       : u32,
@@ -30,11 +36,21 @@ pub fn main()
     //const VERSION: &'static str = "0.0.1";
     const VERSION: f32= 0.1;
 
-    let rect = Object{x: 10, y: 20, z: [10, 20, 30], square: Square{width: 10, height: 20}};
+    let rect: Vec<(Object, Object1)> = vec!
+    [
+        (
+            Object{x: 10, y: 20, z: [10, 20, 30], square: Square{width: 10, height: 20}},
+            Object1{square: Square{width: 10, height: 20}, a: [10, 20, 30]},
+        ),
+        (
+            Object{x: 20, y: 40, z: [20, 40, 60], square: Square{width: 15, height: 25}},
+            Object1{square: Square{width: 20, height: 30}, a: [20, 40, 60]},
+        ),
+    ];
 
-    save(&rect, VERSION);
+    save(VERSION, &rect);
 
-    fn save(object: &Object, version: f32)
+    fn save(version: f32, objects: &[(Object, Object1)])
     {
         /*
         #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -46,7 +62,7 @@ pub fn main()
         */
 
         //let data = match postcard::to_stdvec(&Data::<&Object>{version, object})
-        let data = match postcard::to_stdvec(&(version, object))
+        let data = match postcard::to_stdvec(&(version, objects))
         {
             Ok(d)           => d,
             Err(e)            => {println!("Error on save: {e}"); return;}
@@ -54,17 +70,21 @@ pub fn main()
 
 
         //let value: Data<Object> = match postcard::from_bytes(&data)
-        let value: (f32, Object) = match postcard::from_bytes(&data)
+        let value: (f32, Vec<(Object, Object1)>) = match postcard::from_bytes(&data)
         {
-            Ok(d)     => d,
-            Err(e)            => {println!("Error on load: {e}"); return;},
+            Ok(d)      => d,
+            Err(e)                  => {println!("Error on load: {e}"); return;},
         };
 
         let version = value.0;
-        let object = value.1;
+        let objects = value.1;
 
         println!("version: {}", version);
-        println!("Object: {:?}", object);
+        for (i, object) in objects.iter().enumerate()
+        {
+            println!("Line: {i}: Object: {:?}", object);
+        }
+        
     }
 
     /* postcard
