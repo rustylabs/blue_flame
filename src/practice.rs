@@ -50,33 +50,11 @@ pub fn main()
         ),
     ];
 
-    save(VERSION, &rect);
+    //save(VERSION, &rect);
+    load();
 
-    fn save(version: f32, objects: &[(Object, Object1)])
+    fn load()
     {
-        /*
-        #[derive(Debug, serde::Serialize, serde::Deserialize)]
-        struct Data<T>
-        {
-            version     : f32,
-            object      : T,
-        }
-        */
-
-        //let data = match postcard::to_stdvec(&Data::<&Object>{version, object})
-        let data = match postcard::to_stdvec(&(version, objects))
-        {
-            Ok(d)           => d,
-            Err(e)            => {println!("Error on postcard storage: {e}"); return;}
-        };
-
-        match std::fs::write("save", &data)
-        {
-            Ok(_)               => println!("File saved!"),
-            Err(e)       => println!("Save error {e}"),
-        }
-
-        // ---------------------------LOAD----------------------------
 
         let mut file = match std::fs::File::open("save")
         {
@@ -106,6 +84,33 @@ pub fn main()
         {
             println!("Line: {i}: Object: {:?}", object);
         }
+    }
+
+    fn save(version: f32, objects: &[(Object, Object1)])
+    {
+        /*
+        #[derive(Debug, serde::Serialize, serde::Deserialize)]
+        struct Data<T>
+        {
+            version     : f32,
+            object      : T,
+        }
+        */
+
+        //let data = match postcard::to_stdvec(&Data::<&Object>{version, object})
+        let data = match postcard::to_stdvec(&(version, objects))
+        {
+            Ok(d)           => d,
+            Err(e)            => {println!("Error on postcard storage: {e}"); return;}
+        };
+
+        match std::fs::write("save", &data)
+        {
+            Ok(_)               => println!("File saved!"),
+            Err(e)       => println!("Save error {e}"),
+        }
+
+
 
         
         
