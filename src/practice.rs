@@ -1,3 +1,5 @@
+use std::io::Read;
+
 #[allow(unused_variables)]
 #[allow(dead_code)]
 #[allow(unused_imports)]
@@ -65,15 +67,35 @@ pub fn main()
         let data = match postcard::to_stdvec(&(version, objects))
         {
             Ok(d)           => d,
-            Err(e)            => {println!("Error on save: {e}"); return;}
+            Err(e)            => {println!("Error on postcard storage: {e}"); return;}
         };
 
+        match std::fs::write("save", &data)
+        {
+            Ok(_)               => println!("File saved!"),
+            Err(e)       => println!("Save error {e}"),
+        }
 
-        //let value: Data<Object> = match postcard::from_bytes(&data)
+        // ---------------------------LOAD----------------------------
+
+        let mut file = match std::fs::File::open("save")
+        {
+            Ok(d)               => {println!("File loaded!"); d},
+            Err(e)             => {println!("Load error {e}"); return},
+        };
+
+        let mut data = Vec::new();
+        match file.read_to_end(&mut data)
+        {
+            Ok(_)               => {},
+            Err(e)       => println!("read_to_end error {e}"),
+        }
+
+        //let value: (f32, Vec<(Object, Object1)>) = match postcard::from_bytes(&file)
         let value: (f32, Vec<(Object, Object1)>) = match postcard::from_bytes(&data)
         {
             Ok(d)      => d,
-            Err(e)                  => {println!("Error on load: {e}"); return;},
+            Err(e)                             => {println!("Error on load: {e}"); return;},
         };
 
         let version = value.0;
@@ -84,6 +106,8 @@ pub fn main()
         {
             println!("Line: {i}: Object: {:?}", object);
         }
+
+        
         
     }
 
