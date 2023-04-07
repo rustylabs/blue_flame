@@ -103,7 +103,6 @@ pub fn main()
             Ok(d)           => d,
             Err(e)            => {println!("Error on postcard storage: {e}"); return;}
         };
-
         match std::fs::write("save", &data)
         {
             Ok(_)               => println!("File saved!"),

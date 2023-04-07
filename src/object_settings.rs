@@ -8,42 +8,24 @@ pub mod object_actions
     // Either puts new shape or changes shape
     pub fn create_shape(object: &(Objects, ObjectSettings), i: usize, renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window) -> bool
     {
-        //println!("create_shape() Object's type: {}\t\t Object's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
-        //println!("object's name: {}\tobject's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
-        if object.1.object_type[i].name == "Square" && object.1.object_type[i].status == true
+
+        // Square
+        if crate::mapper::object_type(i) == "Square" && object.1.object_type[i] == true
         {
             //println!("object.1.size[0].value: {}", object.1.size[0].value);
-            square(object.0.label.0.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
-            /*
-            square(
-                object.0.label.0.clone(),
-                header::ObjectSettings
-                {
-                    size                : (0.5f32, 0.5f32, 0.5f32),
-                    //scale               : (object.1.scale[0].value, object.1.scale[1].value, object.1.scale[2].value),
-                    scale               : (1f32, 1f32, 1f32),
-                    position            : (object.1.position[0].value, object.1.position[1].value, object.1.position[2].value),
-                    color               : Array4{data: utils::default_resources::DEFAULT_COLOR},
-                    camera_effect       : true,
-                    shader_settings     : ShaderSettings::default(),
-                },
-                renderer,
-                gameengine_objects
-                ).unwrap();
-            */
+            square(object.0.label.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
             update_shape(object, gameengine_objects, window);
-
-            //update_shape(object, gameengine_objects, window);
             
             return true;
         }
-        else if object.1.object_type[i].name == "Triangle" && object.1.object_type[i].status == true
+        else if crate::mapper::object_type(i) == "Triangle" && object.1.object_type[i] == true
         {
-            triangle(object.0.label.0.clone(), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+            triangle(object.0.label.clone(), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
             update_shape(object, gameengine_objects, window);
+
             return true;
         }
-        else if object.1.object_type[i].name == "Line" && object.1.object_type[i].status == true
+        else if crate::mapper::object_type(i) == "Line" && object.1.object_type[i] == true
         {
             //line(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
             return true;
@@ -62,9 +44,9 @@ pub mod object_actions
             update_shape::position(object, gameengine_objects);
             update_shape::color(object, gameengine_objects);
 
-            for rotation in object.1.rotation.iter()
+            for (i, rotation) in object.1.rotation.iter().enumerate()
             {
-                update_shape::rotation(&object.0.label.0, rotation, gameengine_objects)
+                update_shape::rotation(&object.0.label, crate::mapper::three_d_lables(i), *rotation, gameengine_objects)
             }
             
         }
@@ -83,28 +65,28 @@ pub mod object_actions
         pub fn size(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, window: &Window)
         {
             gameengine_objects
-                .get_mut(&object.0.label.0)
+                .get_mut(&object.0.label)
                 .unwrap()
-                .resize(object.1.size[0].value, object.1.size[1].value, object.1.size[2].value, window.inner_size());
+                .resize(object.1.size[0], object.1.size[1], object.1.size[2], window.inner_size());
         }
         pub fn position(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage)
         {
             gameengine_objects
-                .get_mut(&object.0.label.0)
+                .get_mut(&object.0.label)
                 .unwrap()
-                .position(object.1.position[0].value, object.1.position[1].value, object.1.position[2].value);
+                .position(object.1.position[0], object.1.position[1], object.1.position[2]);
         }
         pub fn color(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage)
         {
             gameengine_objects
-                .get_mut(&object.0.label.0)
+                .get_mut(&object.0.label)
                 .unwrap()
                 .set_uniform_color(object.1.color[0], object.1.color[1], object.1.color[2], object.1.color[3])
                 .unwrap();
         }
-        pub fn rotation(object_label: &str, rotation: &crate::object_settings::three_d_lables::Fields, gameengine_objects: &mut ObjectStorage)
+        pub fn rotation(object_label: &str, axis: u8, rotation: f32, gameengine_objects: &mut ObjectStorage)
         {
-            let axis = match rotation.axis
+            let axis = match axis
             {
                 b'x'        => blue_engine::RotateAxis::X,
                 b'y'        => blue_engine::RotateAxis::Y,
@@ -116,7 +98,7 @@ pub mod object_actions
             gameengine_objects
                 .get_mut(object_label)
                 .unwrap()
-                .rotate(rotation.value, axis);
+                .rotate(rotation, axis);
             /*
             gameengine_objects
                 .get_mut(&object.0.label.0)
@@ -132,34 +114,35 @@ pub mod object_actions
 // Radio related stuff
 pub mod radio_options
 {
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Fields
     {
-        pub name            : &'static str,
+        //pub name            : &'static str,
+        pub name            : std::borrow::Cow<'static, str>,
         pub status          : bool,
     }
 
 
     // Triangle, Square etc
     // Clamp, Repeat, Repeat Mirror etc
-    pub fn init(names: &'static [&str]) -> Vec<Fields>
+    //pub fn init(names: &'static [&str]) -> Vec<Fields>
+    /*
+    pub fn init(values: &[&mut bool])
     {
-        let mut vec = Vec::new();
-
-        for (i, name) in names.iter().enumerate()
+        for (i, value) in values.iter_mut().enumerate()
         {
             if i == 0
             {
-                vec.push(Fields{status: true, name})
+                **value = true;
             }
             else
-            {    
-                vec.push(Fields{status: false, name})
+            {
+                **value = false;
             }
-            
         }
-
-        vec
     }
+    */
+    
 
 
     pub fn change_choice(list: &mut [Fields], choice_true: u8)
@@ -195,6 +178,7 @@ pub mod radio_options
 
 pub mod three_d_lables
 {
+    //#[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Fields
     {
         pub axis            : u8, // is this either x, y or z?
@@ -213,15 +197,15 @@ pub mod three_d_lables
     }
 }
 
-
 pub mod texture
 {
-    use crate::object_settings::radio_options;
+    //use crate::object_settings::radio_options;
 
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Fields
     {
-        pub data            : String,
-        pub mode            : Vec<radio_options::Fields>,
+        pub file_location   : String,
+        pub mode            : [bool; 3]
     }
     impl Fields
     {
@@ -229,8 +213,8 @@ pub mod texture
         {
             Self
             {
-                data            : String::new(),
-                mode            : radio_options::init(&["Clamp", "Repeat", "Repeat Mirror"]),
+                file_location   : String::new(),
+                mode            : [true /*Clamp*/, false /*Triangle*/, false /*Line*/],
             }
         }
     }

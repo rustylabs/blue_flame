@@ -16,3 +16,6 @@ gluesql = "0.13"
 # Db shit
 postcard = {verison = "1.0.4", features = ["use-std"]}
 serde = "1.0.157"
+
+# Dirs
+dirs = "3.0"

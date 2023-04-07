@@ -1,3 +1,5 @@
+
+
 /* Notes
 For ast-builder check out https://github.com/gluesql/gluesql/tree/main/test-suite/src/ast_builder
 */
@@ -6,13 +8,41 @@ use gluesql::prelude::*;
 //use gluesql::sled_storage::sled::IVec;
 
 
-use crate::object_settings::*;
+//use crate::object_settings::*;
 
 use crate::{Objects, ObjectSettings, Scenes};
 
-// Which project do you wanna open
+// Manages all projects and points to scenes
 pub mod projects
 {
+    // Directory related libraries
+    use std::path::PathBuf;
+    use dirs;
+
+    pub fn save(projects: &[crate::Projects])
+    {
+        // ~/.config.blue_flame
+        let mut config_dir: PathBuf =  match dirs::home_dir()
+        {
+            Some(v)         => v,
+            None                     => {println!("Unable to obtain home dir"); return;},
+        };
+        config_dir.push(".config");
+        config_dir.push("blue_flame");
+
+        println!("config_dir: {:?}", config_dir);
+        match std::fs::create_dir(&config_dir)
+        {
+            Ok(_)       => println!("Config dir created succesfully in {}", config_dir.display()),
+            Err(e)      => println!("Unable to create config dir due to {e}"),
+        }
+
+        // This is where we actually save the file
+        
+    }
+
+
+    /*
     use super::*;
     pub struct Sql
     {
@@ -139,11 +169,57 @@ pub mod projects
             }
         }
     }
+    */
 }
 
-// These could be levels, however you want to interpret it as
+// Scene manager
 pub mod scenes
 {
+    use std::io::Read;
+
+    const VERSION: f32 = 0.1;
+    //const FILE_NAME: &'static str = "project_save";
+
+    pub fn save(scenes: &[(crate::Scenes, crate::SceneSettings)], file_name: &str)
+    {
+        let data = postcard::to_stdvec(&(VERSION, scenes)).unwrap();
+
+        match std::fs::write(file_name, &data)
+        {
+            Ok(_)               => println!("File saved!"),
+            Err(e)       => println!("Save error: {e}"),
+        }
+    }
+    pub fn load(objects: &mut Vec<(crate::Scenes, crate::SceneSettings)>, file_name: &str)
+    {
+        let mut file = match std::fs::File::open(file_name)
+        {
+            Ok(d)               => {println!("Objects: {file_name} loaded!"); d},
+            Err(e)             => {println!("Load error on {file_name} {e}"); return;}
+        };
+
+        let mut data = Vec::new();
+        match file.read_to_end(&mut data)
+        {
+            Ok(_)               => {},
+            Err(e)       => println!("read_to_end error {e}"),
+        }
+
+        //let value: (f32, Vec<(Object, Object1)>) = match postcard::from_bytes(&file)
+        let value: (f32, Vec<(crate::Scenes, crate::SceneSettings)>) = match postcard::from_bytes(&data)
+        {
+            Ok(d)      => d,
+            Err(e)                                     => {println!("Error on load: {e}"); return;},
+        };
+
+        let version = value.0;
+        *objects = value.1;
+
+        println!("db version Objects {file_name}: {}", version);
+    }
+
+
+    /*
     use crate::SceneSettings;
 
     use super::*;
@@ -348,13 +424,57 @@ pub mod scenes
             }
         }
     }
+    */
 }
 
-// use super::*;
+// These could be levels, however you want to interpret it as
 pub mod objects
 {
-    use super::*;
+    //use super::*;
+    use std::io::Read;
 
+    const VERSION: f32 = 0.1;
+    //const FILE_NAME: &'static str = "project_save";
+
+    pub fn save(objects: &[(crate::Objects, crate::ObjectSettings)], file_name: &str)
+    {
+        let data = postcard::to_stdvec(&(VERSION, objects)).unwrap();
+
+        match std::fs::write(file_name, &data)
+        {
+            Ok(_)               => println!("File saved!"),
+            Err(e)       => println!("Save error: {e}"),
+        }
+    }
+    pub fn load(objects: &mut Vec<(crate::Objects, crate::ObjectSettings)>, file_name: &str)
+    {
+        let mut file = match std::fs::File::open(file_name)
+        {
+            Ok(d)               => {println!("Objects: {file_name} loaded!"); d},
+            Err(e)             => {println!("Load error on {file_name} {e}"); return;}
+        };
+
+        let mut data = Vec::new();
+        match file.read_to_end(&mut data)
+        {
+            Ok(_)               => {},
+            Err(e)       => println!("read_to_end error {e}"),
+        }
+
+        //let value: (f32, Vec<(Object, Object1)>) = match postcard::from_bytes(&file)
+        let value: (f32, Vec<(crate::Objects, crate::ObjectSettings)>) = match postcard::from_bytes(&data)
+        {
+            Ok(d)      => d,
+            Err(e)                                     => {println!("Error on load: {e}"); return;},
+        };
+
+        let version = value.0;
+        *objects = value.1;
+
+        println!("db version Objects {file_name}: {}", version);
+    }
+
+    /*
     pub struct Sql
     {
         glue            : Glue<SledStorage>,
@@ -723,6 +843,7 @@ pub mod objects
             }
         }
     }
+    */
 }
 
 
