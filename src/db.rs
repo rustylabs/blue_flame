@@ -19,6 +19,10 @@ pub mod projects
     use std::path::PathBuf;
     use dirs;
 
+    const VERSION: f32 = 0.1;
+    const FILE_NAME: &'static str = "projects";
+
+
     pub fn save(projects: &[crate::Projects])
     {
         // ~/.config.blue_flame
@@ -38,7 +42,14 @@ pub mod projects
         }
 
         // This is where we actually save the file
-        
+
+        let data = postcard::to_stdvec(&(VERSION, projects)).unwrap();
+
+        match std::fs::write(format!("{}/{FILE_NAME}", config_dir.display()), &data)
+        {
+            Ok(_)               => println!("Projects file saved!"),
+            Err(e)       => println!("Save error: {e}"),
+        }
     }
 
 

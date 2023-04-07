@@ -9,6 +9,12 @@ pub mod object_settings;
 pub mod db;
 mod practice;
 
+// Defines where all the file paths are
+struct FilePaths
+{
+    
+}
+
 struct EditorSettings
 {
     width               : f32,
@@ -203,6 +209,7 @@ impl SceneSettings
     }
 }
 // Stores all the projects you are working on
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Projects
 {
     name        : String,
