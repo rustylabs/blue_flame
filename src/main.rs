@@ -1,4 +1,4 @@
-use blue_engine::{header::{Engine, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, primitive_shapes::{triangle, self, square}, Window, PhysicalSize};
+use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, primitive_shapes::{triangle, self, square}, Window, PhysicalSize};
 use blue_engine_egui::{self, egui, EGUI};
 
 
@@ -388,6 +388,7 @@ fn main()
     // object's previous label just before it is modified
     let mut label_backup = String::new();
 
+    // Show load screen or main game screen?
     let mut editor_modes = EditorModes
     {
         projects: (true, false /*Create new project*/),
@@ -400,7 +401,7 @@ fn main()
     let editor_settings = EditorSettings::init();
 
     //let mut view_modes = object_settings::radio_options::init(&["Objects", "Scenes"]);
-    let mut view_modes = [true, false];
+    //let mut view_modes = [true, false];
 
     let debug = Debug
     {
@@ -434,7 +435,6 @@ fn main()
     // DB Variables
 
     // objects & scenes
-    //let mut objects = vec![(Objects::init(0), ObjectSettings::init())];
     let mut objects: Vec<(Objects, ObjectSettings)> = Vec::new();
     let mut scenes: Vec<(Scenes, SceneSettings)> = Vec::new();
     let mut projects: Vec<Projects> = Vec::new();
@@ -445,9 +445,7 @@ fn main()
     // Load all dbs into memory
     db::projects::load(&mut projects, &file_paths);
     db::scenes::load(&mut scenes, "scenes");
-    //db::objects::load(&mut objects, &file_paths, "objects");
-    //db.objects.load(&mut objects);
-    //db::projects::init();
+
     
 
 
@@ -456,24 +454,6 @@ fn main()
 
     // We add the gui as plugin, which runs once before everything else to fetch events, and once during render times for rendering and other stuff
     engine.plugins.push(Box::new(gui_context));
-
-    //triangle("Object 1", blue_engine::header::ObjectSettings::default(), &mut engine.renderer, &mut engine.objects).unwrap();
-
-    // init: draws and updates shapes
-    /*
-    for object in objects.iter()
-    {
-        for i in 0..object.1.object_type.len()
-        {
-            //let window = Window;
-            //println!("object's name: {}\tobject's status: {}", object.1.object_type[i].name, object.1.object_type[i].status);
-            if object_settings::object_actions::create_shape(object, i, &mut engine.renderer, &mut engine.objects, &mut engine.window) == true
-            {
-                break;
-            }
-        }
-    }
-    */
 
     // Determines the current object's name and the puts the name in the backup_label
     for object in objects.iter()
@@ -516,6 +496,47 @@ fn main()
             // if true load project scene
             if editor_modes.projects.0 == true
             {
+                fn load_project_scene(objects: &mut Vec<(Objects, ObjectSettings)>, projects: &mut [Projects], file_paths: &mut FilePaths, editor_modes: &mut EditorModes,
+                    /*Engine shit*/ renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window
+                )
+                {
+                    let projects_len = (projects.len() - 1) as u8;
+                    Projects::change_choice(projects, projects_len);
+
+                    db::projects::save(&projects, &file_paths);
+
+
+                    for project in projects.iter()
+                    {
+                        if project.status == true
+                        {
+                            file_paths.scenes.push(format!("{}", project.dir));
+                            file_paths.create_project_config();
+
+                            // Changing editor mode
+                            editor_modes.projects.0 = false;
+                            editor_modes.projects.1 = false;
+                            editor_modes.main.0 = true;
+
+                            db::objects::load(objects, &file_paths, "objects");
+
+                            // draws the shapes
+                            for object in objects.iter()
+                            {
+                                for i in 0..object.1.object_type.len()
+                                {
+                                    if object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects, window) == true
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            break;
+                        }
+                    }
+                }
+
                 // Shows all your projects and what you want to load upon startup
                 egui::Window::new("Projects")
                 .collapsible(false)
@@ -532,35 +553,7 @@ fn main()
                     {
                         if ui.button("Load scene").clicked()
                         {
-                            db::projects::save(&projects, &file_paths);
-
-
-                            for project in projects.iter()
-                            {
-                                if project.status == true
-                                {
-                                    file_paths.scenes.push(format!("{}/blue_flame", project.dir));
-                                    file_paths.create_project_config();
-
-                                    editor_modes.projects.0 = false;
-                                    editor_modes.main.0 = true;
-                                    db::objects::load(&mut objects, &file_paths, "objects");
-
-                                    // draws the shapes
-                                    for object in objects.iter()
-                                    {
-                                        for i in 0..object.1.object_type.len()
-                                        {
-                                            if object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects, window) == true
-                                            {
-                                                break;
-                                            }
-                                        }
-                                    }
-
-                                    break;
-                                }
-                            }
+                            load_project_scene(&mut objects, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window)
                         }
                         if ui.button("➕ Create new project").clicked()
                         {
@@ -646,23 +639,7 @@ fn main()
                             {
                                 if ui.button("➕ Create").clicked()
                                 {
-                                    editor_modes.projects.1 = false;
-                                    let projects_len = (projects.len() - 1) as u8;
-                                    Projects::change_choice(&mut projects, projects_len);
-
-                                    db::projects::save(&projects, &file_paths);
-
-                                    for project in projects.iter()
-                                    {
-                                        if project.status == true
-                                        {
-                                            file_paths.scenes.push(format!("{}", project.dir));
-                                            file_paths.create_project_config();
-                                            break;
-                                        }
-                                    }
-
-                                    editor_modes.projects.0 = false;
+                                    load_project_scene(&mut objects, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window)
                                 }
                                 if ui.button("⛔ Cancel").clicked()
                                 {
@@ -756,11 +733,11 @@ fn main()
                     ui.horizontal(|ui|
                     {
                         ui.label("Current display:");
-                        for i in 0..view_modes.len()
+                        for i in 0..editor_modes.main.1.len()
                         {
-                            if ui.selectable_label(view_modes[i], mapper::view_mode(i)).clicked()
+                            if ui.selectable_label(editor_modes.main.1[i], mapper::view_mode(i)).clicked()
                             {
-                                radio_options::change_choice(&mut view_modes, i as u8);
+                                radio_options::change_choice(&mut editor_modes.main.1, i as u8);
                             }
                         }
                         
@@ -771,7 +748,7 @@ fn main()
                     // Create new _ and save buttons
                     ui.horizontal(|ui|
                     {
-                        for (i, view_mode) in view_modes.iter().enumerate()
+                        for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                         {
                             if mapper::view_mode(i) == "Objects" && *view_mode == true
                             {
@@ -816,7 +793,7 @@ fn main()
     
                     });
 
-                    for (i, view_mode) in view_modes.iter().enumerate()
+                    for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                     {
                         /*
                         if *view_mode == true
@@ -832,7 +809,7 @@ fn main()
                     ui.separator();
 
                     // Displays all objects/scenes button
-                    for (i, view_mode) in view_modes.iter().enumerate()
+                    for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                     {
                         if mapper::view_mode(i) == "Objects" && *view_mode == true
                         {
@@ -897,7 +874,7 @@ fn main()
                     ui.set_enabled(!alert_window.0);
 
                     ui.set_width(ui.available_width());
-                    for (i, view_mode) in view_modes.iter().enumerate()
+                    for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                     {
                         if *view_mode == true
                         {
@@ -1112,7 +1089,7 @@ fn main()
                     // Delete button
                     ui.horizontal(|ui|
                     {
-                        for (i, view_mode) in view_modes.iter().enumerate()
+                        for view_mode in editor_modes.main.1.iter()
                         {
                             if *view_mode == true
                             {
