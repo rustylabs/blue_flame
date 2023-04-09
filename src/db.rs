@@ -315,19 +315,20 @@ pub mod objects
     const VERSION: f32 = 0.1;
     //const FILE_NAME: &'static str = "project_save";
 
-    pub fn save(objects: &[(crate::Objects, crate::ObjectSettings)], file_name: &str)
+    pub fn save(objects: &[(crate::Objects, crate::ObjectSettings)], file_paths: &crate::FilePaths, file_name: &str)
     {
         let data = postcard::to_stdvec(&(VERSION, objects)).unwrap();
+        
 
-        match std::fs::write(file_name, &data)
+        match std::fs::write(format!("{}/{file_name}", file_paths.scenes.display()), &data)
         {
             Ok(_)               => println!("File saved!"),
             Err(e)       => println!("Save error: {e}"),
         }
     }
-    pub fn load(objects: &mut Vec<(crate::Objects, crate::ObjectSettings)>, file_name: &str)
+    pub fn load(objects: &mut Vec<(crate::Objects, crate::ObjectSettings)>, file_paths: &crate::FilePaths, file_name: &str)
     {
-        let mut file = match std::fs::File::open(file_name)
+        let mut file = match std::fs::File::open(format!("{}/{file_name}", file_paths.scenes.display()))
         {
             Ok(d)               => {println!("Objects: {file_name} loaded!"); d},
             Err(e)             => {println!("Load error on {file_name} {e}"); return;}
