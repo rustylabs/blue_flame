@@ -9,10 +9,52 @@ pub mod object_settings;
 pub mod db;
 mod practice;
 
+// Directory related libraries
+use std::path::PathBuf;
+use dirs;
+
 // Defines where all the file paths are
-struct FilePaths
+pub struct FilePaths
 {
-    
+    projects        : PathBuf,
+    scenes          : PathBuf,
+}
+impl FilePaths
+{
+    fn init() -> Self
+    {
+        // Creating dirs
+        // ~/.config.blue_flame
+        let mut projects: PathBuf =  match dirs::home_dir()
+        {
+            Some(v)         => v,
+            None                     => {println!("Unable to obtain home dir"); PathBuf::new()}
+        };
+        projects.push(".config");
+        projects.push("blue_flame");
+
+        println!("config_dir: {:?}", projects);
+        match std::fs::create_dir(&projects)
+        {
+            Ok(_)       => println!("Config dir created succesfully in {}", projects.display()),
+            Err(e)      => println!("Unable to create config dir due to {e}"),
+        }
+
+        Self
+        {
+            projects,
+            scenes: PathBuf::new(),
+        }
+    }
+    // Creates the folder for the project
+    fn create_project_config(&self)
+    {
+        match std::fs::create_dir(format!("{}/{}", self.scenes.display(), "blue_flame"))
+        {
+            Ok(_)       => println!("Config dir for project created succesfully in {}", self.scenes.display()),
+            Err(e)      => println!("Unable to create config dir for project due to {e}"),
+        }
+    }
 }
 
 struct EditorSettings
@@ -352,6 +394,8 @@ fn main()
         (false, EditorModes::Main),
     ];
 
+    let mut file_paths: FilePaths = FilePaths::init();
+
 
     let editor_settings = EditorSettings::init();
 
@@ -401,6 +445,7 @@ fn main()
 
 
     // Load all dbs into memory
+    db::projects::load(&mut projects, &file_paths);
     db::scenes::load(&mut scenes, "scenes");
     db::objects::load(&mut objects, "objects");
     //db.objects.load(&mut objects);
@@ -469,7 +514,7 @@ fn main()
         {
             for editor_mode in editor_modes.iter_mut()
             {
-                
+                // if true load project scene
                 if let (true, EditorModes::Projects((val, _))) = editor_mode
                 {
                     let mut _create_new_project: bool = *val;
@@ -489,7 +534,21 @@ fn main()
                         {
                             if ui.button("Load scene").clicked()
                             {
-                                db::projects::save(&projects);
+                                db::projects::save(&projects, &file_paths);
+                                _create_new_project = false;
+                                editor_mode.0 = false;
+
+                                for project in projects.iter()
+                                {
+                                    if project.status == true
+                                    {
+                                        file_paths.scenes.push(format!("{}", project.dir));
+                                        file_paths.create_project_config();
+                                        break;
+                                    }
+                                }
+
+
                             }
                             if ui.button("➕ Create new project").clicked()
                             {
@@ -505,7 +564,22 @@ fn main()
                         // Show all projects
                         for i in 0..projects.len()
                         {
-                            if ui.selectable_label(projects[i].status, format!("{}: {}{}", projects[i].name, projects[i].dir, tab_spaces((window_size.x/4f32) as u16)))
+                            // Gets position of what is true in the game_type:[true, false]
+                            let mut game_type_pos: usize = 0;
+                            for (j, game_type) in projects[i].game_type.iter().enumerate()
+                            {
+                                if *game_type == true
+                                {
+                                    game_type_pos = j;
+                                }
+                            }
+
+                            if ui.selectable_label(projects[i].status, format!("{}: {} {}{}",
+                            projects[i].name,
+                            projects[i].dir,
+                            mapper::game_type(game_type_pos),
+
+                            tab_spaces((window_size.x/4f32) as u16)))
                             .clicked()
                             {
                                 Projects::change_choice(&mut projects, i as u8);
@@ -564,7 +638,17 @@ fn main()
                                         let projects_len = (projects.len() - 1) as u8;
                                         Projects::change_choice(&mut projects, projects_len);
 
-                                        db::projects::save(&projects);
+                                        db::projects::save(&projects, &file_paths);
+
+                                        for project in projects.iter()
+                                        {
+                                            if project.status == true
+                                            {
+                                                file_paths.scenes.push(format!("{}", project.dir));
+                                                file_paths.create_project_config();
+                                                break;
+                                            }
+                                        }
 
                                         editor_mode.0 = false;
                                     }
