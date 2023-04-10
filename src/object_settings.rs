@@ -2,7 +2,7 @@
 pub mod object_actions
 {
 
-    use blue_engine::{primitive_shapes::{triangle, square}, Renderer, ShaderSettings, utils, uniform_type::Array4, header, ObjectStorage, Window, Engine};
+    use blue_engine::{primitive_shapes::{triangle, square}, Renderer, header, ObjectStorage, Window};
     use crate::{Objects, ObjectSettings};
     
     // Either puts new shape or changes shape

@@ -1,5 +1,5 @@
-use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, primitive_shapes::{triangle, self, square}, Window, PhysicalSize};
-use blue_engine_egui::{self, egui, EGUI};
+use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window};
+use blue_engine_egui::{self, egui};
 
 
 use std::process::exit;
@@ -392,7 +392,7 @@ fn main()
     let mut editor_modes = EditorModes
     {
         projects: (true, false /*Create new project*/),
-        main: (false, [true /*project mode*/, false /*view mode*/]),
+        main: (false, [false /*objects mode*/, true /*scenes mode*/]),
     };
 
     let mut file_paths: FilePaths = FilePaths::init();
@@ -444,7 +444,7 @@ fn main()
 
     // Load all dbs into memory
     db::projects::load(&mut projects, &file_paths);
-    db::scenes::load(&mut scenes, "scenes");
+    //db::scenes::load(&mut scenes);
 
     
 
@@ -489,6 +489,14 @@ fn main()
         .expect("Plugin not found");
 
 
+        fn add_scene(scenes: &mut Vec<(Scenes, SceneSettings)>)
+        {
+            let len = scenes.len() as u16;
+
+            scenes.push((Scenes::init(len), SceneSettings::default()));
+            Scenes::change_choice(scenes, len);
+        }
+
         // ui function will provide the context
         egui_plugin.ui(|ctx|
         {
@@ -496,7 +504,9 @@ fn main()
             // if true load project scene
             if editor_modes.projects.0 == true
             {
-                fn load_project_scene(objects: &mut Vec<(Objects, ObjectSettings)>, projects: &mut [Projects], file_paths: &mut FilePaths, editor_modes: &mut EditorModes,
+
+
+                fn load_project_scene(objects: &mut Vec<(Objects, ObjectSettings)>, scenes: &mut Vec<(Scenes, SceneSettings)>, projects: &mut [Projects], file_paths: &mut FilePaths, editor_modes: &mut EditorModes,
                     /*Engine shit*/ renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window
                 )
                 {
@@ -518,9 +528,15 @@ fn main()
                             editor_modes.projects.1 = false;
                             editor_modes.main.0 = true;
 
-                            db::objects::load(objects, &file_paths, "objects");
+                            db::scenes::load(scenes, file_paths);
+                            db::objects::load(objects, file_paths, "objects");
 
-                            // draws the shapes
+                            if scenes.len() == 0
+                            {
+                                add_scene(scenes);
+                            }
+
+                            // Create all the shapes after loading into memory
                             for object in objects.iter()
                             {
                                 for i in 0..object.1.object_type.len()
@@ -553,7 +569,7 @@ fn main()
                     {
                         if ui.button("Load scene").clicked()
                         {
-                            load_project_scene(&mut objects, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window)
+                            load_project_scene(&mut objects, &mut scenes, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window);
                         }
                         if ui.button("➕ Create new project").clicked()
                         {
@@ -639,7 +655,7 @@ fn main()
                             {
                                 if ui.button("➕ Create").clicked()
                                 {
-                                    load_project_scene(&mut objects, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window)
+                                    load_project_scene(&mut objects, &mut scenes, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window);
                                 }
                                 if ui.button("⛔ Cancel").clicked()
                                 {
@@ -779,14 +795,11 @@ fn main()
                                 // Create new object
                                 if ui.button("➕ Create scene").clicked()
                                 {
-                                    let len = scenes.len() as u16;
-    
-                                    scenes.push((Scenes::init(len), SceneSettings::default()));
-                                    Scenes::change_choice(&mut scenes, len);
+                                    add_scene(&mut scenes);
                                 }
                                 if ui.button("💾 Save scene settings").clicked()
                                 {
-                                    db::scenes::save(&scenes, "scenes");
+                                    db::scenes::save(&scenes, &file_paths);
                                 }
                             }
                         }
@@ -876,19 +889,13 @@ fn main()
                     ui.set_width(ui.available_width());
                     for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                     {
-                        if *view_mode == true
+                        if i == 0 /*Objects*/ && *view_mode == true
                         {
                             // Object name
                             for object in objects.iter_mut()
                             {
                                 if object.0.selected == true
                                 {
-                                    /*
-                                    ui.label(format!("Object name: {} {}",
-                                        if object.0.label.1.warning == true {issues::output_symbols().0} else {""},
-                                        if object.0.label.1.error == true {issues::output_symbols().1} else {""},
-                                    ));
-                                    */
                                     if ui.add(egui::TextEdit::singleline(&mut object.0.label)).changed()
                                     {
                                         // Destroys hashmap
@@ -904,7 +911,7 @@ fn main()
                                             }
                                         }
                                         label_backup = object.0.label.clone();
-                                        println!("label_backup {}", label_backup);
+                                        //println!("label_backup {}", label_backup);
                                     }
                                 }
                             }
@@ -968,7 +975,6 @@ fn main()
                                             // Use Response::changed or whatever to determine if the value has been changed
                                             if ui.add(egui::DragValue::new(position).speed(editor_settings.slider_speed)).changed()
                                             {
-                                                //println!("Changed!");
                                                 update_position = true;
                                             }
                                             
@@ -976,14 +982,7 @@ fn main()
                                         // Updates the shape's position if the user has changed its value
                                         if update_position == true
                                         {
-                                            //println!("update_position: {update_position}");
                                             object_settings::object_actions::update_shape::position(&object, gameengine_objects);
-                                            /*
-                                            gameengine_objects
-                                                .get_mut(&object.0.label.0)
-                                                .unwrap()
-                                                .position(object.1.position[0].value, object.1.position[1].value, object.1.position[2].value);
-                                            */
                                         }
     
                                         
@@ -1052,7 +1051,7 @@ fn main()
                                 }
                             }
                         }
-                        else if *view_mode == true
+                        else if i == 1 /*Scenes*/ && *view_mode == true
                         {
                             for scene in scenes.iter_mut()
                             {
@@ -1063,11 +1062,7 @@ fn main()
                                     ui.separator();
     
                                     ui.label("Save location:");
-                                    ui.horizontal(|ui|
-                                    {
-                                        ui.label("dir_save: ");
-                                        ui.add(egui::TextEdit::singleline(&mut scene.0.dir_save));
-                                    });
+                                    ui.add(egui::TextEdit::singleline(&mut scene.0.dir_save));
                                     ui.separator();
                                     
                                     ui.label("High Power Mode:");
@@ -1089,9 +1084,9 @@ fn main()
                     // Delete button
                     ui.horizontal(|ui|
                     {
-                        for view_mode in editor_modes.main.1.iter()
+                        for (i, view_mode)in editor_modes.main.1.iter().enumerate()
                         {
-                            if *view_mode == true
+                            if i == 0 /*Objects*/ && *view_mode == true
                             {
                                 if ui.button("🗑 Delete object").clicked()
                                 {
@@ -1107,7 +1102,7 @@ fn main()
                                     }
                                 }
                             }
-                            else if *view_mode == true
+                            else if i == 1 /*Scenes*/ && *view_mode == true
                             {
                                 if ui.button("🗑 Delete scene").clicked()
                                 {
