@@ -52,7 +52,7 @@ impl FilePaths
         match std::fs::create_dir(format!("{}", self.scenes.display()))
         {
             Ok(_)       => println!("Config dir for project created succesfully in {}", self.scenes.display()),
-            Err(e)      => println!("Unable to create config dir for project due to {e}"),
+            Err(e)      => println!("Unable to create config dir for project due to: {e}"),
         }
     }
 }
@@ -378,7 +378,14 @@ struct Debug
 }
 
 
-
+fn create_project_config(path: &PathBuf)
+{
+    match std::fs::create_dir(format!("{}", path.display()))
+    {
+        Ok(_)       => println!("Config dir for project created succesfully in {}", path.display()),
+        Err(e)      => println!("Unable to create config dir for project due to: {e}"),
+    }
+}
 
 // Determines what "mode" we are in, for example projects we want to see or the main game editor?
 
@@ -429,7 +436,6 @@ fn main()
             resizable           : true,
             power_preference    : PowerPreference::LowPower,
         }).unwrap();
-
 
 
     // DB Variables
@@ -489,6 +495,8 @@ fn main()
         .expect("Plugin not found");
 
 
+
+
         fn add_scene(scenes: &mut Vec<(Scenes, SceneSettings)>)
         {
             let len = scenes.len() as u16;
@@ -513,7 +521,7 @@ fn main()
                     let projects_len = (projects.len() - 1) as u8;
                     Projects::change_choice(projects, projects_len);
 
-                    db::projects::save(&projects, &file_paths);
+                    db::projects::save(projects, file_paths);
 
 
                     for project in projects.iter()
@@ -521,6 +529,7 @@ fn main()
                         if project.status == true
                         {
                             file_paths.scenes.push(format!("{}", project.dir));
+                            file_paths.scenes.push("blue_flame");
                             file_paths.create_project_config();
 
                             // Changing editor mode
@@ -529,7 +538,7 @@ fn main()
                             editor_modes.main.0 = true;
 
                             db::scenes::load(scenes, file_paths);
-                            db::objects::load(objects, file_paths, "objects");
+                            db::objects::load(objects, scenes);
 
                             if scenes.len() == 0
                             {
@@ -697,7 +706,7 @@ fn main()
                                 {
                                     if list.label == "💾 Save"
                                     {
-                                        db::objects::save(&objects, &file_paths, "objects");
+                                        db::objects::save(&objects, &scenes);
                                         break;
                                     }
 
@@ -787,7 +796,7 @@ fn main()
                                 }
                                 if ui.button("💾 Save current scene").clicked()
                                 {
-                                    db::objects::save(&objects, &file_paths, "objects");
+                                    db::objects::save(&objects, &scenes);
                                 }
                             }
                             else if mapper::view_mode(i) == "Scenes" && *view_mode == true
@@ -873,6 +882,8 @@ fn main()
                                     if ui.selectable_label(scenes[i].0.selected, &scenes[i].0.label).clicked()
                                     {
                                         Scenes::change_choice(&mut scenes, i as u16);
+                                        // load scene
+
                                     }
                                 });
                             }
