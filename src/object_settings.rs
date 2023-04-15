@@ -52,10 +52,10 @@ pub mod object_actions
         }
     }
     // Destroys old hashmap stored in game engine
-    pub fn destroy_hashmap(label_backup: &str, gameengine_objects: &mut ObjectStorage)
+    pub fn delete_shape(label: &str, gameengine_objects: &mut ObjectStorage)
     {
         gameengine_objects
-            .remove(label_backup);
+            .remove(label);
     }
     pub mod update_shape
     {

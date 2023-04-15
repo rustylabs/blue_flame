@@ -538,7 +538,17 @@ fn main()
                             editor_modes.main.0 = true;
 
                             db::scenes::load(scenes, file_paths);
-                            db::objects::load(objects, scenes);
+
+                            for scene in scenes.iter()
+                            {
+                                if scene.0.selected == true
+                                {
+                                    db::objects::load(objects, &scene.0, renderer, gameengine_objects, window);
+                                    break;
+                                }
+                            }
+
+                            
 
                             if scenes.len() == 0
                             {
@@ -546,6 +556,7 @@ fn main()
                             }
 
                             // Create all the shapes after loading into memory
+                            /*
                             for object in objects.iter()
                             {
                                 for i in 0..object.1.object_type.len()
@@ -556,7 +567,7 @@ fn main()
                                     }
                                 }
                             }
-
+                            */
                             break;
                         }
                     }
@@ -706,7 +717,15 @@ fn main()
                                 {
                                     if list.label == "💾 Save"
                                     {
-                                        db::objects::save(&objects, &scenes);
+                                        for scene in scenes.iter()
+                                        {
+                                            if scene.0.selected == true
+                                            {
+                                                db::objects::save(&objects, &scene.0);
+                                                break;
+                                            }
+                                        }
+
                                         break;
                                     }
 
@@ -796,7 +815,15 @@ fn main()
                                 }
                                 if ui.button("💾 Save current scene").clicked()
                                 {
-                                    db::objects::save(&objects, &scenes);
+                                    for scene in scenes.iter()
+                                    {
+                                        if scene.0.selected == true
+                                        {
+                                            db::objects::save(&objects, &scene.0);
+                                            break;
+                                        }
+                                    }
+                                    
                                 }
                             }
                             else if mapper::view_mode(i) == "Scenes" && *view_mode == true
@@ -805,6 +832,7 @@ fn main()
                                 if ui.button("➕ Create scene").clicked()
                                 {
                                     add_scene(&mut scenes);
+                                    db::objects::load(&mut objects, &scenes[i].0, renderer, gameengine_objects, window);
                                 }
                                 if ui.button("💾 Save scene settings").clicked()
                                 {
@@ -884,6 +912,7 @@ fn main()
                                         Scenes::change_choice(&mut scenes, i as u16);
                                         // load scene
 
+                                        db::objects::load(&mut objects, &scenes[i].0, renderer, gameengine_objects, window);
                                     }
                                 });
                             }
@@ -910,7 +939,7 @@ fn main()
                                     if ui.add(egui::TextEdit::singleline(&mut object.0.label)).changed()
                                     {
                                         // Destroys hashmap
-                                        object_settings::object_actions::destroy_hashmap(&label_backup, gameengine_objects);
+                                        object_settings::object_actions::delete_shape(&label_backup, gameengine_objects);
                                         
                                         // Determines the current shape
                                         for (i, current_shape) in object.1.object_type.iter().enumerate()
@@ -1105,7 +1134,7 @@ fn main()
                                     {
                                         if objects[i].0.selected == true
                                         {
-                                            object_settings::object_actions::destroy_hashmap(&objects[i].0.label, gameengine_objects);
+                                            object_settings::object_actions::delete_shape(&objects[i].0.label, gameengine_objects);
                                             objects.remove(i);
                                             Objects::recalculate_id(&mut objects);
                                             break;
