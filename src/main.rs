@@ -1,5 +1,6 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window};
 use blue_engine_egui::{self, egui};
+use std::process::Command;
 
 
 use std::process::exit;
@@ -289,10 +290,10 @@ impl Projects
     }
 }
 
-
+// Editor modes and options for creating new scene
 struct EditorModes
 {
-    projects        : (bool, bool),
+    projects        : (bool, bool /*"New Project" scene*/, (bool /*Create new project with "cargo new"*/, String /*Label for <project_name>*/)),
     main            : (bool, [bool;2]),
 }
     // Declaring variables/structures
@@ -398,8 +399,8 @@ fn main()
     // Show load screen or main game screen?
     let mut editor_modes = EditorModes
     {
-        projects: (true, false /*Create new project*/),
-        main: (false, [false /*objects mode*/, true /*scenes mode*/]),
+        projects: (true, false /*Create new project*/, (true /*Create new project with "cargo new"*/, String::new())),
+        main: (false, [true /*objects mode*/, false /*scenes mode*/]),
     };
 
     let mut file_paths: FilePaths = FilePaths::init();
@@ -514,7 +515,9 @@ fn main()
             {
 
 
-                fn load_project_scene(objects: &mut Vec<(Objects, ObjectSettings)>, scenes: &mut Vec<(Scenes, SceneSettings)>, projects: &mut [Projects], file_paths: &mut FilePaths, editor_modes: &mut EditorModes,
+                fn load_project_scene(objects: &mut Vec<(Objects, ObjectSettings)>, scenes: &mut Vec<(Scenes, SceneSettings)>,
+                projects: &mut [Projects], file_paths: &mut FilePaths, editor_modes: &mut EditorModes,
+                    
                     /*Engine shit*/ renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window
                 )
                 {
@@ -554,20 +557,6 @@ fn main()
                             {
                                 add_scene(scenes);
                             }
-
-                            // Create all the shapes after loading into memory
-                            /*
-                            for object in objects.iter()
-                            {
-                                for i in 0..object.1.object_type.len()
-                                {
-                                    if object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects, window) == true
-                                    {
-                                        break;
-                                    }
-                                }
-                            }
-                            */
                             break;
                         }
                     }
@@ -599,6 +588,25 @@ fn main()
                             Projects::change_choice(&mut projects, len as u8);
                             
                             editor_modes.projects.1 = true;
+                        }
+                        if ui.button("🗑 Delete project").clicked()
+                        {
+                            for (i, project) in projects.iter_mut().enumerate()
+                            {
+                                if project.status == true
+                                {
+                                    let mut remove_project_dir = PathBuf::new();
+                                    remove_project_dir.push(format!("{}", project.dir));
+                                    match std::fs::remove_dir_all(remove_project_dir)
+                                    {
+                                        Ok(_) => {},
+                                        Err(e) => println!("Can't remove project: {e}"),
+                                    }
+                                    projects.remove(i);
+                                    
+                                    break;
+                                }
+                            }
                         }
                     });
 
@@ -668,13 +676,46 @@ fn main()
                                     }
                                 }
                             }
-                            
+                            ui.checkbox(&mut editor_modes.projects.2.0, "Create new project with command: \"cargo new <project_name> --bin\"");
+                            // Shows label to type out the name of <project_name>
+                            if editor_modes.projects.2.0 == true
+                            {
+                                ui.add(egui::TextEdit::singleline(&mut editor_modes.projects.2.1));
+                            }
 
                             // Shows extra buttons
                             ui.horizontal(|ui|
                             {
                                 if ui.button("➕ Create").clicked()
                                 {
+                                    // Sets the scene and not object to be true
+                                    editor_modes.main.1[0] = false;
+                                    editor_modes.main.1[1] = true;
+
+                                    // Determines if to run "cargo new"
+                                    if editor_modes.projects.2.0 == true
+                                    {
+                                        // Runs "cargo new" and adds extra filepaths to appropriate variables
+                                        for project in projects.iter_mut()
+                                        {
+                                            if project.status == true
+                                            {
+                                                project.dir.push_str(&format!("/{}", editor_modes.projects.2.1));
+
+                                                Command::new("sh")
+                                                .arg("-c")
+                                                .arg(format!("cargo new \"{}\" --bin", project.dir))
+                                                //.arg("cargo new \"../testing\" --bin")
+                                                .output()
+                                                .unwrap();
+
+                                                
+                                            }
+                                        }
+                                        
+
+                                    }
+
                                     load_project_scene(&mut objects, &mut scenes, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window);
                                 }
                                 if ui.button("⛔ Cancel").clicked()
