@@ -149,7 +149,6 @@ pub mod objects
             Err(e)       => println!("Save error: {e}"),
         }
 
-
     }
     pub fn load(objects: &mut Vec<(crate::Objects, crate::ObjectSettings)>, scene: &crate::Scenes,
         /*Game engine shit*/ renderer: &mut crate::Renderer, gameengine_objects: &mut crate::ObjectStorage, window: &crate::Window)
@@ -211,8 +210,70 @@ pub mod objects
 }
 
 
-// Specifically creates a json file in a specific format for the game engine
-pub mod gameengine
+/*
+// Specifically creates a json file in a specific format for the user's project
+pub mod individual_project
 {
-    
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
+    pub struct Objects
+    {
+        label               : String, // "Object 0", "Object 1" etc
+        object_type         : [bool; 3],
+        position            : [f32; 3],
+        size                : [f32; 3],
+        rotation            : [f32; 3],
+        texture             : Fields,
+        color               : [f32; 4],
+    }
+
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
+    pub struct Fields
+    {
+        pub file_location   : String,
+        pub mode            : [bool; 3]
+    }
+
+    use std::io::Read;
+
+    const VERSION: f32 = 0.1;
+
+    // Ports crate::Objects, crate::ObjectSettings into Objects before saving it to db
+    fn port_objects(objects: &[(crate::Objects, crate::ObjectSettings)], individual_project_objects: &mut Vec<Objects>)
+    {
+        for object in objects.iter()
+        {
+            individual_project_objects.push(Objects
+            {
+                label: object.0.label.clone(),
+
+            })
+        }
+    }
+
+
+    pub fn save(objects: &[(crate::Objects, crate::ObjectSettings)], scene: &crate::Scenes /*Only used to determine object save dir location*/)
+    {
+        let mut individual_project_objects: Vec<Objects> = Vec::new();
+        /*
+        individual_project_objects.push(Objects{label: String::from("Test"),
+            object_type: [false, false, false],
+            position: [10f32, 20f32, 30f32],
+            rotation: [10f32, 20f32, 30f32],
+            size: [10f32, 20f32, 30f32],
+            texture: Fields{file_location: String::from("test"), mode: [false, false, false]},
+            color: [10f32, 20f32, 30f32, 30f32],
+        });
+        */
+        port_objects(&objects, &mut individual_project_objects);
+
+        let data = postcard::to_stdvec(&(VERSION, objects)).unwrap();
+
+        match std::fs::write(format!("{}/{}", scene.dir_save, scene.label), &data)
+        {
+            Ok(_)               => println!("File saved!"),
+            Err(e)       => println!("Save error: {e}"),
+        }
+
+    }
 }
+*/

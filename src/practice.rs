@@ -1,14 +1,13 @@
 use std::process::Command;
-
+struct Test;
+impl Test
+{
+    const TEST: u8 = 10;
+    const ONE: u8 = 20;
+}
 pub fn main()
 {
-    let dir = String::from("../testing");
+    let test = Test;
 
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg(format!("cargo new \"{}\" --bin", dir))
-        .output()
-        .unwrap();
-
-    println!("{:?}", output);
+    //println!("{}", test.TEST);
 }

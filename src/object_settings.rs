@@ -176,26 +176,7 @@ pub mod radio_options
     
 }
 
-pub mod three_d_lables
-{
-    //#[derive(Debug, serde::Serialize, serde::Deserialize)]
-    pub struct Fields
-    {
-        pub axis            : u8, // is this either x, y or z?
-        pub value           : f32,
-    }
-    impl Fields
-    {
-        pub fn init(value: f32) -> [Self; 3]
-        {
-            [
-                Self{axis: b'x', value},
-                Self{axis: b'y', value},
-                Self{axis: b'z', value},
-            ]
-        }
-    }
-}
+
 
 pub mod texture
 {

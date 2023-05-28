@@ -1,6 +1,6 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window};
 use blue_engine_egui::{self, egui};
-use std::process::Command;
+use std::{process::Command, io::Write};
 
 
 use std::process::exit;
@@ -74,7 +74,7 @@ impl EditorSettings
             width               : 250f32,
             height              : 900f32,
             range               : 900_000_000f32,
-            slider_speed        : 0.05f32,
+            slider_speed        : 0.01f32,
         }
     }
 }
@@ -293,7 +293,10 @@ impl Projects
 // Editor modes and options for creating new scene
 struct EditorModes
 {
-    projects        : (bool, bool /*"New Project" scene*/, (bool /*Create new project with "cargo new"*/, String /*Label for <project_name>*/)),
+    projects        :   (bool, bool /*"New Project" scene*/,
+                        (bool /*2.0 Create new project with "cargo new"*/, String /*2.1 Label for <project_name>*/),
+                        (bool /*3 Window for delete project*/, bool /*Delete entire project dir*/),
+                        ),
     main            : (bool, [bool;2]),
 }
     // Declaring variables/structures
@@ -399,7 +402,11 @@ fn main()
     // Show load screen or main game screen?
     let mut editor_modes = EditorModes
     {
-        projects: (true, false /*Create new project*/, (true /*Create new project with "cargo new"*/, String::new())),
+        projects:
+            (true, false /*Create new project*/,
+            (true /*Create new project with "cargo new"*/, String::new() /*Dir name <project_name>*/),
+            (false /*Window for delete project*/, false /*Delete entire project dir*/),
+            ),
         main: (false, [true /*objects mode*/, false /*scenes mode*/]),
     };
 
@@ -427,7 +434,7 @@ fn main()
     
     let mut alert_window = (false, AlertWindow::init());
 
-    let mut engine = Engine::new(
+    let mut engine = Engine::new_config(
         WindowDescriptor
         {
             width               : if debug.resolution == true {1280} else {1920},
@@ -436,6 +443,7 @@ fn main()
             decorations         : true,
             resizable           : true,
             power_preference    : PowerPreference::LowPower,
+            backends            : blue_engine::Backends::VULKAN,
         }).unwrap();
 
 
@@ -533,7 +541,7 @@ fn main()
                         {
                             file_paths.scenes.push(format!("{}", project.dir));
                             file_paths.scenes.push("blue_flame");
-                            file_paths.create_project_config();
+                            file_paths.create_project_config(); // Creates blue_flame dir in project dir
 
                             // Changing editor mode
                             editor_modes.projects.0 = false;
@@ -551,11 +559,16 @@ fn main()
                                 }
                             }
 
-                            
-
                             if scenes.len() == 0
                             {
                                 add_scene(scenes);
+                                for scene in scenes.iter_mut()
+                                {
+                                    if scene.0.selected == true
+                                    {
+                                        scene.0.dir_save = String::from(format!("{}", file_paths.scenes.display()));
+                                    }
+                                }
                             }
                             break;
                         }
@@ -580,7 +593,7 @@ fn main()
                         {
                             load_project_scene(&mut objects, &mut scenes, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window);
                         }
-                        if ui.button("➕ Create new project").clicked()
+                        if ui.button("➕ Create/import project").clicked()
                         {
                             projects.push(Projects::init());
                             
@@ -591,23 +604,9 @@ fn main()
                         }
                         if ui.button("🗑 Delete project").clicked()
                         {
-                            for (i, project) in projects.iter_mut().enumerate()
-                            {
-                                if project.status == true
-                                {
-                                    let mut remove_project_dir = PathBuf::new();
-                                    remove_project_dir.push(format!("{}", project.dir));
-                                    match std::fs::remove_dir_all(remove_project_dir)
-                                    {
-                                        Ok(_) => {},
-                                        Err(e) => println!("Can't remove project: {e}"),
-                                    }
-                                    projects.remove(i);
-                                    
-                                    break;
-                                }
-                            }
+                            editor_modes.projects.3.0 = true;
                         }
+
                     });
 
                     // Show all projects
@@ -686,6 +685,12 @@ fn main()
                             // Shows extra buttons
                             ui.horizontal(|ui|
                             {
+                                if ui.button("⛔ Cancel").clicked()
+                                {
+                                    editor_modes.projects.1 = false;
+                                    projects.pop();
+                                }
+
                                 if ui.button("➕ Create").clicked()
                                 {
                                     // Sets the scene and not object to be true
@@ -700,6 +705,7 @@ fn main()
                                         {
                                             if project.status == true
                                             {
+
                                                 project.dir.push_str(&format!("/{}", editor_modes.projects.2.1));
 
                                                 Command::new("sh")
@@ -708,24 +714,110 @@ fn main()
                                                 //.arg("cargo new \"../testing\" --bin")
                                                 .output()
                                                 .unwrap();
-
-                                                
                                             }
                                         }
-                                        
-
                                     }
 
+                                    // From "copy_over", load into memory, alter some stuff and output it to the project's respective dirs
+                                    for project in projects.iter()
+                                    {
+                                        if project.status == true
+                                        {
+                                            let dir_src = String::from(format!("{}/src", project.dir));
+
+                                            struct CopyOver
+                                            {
+                                                main            : &'static str,
+                                                blue_flame      : &'static [u8],
+                                                cargo           : &'static str,
+                                            }
+                                            let copy_over = CopyOver
+                                            {
+                                                main            : include_str!("../copy_over/main.rs"),
+                                                blue_flame      : include_bytes!("../copy_over/blue_flame.rs"),
+                                                cargo           : include_str!("../copy_over/Cargo.toml"),
+                                            };
+
+                                            // main.rs
+                                            let mut loaded_content = String::from(copy_over.main);
+                                            loaded_content = loaded_content.replace("{project_name}", &project.name);
+                                            loaded_content = loaded_content.replace("{scene_path}", &project.dir);
+                                            let mut output_file = std::fs::File::create(format!("{dir_src}/main.rs")).unwrap();
+                                            output_file.write_all(loaded_content.as_bytes()).unwrap();
+
+                                            // blue_flame.rs
+                                            let loaded_content = copy_over.blue_flame.to_vec();
+                                            let mut output_file = std::fs::File::create(format!("{dir_src}/blue_flame.rs")).unwrap();
+                                            output_file.write_all(&loaded_content).unwrap();
+
+                                            // Cargo.toml
+                                            let mut loaded_content = String::from(copy_over.cargo);
+                                            loaded_content = loaded_content.replace("{project_name}", &editor_modes.projects.2.1);
+                                            let mut output_file = std::fs::File::create(format!("{dir_src}/../Cargo.toml")).unwrap();
+                                            output_file.write_all(loaded_content.as_bytes()).unwrap();
+
+                                            break;
+                                        }
+                                    }
+
+
                                     load_project_scene(&mut objects, &mut scenes, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window);
-                                }
-                                if ui.button("⛔ Cancel").clicked()
-                                {
-                                    editor_modes.projects.1 = false;
-                                    projects.pop();
                                 }
                             });
                         });
                     }
+
+
+                    // Delete project
+                    if editor_modes.projects.3.0 == true
+                    {
+                        for (i, project) in projects.iter_mut().enumerate()
+                        {
+                            if project.status == true
+                            {
+                                let remove_project_dir = PathBuf::from(format!("{}", project.dir));
+
+                                // Window prompt
+                                egui::Window::new("Conformation!")
+                                .fixed_pos(egui::pos2(window_size.x/2f32, window_size.y/2f32))
+                                .pivot(egui::Align2::CENTER_CENTER)
+                                .default_size(egui::vec2(window_size.x/2f32, window_size.y/2f32))
+                                .resizable(true)
+                                //.open(&mut _create_new_project)
+                                .show(ctx, |ui|
+                                {
+                                    ui.label("Are you sure you want to delete");
+                                    ui.checkbox(&mut editor_modes.projects.3.1, "Delete entire project dir");
+
+                                    ui.horizontal(|ui|
+                                    {
+                                        if ui.button("⛔ Cancel").clicked()
+                                        {
+                                            editor_modes.projects.3.0 = false;
+                                        }
+                                        if ui.button("✅ Yes").clicked()
+                                        {
+                                            editor_modes.projects.3.0 = false;
+
+                                            if editor_modes.projects.3.1 == true
+                                            {
+                                                match std::fs::remove_dir_all(remove_project_dir)
+                                                {
+                                                    Ok(_) => {},
+                                                    Err(e) => println!("Can't remove project: {e}"),
+                                                }
+                                            }
+                                            projects.remove(i);
+                                            db::projects::save(&mut projects, &mut file_paths);
+                                        }                           
+                                    });
+
+                                });
+                                break;
+                            }
+                        }
+                    }
+                    
 
 
                 });

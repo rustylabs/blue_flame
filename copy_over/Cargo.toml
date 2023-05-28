@@ -1,20 +1,13 @@
 [package]
-name = "blue_flame"
+name = "{project_name}"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# blue engine
 blue_engine = {version = "0.4.27", default-features = false}
-blue_engine_egui = "0.4.3"
-#blue_engine_egui = "0.4.1"
-
 
 # Db shit
 postcard = {verison = "1.0.4", features = ["use-std"]}
 serde = "1.0.157"
-
-# Dirs
-dirs = "3.0"
