@@ -127,6 +127,8 @@ pub mod objects
         {
             for object in objects.iter()
             {
+                crate::object_settings::object_actions::create_shape(object, renderer, gameengine_objects, window);
+                /*
                 for i in 0..object.1.object_type.len()
                 {
                     if crate::object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects, window) == true
@@ -134,6 +136,7 @@ pub mod objects
                         break;
                     }
                 }
+                */
             }
         }
     }

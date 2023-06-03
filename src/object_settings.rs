@@ -6,22 +6,38 @@ pub mod object_actions
     use crate::{Objects, ObjectSettings};
     
     // Either puts new shape or changes shape
-    pub fn create_shape(object: &(Objects, ObjectSettings), i: usize, renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window) -> bool
+    pub fn create_shape(object: &(Objects, ObjectSettings), renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window)
     {
+        for (i, shape) in object.1.object_type.iter().enumerate()
+        {
+            if *shape == true
+            {
+                match i
+                {
+                    0       => square(object.0.label.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap(),
+                    1       => triangle(object.0.label.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap(),
+                    2       => println!("todo!: line()"),
+
+                    _       => panic!("Shape number is out of bounds"),
+                }
+                update_shape(object, gameengine_objects, window, renderer);
+            }
+        }
 
         // Square
+        /*
         if crate::mapper::object_type(i) == "Square" && object.1.object_type[i] == true
         {
             //println!("object.1.size[0].value: {}", object.1.size[0].value);
             square(object.0.label.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
-            update_shape(object, gameengine_objects, window);
+            update_shape(object, gameengine_objects, window, renderer);
             
             return true;
         }
         else if crate::mapper::object_type(i) == "Triangle" && object.1.object_type[i] == true
         {
-            triangle(object.0.label.clone(), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
-            update_shape(object, gameengine_objects, window);
+            triangle(object.0.label.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
+            update_shape(object, gameengine_objects, window, renderer);
 
             return true;
         }
@@ -37,17 +53,18 @@ pub mod object_actions
             return false;
             //panic!("Object Type's names are not right in the if statement comparison");
         }
+        */
 
-        fn update_shape(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, window: &Window)
+        fn update_shape(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, window: &Window, renderer: &mut Renderer)
         {
             update_shape::size(object, gameengine_objects, window);
             update_shape::position(object, gameengine_objects);
             update_shape::color(object, gameengine_objects);
-
             for (i, rotation) in object.1.rotation.iter().enumerate()
             {
                 update_shape::rotation(&object.0.label, crate::mapper::three_d_lables(i), *rotation, gameengine_objects)
             }
+            update_shape::texture(object, gameengine_objects, renderer);
             
         }
     }
@@ -59,8 +76,8 @@ pub mod object_actions
     }
     pub mod update_shape
     {
-        use blue_engine::{ObjectStorage, Window};
-        use crate::{Objects, ObjectSettings};
+        use blue_engine::{ObjectStorage, Window, Renderer};
+        use crate::{Objects, ObjectSettings, object_settings::texture};
 
         pub fn size(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, window: &Window)
         {
@@ -99,13 +116,40 @@ pub mod object_actions
                 .get_mut(object_label)
                 .unwrap()
                 .rotate(rotation, axis);
-            /*
-            gameengine_objects
-                .get_mut(&object.0.label.0)
-                .unwrap()
-                .rotate(10f32, blue_engine::RotateAxis::X)
-            */
+        }
+        pub fn texture(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, renderer: &mut Renderer)
+        {
+            //let mut texture_mode: Result<blue_engine::TextureMode, &'static str> = blue_engine::TextureMode::Clamp;
+            let mut texture_mode: blue_engine::TextureMode = blue_engine::TextureMode::Clamp;
+
+            for (i, t) in object.1.texture.mode.iter().enumerate()
+            {
+                if *t == true
+                {
+                    texture_mode = crate::mapper::texture::enumm(i);
+                    break;
+                }
+            }
+
+            let texture = renderer.build_texture(
+                "Main Player",
+                //blue_engine::TextureData::Bytes(include_bytes!("/mnt/Windows10/Users/Nishant/Desktop/My made programs/Projects/Game Engine/Example projects/final_test/assets/main_player.png").to_vec()),
+                //blue_engine::TextureData::Bytes(std::fs::read(&object.1.texture.file_location).unwrap()),
+                blue_engine::TextureData::Bytes(match std::fs::read(&object.1.texture.file_location)
+                {
+                    Ok(v)       => v,
+                    Err(e)               => {println!("{e}"); blue_engine::utils::default_resources::DEFAULT_TEXTURE.to_vec()}
+                }),
+                    //std::fs::read("/mnt/Windows10/Users/Nishant/Desktop/My made programs/Projects/Game Engine/Example projects/final_test/assets/main_player.png").unwrap()),
+                texture_mode,
+            );
             
+            gameengine_objects
+                .get_mut(&object.0.label)
+                .unwrap()
+                .set_texture(texture.unwrap())
+                .unwrap();
+
         }
     }
 }

@@ -938,11 +938,11 @@ fn main()
                                     Objects::change_choice(&mut objects, len);
     
                                     // Creates new object for the game engine
-                                    for (i, object_type) in objects[len as usize].1.object_type.iter().enumerate()
+                                    for object_type in objects[len as usize].1.object_type.iter()
                                     {
                                         if *object_type == true
                                         {
-                                            object_settings::object_actions::create_shape(&objects[len as usize], i, renderer, gameengine_objects, window);
+                                            object_settings::object_actions::create_shape(&objects[len as usize], renderer, gameengine_objects, window);
                                         }
                                     }
                                 }
@@ -1075,11 +1075,11 @@ fn main()
                                         object_settings::object_actions::delete_shape(&label_backup, gameengine_objects);
                                         
                                         // Determines the current shape
-                                        for (i, current_shape) in object.1.object_type.iter().enumerate()
+                                        for current_shape in object.1.object_type.iter()
                                         {
                                             if *current_shape == true
                                             {
-                                                object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects, window);
+                                                object_settings::object_actions::create_shape(object, renderer, gameengine_objects, window);
                                                 break;
                                             }
                                         }
@@ -1103,7 +1103,7 @@ fn main()
                                                 radio_options::change_choice(&mut object.1.object_type, i as u8);
     
                                                 // Creates new object and/or changes object if the user clicks on some random choice button
-                                                object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects, window);
+                                                object_settings::object_actions::create_shape(object, renderer, gameengine_objects, window);
                                             }
                                         }
                                     });
@@ -1112,15 +1112,19 @@ fn main()
                                     // Locatin of texture
                                     ui.label("TextureMode");
                                     ui.label("Location of Texture");
-                                    ui.add(egui::TextEdit::singleline(&mut object.1.texture.file_location));
+                                    if ui.add(egui::TextEdit::singleline(&mut object.1.texture.file_location)).changed()
+                                    {
+                                        object_settings::object_actions::update_shape::texture(&object, gameengine_objects, renderer);
+                                    }
             
             
                                     // Radio buttons for texturemodes
                                     for i in 0..object.1.texture.mode.len()
                                     {
-                                        if ui.radio(object.1.texture.mode[i], mapper::texture(i)).clicked()
+                                        if ui.radio(object.1.texture.mode[i], mapper::texture::text(i)).clicked()
                                         {
                                             radio_options::change_choice(&mut object.1.texture.mode, i as u8);
+                                            object_settings::object_actions::update_shape::texture(&object, gameengine_objects, renderer);
                                         }
                                     }
                                     ui.separator();
@@ -1335,7 +1339,7 @@ mod radio_options
 mod mapper
 {
     // position means position of array/Vector
-
+    // What shape, i.e. circle, triangle etc
     pub fn object_type(position: usize) -> &'static str
     {
         let shapes: &[&'static str] = &["Square", "Triangle", "Line"];
@@ -1347,10 +1351,18 @@ mod mapper
         let axis: [u8; 3] = [b'x', b'y', b'z'];
         return axis[position];
     }
-    pub fn texture(position: usize) -> &'static str
+    pub mod texture
     {
-        let textures: &[&'static str] = &["Clamp", "Repeat", "Repeat Mirror"];
-        return textures[position];
+        pub fn text(position: usize) -> &'static str
+        {
+            let textures: &[&'static str] = &["Clamp", "Repeat", "Mirror Repeat"];
+            return textures[position];
+        }
+        pub fn enumm(position: usize) -> blue_engine::TextureMode
+        {
+            let textures = &[blue_engine::TextureMode::Clamp, blue_engine::TextureMode::Repeat, blue_engine::TextureMode::MirrorRepeat];
+            return textures[position];
+        }
     }
     pub fn view_mode(position: usize) -> &'static str
     {
