@@ -138,7 +138,7 @@ pub mod object_actions
                 blue_engine::TextureData::Bytes(match std::fs::read(&object.1.texture.file_location)
                 {
                     Ok(v)       => v,
-                    Err(e)               => {println!("{e}"); blue_engine::utils::default_resources::DEFAULT_TEXTURE.to_vec()}
+                    Err(e)               => {println!("TextureData error: {e}"); blue_engine::utils::default_resources::DEFAULT_TEXTURE.to_vec()}
                 }),
                     //std::fs::read("/mnt/Windows10/Users/Nishant/Desktop/My made programs/Projects/Game Engine/Example projects/final_test/assets/main_player.png").unwrap()),
                 texture_mode,
