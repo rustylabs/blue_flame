@@ -1,6 +1,8 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window};
 use blue_engine::{primitive_shapes::{triangle, square}};
+use common;
 mod blue_flame;
+
 
 fn main()
 {    
@@ -20,6 +22,7 @@ fn main()
     
     blue_flame::load(
         "{scene_path}/blue_flame/Scene 0",
+        false,
         &mut engine.renderer,
         &mut engine.objects,
         &engine.window

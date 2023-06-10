@@ -11,3 +11,6 @@ blue_engine = {version = "0.4.27", default-features = false}
 # Db shit
 postcard = {verison = "1.0.4", features = ["use-std"]}
 serde = "1.0.157"
+
+# Common (my libraries)
+common = {path = "{library}"}

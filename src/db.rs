@@ -59,7 +59,7 @@ pub mod scenes
     const VERSION: f32 = 0.1;
     const FILE_NAME: &'static str = "scene_manager";
 
-    pub fn save(scenes: &[(crate::Scenes, crate::SceneSettings)], file_paths: &crate::FilePaths)
+    pub fn save(scenes: &[(common::Scenes, common::SceneSettings)], file_paths: &crate::FilePaths)
     {
         let data = postcard::to_stdvec(&(VERSION, scenes)).unwrap();
 
@@ -69,7 +69,7 @@ pub mod scenes
             Err(e)       => println!("Save error: {e}"),
         }
     }
-    pub fn load(scenes: &mut Vec<(crate::Scenes, crate::SceneSettings)>, file_paths: &crate::FilePaths)
+    pub fn load(scenes: &mut Vec<(common::Scenes, common::SceneSettings)>, file_paths: &crate::FilePaths)
     {
         let mut file = match std::fs::File::open(format!("{}/{FILE_NAME}", file_paths.scenes.display()))
         {
@@ -85,7 +85,7 @@ pub mod scenes
         }
 
         //let value: (f32, Vec<(Object, Object1)>) = match postcard::from_bytes(&file)
-        let value: (f32, Vec<(crate::Scenes, crate::SceneSettings)>) = match postcard::from_bytes(&data)
+        let value: (f32, Vec<(common::Scenes, common::SceneSettings)>) = match postcard::from_bytes(&data)
         {
             Ok(d)      => d,
             Err(e)                                     => {println!("Error on load: {e}"); return;},
@@ -100,6 +100,7 @@ pub mod scenes
 
 }
 
+/*
 // These could be levels, however you want to interpret it as
 pub mod objects
 {
@@ -114,20 +115,20 @@ pub mod objects
 
     mod alter_shapes
     {
-        pub fn delete_shapes(objects: &mut Vec<(crate::Objects, crate::ObjectSettings)>, gameengine_objects: &mut crate::ObjectStorage)
+        pub fn delete_shapes(objects: &mut Vec<(common::Objects, common::ObjectSettings)>, gameengine_objects: &mut crate::ObjectStorage)
         {
-                // Destroys all shapes from the scene
-                for object in objects.iter_mut()
-                {
-                    crate::object_settings::object_actions::delete_shape(&object.0.label, gameengine_objects);
-                }
+            // Destroys all shapes from the scene
+            for object in objects.iter_mut()
+            {
+                crate::object_settings::object_actions::delete_shape(&object.0.label, gameengine_objects);
+            }
         }
-        pub fn create_shapes(objects: &mut Vec<(crate::Objects, crate::ObjectSettings)>,
+        pub fn create_shapes(objects: &mut Vec<(common::Objects, common::ObjectSettings)>,
         /*Game engine shit*/    renderer: &mut crate::Renderer, gameengine_objects: &mut crate::ObjectStorage, window: &crate::Window)
         {
             for object in objects.iter()
             {
-                crate::object_settings::object_actions::create_shape(object, renderer, gameengine_objects, window);
+                common::object_actions::create_shape(object, renderer, gameengine_objects, window);
                 /*
                 for i in 0..object.1.object_type.len()
                 {
@@ -142,7 +143,7 @@ pub mod objects
     }
 
 
-    pub fn save(objects: &[(crate::Objects, crate::ObjectSettings)], scene: &crate::Scenes /*Only used to determine object save dir location*/)
+    pub fn save(objects: &[(common::Objects, common::ObjectSettings)], scene: &crate::Scenes /*Only used to determine object save dir location*/)
     {
         let data = postcard::to_stdvec(&(VERSION, objects)).unwrap();
 
@@ -153,7 +154,7 @@ pub mod objects
         }
 
     }
-    pub fn load(objects: &mut Vec<(crate::Objects, crate::ObjectSettings)>, scene: &crate::Scenes,
+    pub fn load(objects: &mut Vec<(common::Objects, common::ObjectSettings)>, scene: &crate::Scenes,
         /*Game engine shit*/ renderer: &mut crate::Renderer, gameengine_objects: &mut crate::ObjectStorage, window: &crate::Window)
     {
 
@@ -169,7 +170,7 @@ pub mod objects
                                 
                                 // Creates new vector and pushes shit
                                 *objects = Vec::new();
-                                objects.push((crate::Objects::init(0), crate::ObjectSettings::init()));
+                                objects.push((common::Objects::init(0), common::ObjectSettings::init()));
 
                                 // Creates new shapes
                                 alter_shapes::create_shapes(objects, renderer, gameengine_objects, window);
@@ -188,7 +189,7 @@ pub mod objects
         }
 
         //let value: (f32, Vec<(Object, Object1)>) = match postcard::from_bytes(&file)
-        let value: (f32, Vec<(crate::Objects, crate::ObjectSettings)>) = match postcard::from_bytes(&data)
+        let value: (f32, Vec<(common::Objects, common::ObjectSettings)>) = match postcard::from_bytes(&data)
         {
             Ok(d)      => d,
             Err(e)                                     => {println!("Error on load: {e}"); return;},
@@ -211,6 +212,7 @@ pub mod objects
         //println!("db version Objects {}: {version}", scene.label);
     }
 }
+*/
 
 
 /*

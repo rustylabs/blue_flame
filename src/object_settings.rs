@@ -1,9 +1,10 @@
 // perform actions
+/*
 pub mod object_actions
 {
 
     use blue_engine::{primitive_shapes::{triangle, square}, Renderer, header, ObjectStorage, Window};
-    use crate::{Objects, ObjectSettings};
+    use common::{Objects, ObjectSettings};
     
     // Either puts new shape or changes shape
     pub fn create_shape(object: &(Objects, ObjectSettings), renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window)
@@ -23,37 +24,6 @@ pub mod object_actions
                 update_shape(object, gameengine_objects, window, renderer);
             }
         }
-
-        // Square
-        /*
-        if crate::mapper::object_type(i) == "Square" && object.1.object_type[i] == true
-        {
-            //println!("object.1.size[0].value: {}", object.1.size[0].value);
-            square(object.0.label.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
-            update_shape(object, gameengine_objects, window, renderer);
-            
-            return true;
-        }
-        else if crate::mapper::object_type(i) == "Triangle" && object.1.object_type[i] == true
-        {
-            triangle(object.0.label.clone(), header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
-            update_shape(object, gameengine_objects, window, renderer);
-
-            return true;
-        }
-        else if crate::mapper::object_type(i) == "Line" && object.1.object_type[i] == true
-        {
-            //line(std::stringify!(object.0.label.0), blue_engine::header::ObjectSettings::default(), renderer, gameengine_objects).unwrap();
-            return true;
-        }
-        else
-        {
-            //println!("Error on create_shape()");
-            //println!("Object's name: {}\t\tObject's type: {}\t\tObject's status: {}", object.0.label.0, object.1.object_type[i].name, object.1.object_type[i].status);
-            return false;
-            //panic!("Object Type's names are not right in the if statement comparison");
-        }
-        */
 
         fn update_shape(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, window: &Window, renderer: &mut Renderer)
         {
@@ -77,7 +47,7 @@ pub mod object_actions
     pub mod update_shape
     {
         use blue_engine::{ObjectStorage, Window, Renderer};
-        use crate::{Objects, ObjectSettings, object_settings::texture};
+        use common::{Objects, ObjectSettings};
 
         pub fn size(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, window: &Window)
         {
@@ -153,7 +123,7 @@ pub mod object_actions
         }
     }
 }
-
+*/
 
 // Radio related stuff
 pub mod radio_options

@@ -2,7 +2,6 @@ use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ 
 use blue_engine_egui::{self, egui};
 use std::{process::Command, io::Write};
 
-
 use std::process::exit;
 
 
@@ -14,11 +13,14 @@ mod practice;
 use std::path::PathBuf;
 use dirs;
 
+
+
 // Defines where all the file paths are
 pub struct FilePaths
 {
     projects        : PathBuf, // ~/.config/blue_flame
     scenes          : PathBuf,
+    library         : PathBuf,
 }
 impl FilePaths
 {
@@ -41,10 +43,20 @@ impl FilePaths
             Err(e)      => println!("Unable to create config dir due to {e}"),
         }
 
+        let mut library: PathBuf =  match dirs::home_dir()
+        {
+            Some(v)         => v,
+            None                     => {println!("Unable to obtain home dir"); PathBuf::new()}
+        };
+        
+        library.push(".local/share/blue_flame/common");
+        println!("library: {:?}", library);
+
         Self
         {
             projects,
             scenes: PathBuf::new(),
+            library,
         }
     }
     // Creates the folder for the project
@@ -78,6 +90,7 @@ impl EditorSettings
         }
     }
 }
+/*
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Objects
 {
@@ -156,7 +169,7 @@ impl ObjectSettings
         }
     }
 }
-
+*/
 struct AlertWindow
 {
     label       : &'static str,
@@ -190,7 +203,7 @@ impl AlertWindow
     }
 }
 
-
+/*
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Scenes
 {
@@ -211,6 +224,12 @@ impl Scenes
             selected            : true,
         }
     }
+    // Returns full filepath of saved db of Scenes for &str args
+    pub fn file_path(&self) -> String
+    {
+        return format!("{}/{}", self.dir_save, self.label);
+    }
+
     fn change_choice(list: &mut [(Self, SceneSettings)], choice_true: u16)
     {
         for (i, item) in list.iter_mut().enumerate()
@@ -251,6 +270,7 @@ impl SceneSettings
         }
     }
 }
+*/
 // Stores all the projects you are working on
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Projects
@@ -450,8 +470,9 @@ fn main()
     // DB Variables
 
     // objects & scenes
-    let mut objects: Vec<(Objects, ObjectSettings)> = Vec::new();
-    let mut scenes: Vec<(Scenes, SceneSettings)> = Vec::new();
+    //let mut objects: Vec<(Objects, ObjectSettings)> = Vec::new();
+    let mut objects: Vec<(common::Objects, common::ObjectSettings)> = Vec::new();
+    let mut scenes: Vec<(common::Scenes, common::SceneSettings)> = Vec::new();
     let mut projects: Vec<Projects> = Vec::new();
 
 
@@ -506,12 +527,12 @@ fn main()
 
 
 
-        fn add_scene(scenes: &mut Vec<(Scenes, SceneSettings)>)
+        fn add_scene(scenes: &mut Vec<(common::Scenes, common::SceneSettings)>)
         {
             let len = scenes.len() as u16;
 
-            scenes.push((Scenes::init(len), SceneSettings::default()));
-            Scenes::change_choice(scenes, len);
+            scenes.push((common::Scenes::init(len), common::SceneSettings::default()));
+            common::Scenes::change_choice(scenes, len);
         }
 
         // ui function will provide the context
@@ -523,7 +544,7 @@ fn main()
             {
 
 
-                fn load_project_scene(objects: &mut Vec<(Objects, ObjectSettings)>, scenes: &mut Vec<(Scenes, SceneSettings)>,
+                fn load_project_scene(objects: &mut Vec<(common::Objects, common::ObjectSettings)>, scenes: &mut Vec<(common::Scenes, common::SceneSettings)>,
                 projects: &mut [Projects], file_paths: &mut FilePaths, editor_modes: &mut EditorModes,
                     
                     /*Engine shit*/ renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window
@@ -554,7 +575,7 @@ fn main()
                             {
                                 if scene.0.selected == true
                                 {
-                                    db::objects::load(objects, &scene.0, renderer, gameengine_objects, window);
+                                    common::db::objects::load(objects, &scene.0.file_path(), true, renderer, gameengine_objects, window);
                                     break;
                                 }
                             }
@@ -625,7 +646,7 @@ fn main()
                         if ui.selectable_label(projects[i].status, format!("{}: {} {}{}",
                         projects[i].name,
                         projects[i].dir,
-                        mapper::game_type(game_type_pos),
+                        common::mapper::game_type(game_type_pos),
 
                         tab_spaces((window_size.x/4f32) as u16)))
                         .clicked()
@@ -668,7 +689,7 @@ fn main()
                                 {
                                     for i in 0..project.game_type.len()
                                     {
-                                        if ui.radio(project.game_type[i], mapper::game_type(i)).clicked()
+                                        if ui.radio(project.game_type[i], common::mapper::game_type(i)).clicked()
                                         {
                                             radio_options::change_choice(&mut project.game_type, i as u8);
                                         }
@@ -753,6 +774,7 @@ fn main()
                                             // Cargo.toml
                                             let mut loaded_content = String::from(copy_over.cargo);
                                             loaded_content = loaded_content.replace("{project_name}", &editor_modes.projects.2.1);
+                                            loaded_content = loaded_content.replace("{library}", &file_paths.library.to_str().unwrap());
                                             let mut output_file = std::fs::File::create(format!("{dir_src}/../Cargo.toml")).unwrap();
                                             output_file.write_all(loaded_content.as_bytes()).unwrap();
 
@@ -854,7 +876,7 @@ fn main()
                                         {
                                             if scene.0.selected == true
                                             {
-                                                db::objects::save(&objects, &scene.0);
+                                                common::db::objects::save(&objects, &scene.0.file_path());
                                                 break;
                                             }
                                         }
@@ -891,7 +913,7 @@ fn main()
                     ui.horizontal(|ui|
                     {
                         ui.label(format!("Current scene: {}", current_scene(&scenes)));
-                        fn current_scene(scenes: &[(Scenes, SceneSettings)]) -> String
+                        fn current_scene(scenes: &[(common::Scenes, common::SceneSettings)]) -> String
                         {
                             for scene in scenes.iter()
                             {
@@ -912,7 +934,7 @@ fn main()
                         ui.label("Current display:");
                         for i in 0..editor_modes.main.1.len()
                         {
-                            if ui.selectable_label(editor_modes.main.1[i], mapper::view_mode(i)).clicked()
+                            if ui.selectable_label(editor_modes.main.1[i], common::mapper::view_mode(i)).clicked()
                             {
                                 radio_options::change_choice(&mut editor_modes.main.1, i as u8);
                             }
@@ -927,22 +949,22 @@ fn main()
                     {
                         for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                         {
-                            if mapper::view_mode(i) == "Objects" && *view_mode == true
+                            if common::mapper::view_mode(i) == "Objects" && *view_mode == true
                             {
                                 // Create new object
                                 if ui.button("➕ Create object").clicked()
                                 {
                                     let len = objects.len() as u16;
     
-                                    objects.push((Objects::init(len), ObjectSettings::init()));
-                                    Objects::change_choice(&mut objects, len);
+                                    objects.push((common::Objects::init(len), common::ObjectSettings::init()));
+                                    common::Objects::change_choice(&mut objects, len);
     
                                     // Creates new object for the game engine
                                     for object_type in objects[len as usize].1.object_type.iter()
                                     {
                                         if *object_type == true
                                         {
-                                            object_settings::object_actions::create_shape(&objects[len as usize], renderer, gameengine_objects, window);
+                                            common::object_actions::create_shape(&objects[len as usize], renderer, gameengine_objects, window);
                                         }
                                     }
                                 }
@@ -952,20 +974,20 @@ fn main()
                                     {
                                         if scene.0.selected == true
                                         {
-                                            db::objects::save(&objects, &scene.0);
+                                            common::db::objects::save(&objects, &scene.0.file_path());
                                             break;
                                         }
                                     }
                                     
                                 }
                             }
-                            else if mapper::view_mode(i) == "Scenes" && *view_mode == true
+                            else if common::mapper::view_mode(i) == "Scenes" && *view_mode == true
                             {
                                 // Create new object
                                 if ui.button("➕ Create scene").clicked()
                                 {
                                     add_scene(&mut scenes);
-                                    db::objects::load(&mut objects, &scenes[i].0, renderer, gameengine_objects, window);
+                                    common::db::objects::load(&mut objects, &scenes[i].0.file_path(), true, renderer, gameengine_objects, window);
                                 }
                                 if ui.button("💾 Save scene settings").clicked()
                                 {
@@ -994,7 +1016,7 @@ fn main()
                     // Displays all objects/scenes button
                     for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                     {
-                        if mapper::view_mode(i) == "Objects" && *view_mode == true
+                        if common::mapper::view_mode(i) == "Objects" && *view_mode == true
                         {
                             for i in 0..objects.len()
                             {
@@ -1006,7 +1028,7 @@ fn main()
                                     });
                                     if ui.selectable_label(objects[i].0.selected, &objects[i].0.label).clicked()
                                     {
-                                        Objects::change_choice(&mut objects, i as u16);
+                                        common::Objects::change_choice(&mut objects, i as u16);
                                         label_backup = objects[i].0.label.clone();
                                         //println!("label_backup: {}", label_backup);
                                     }
@@ -1033,7 +1055,7 @@ fn main()
                                 });
                             }
                         }
-                        else if mapper::view_mode(i) == "Scenes" && *view_mode == true
+                        else if common::mapper::view_mode(i) == "Scenes" && *view_mode == true
                         {
                             for i in 0..scenes.len()
                             {
@@ -1042,10 +1064,10 @@ fn main()
                                     ui.label(format!("id: {}", &scenes[i].0.id));
                                     if ui.selectable_label(scenes[i].0.selected, &scenes[i].0.label).clicked()
                                     {
-                                        Scenes::change_choice(&mut scenes, i as u16);
+                                        common::Scenes::change_choice(&mut scenes, i as u16);
                                         // load scene
 
-                                        db::objects::load(&mut objects, &scenes[i].0, renderer, gameengine_objects, window);
+                                        common::db::objects::load(&mut objects, &scenes[i].0.file_path(), true, renderer, gameengine_objects, window);
                                     }
                                 });
                             }
@@ -1072,14 +1094,14 @@ fn main()
                                     if ui.add(egui::TextEdit::singleline(&mut object.0.label)).changed()
                                     {
                                         // Destroys hashmap
-                                        object_settings::object_actions::delete_shape(&label_backup, gameengine_objects);
+                                        common::object_actions::delete_shape(&label_backup, gameengine_objects);
                                         
                                         // Determines the current shape
                                         for current_shape in object.1.object_type.iter()
                                         {
                                             if *current_shape == true
                                             {
-                                                object_settings::object_actions::create_shape(object, renderer, gameengine_objects, window);
+                                                common::object_actions::create_shape(object, renderer, gameengine_objects, window);
                                                 break;
                                             }
                                         }
@@ -1098,12 +1120,12 @@ fn main()
                                     {
                                         for i in 0..object.1.object_type.len()
                                         {
-                                            if ui.radio(object.1.object_type[i], mapper::object_type(i)).clicked()
+                                            if ui.radio(object.1.object_type[i], common::mapper::object_type(i)).clicked()
                                             {
                                                 radio_options::change_choice(&mut object.1.object_type, i as u8);
     
                                                 // Creates new object and/or changes object if the user clicks on some random choice button
-                                                object_settings::object_actions::create_shape(object, renderer, gameengine_objects, window);
+                                                common::object_actions::create_shape(object, renderer, gameengine_objects, window);
                                             }
                                         }
                                     });
@@ -1114,17 +1136,17 @@ fn main()
                                     ui.label("Location of Texture");
                                     if ui.add(egui::TextEdit::singleline(&mut object.1.texture.file_location)).changed()
                                     {
-                                        object_settings::object_actions::update_shape::texture(&object, gameengine_objects, renderer);
+                                        common::object_actions::update_shape::texture(&object, gameengine_objects, renderer);
                                     }
             
             
                                     // Radio buttons for texturemodes
                                     for i in 0..object.1.texture.mode.len()
                                     {
-                                        if ui.radio(object.1.texture.mode[i], mapper::texture::text(i)).clicked()
+                                        if ui.radio(object.1.texture.mode[i], common::mapper::texture::label(i)).clicked()
                                         {
                                             radio_options::change_choice(&mut object.1.texture.mode, i as u8);
-                                            object_settings::object_actions::update_shape::texture(&object, gameengine_objects, renderer);
+                                            common::object_actions::update_shape::texture(&object, gameengine_objects, renderer);
                                         }
                                     }
                                     ui.separator();
@@ -1134,7 +1156,7 @@ fn main()
                                     {
                                         if ui.color_edit_button_rgba_unmultiplied(&mut object.1.color).changed()
                                         {
-                                            object_settings::object_actions::update_shape::color(&object, gameengine_objects);
+                                            common::object_actions::update_shape::color(&object, gameengine_objects);
                                         }
                                     });
                                     ui.separator();
@@ -1147,7 +1169,7 @@ fn main()
                                         
                                         for (i, position) in object.1.position.iter_mut().enumerate()
                                         {
-                                            ui.label(format!("{}:", mapper::three_d_lables(i) as char));
+                                            ui.label(format!("{}:", common::mapper::three_d_lables::label(i) as char));
     
                                             // Use Response::changed or whatever to determine if the value has been changed
                                             if ui.add(egui::DragValue::new(position).speed(editor_settings.slider_speed)).changed()
@@ -1159,7 +1181,7 @@ fn main()
                                         // Updates the shape's position if the user has changed its value
                                         if update_position == true
                                         {
-                                            object_settings::object_actions::update_shape::position(&object, gameengine_objects);
+                                            common::object_actions::update_shape::position(&object, gameengine_objects);
                                         }
     
                                         
@@ -1174,7 +1196,7 @@ fn main()
                                         
                                         for (i, size) in object.1.size.iter_mut().enumerate()
                                         {
-                                            ui.label(format!("{}:", mapper::three_d_lables(i) as char));
+                                            ui.label(format!("{}:", common::mapper::three_d_lables::label(i) as char));
     
                                             // Use Response::changed or whatever to determine if the value has been changed
                                             if ui.add(egui::DragValue::new(size).speed(editor_settings.slider_speed)).changed()
@@ -1188,14 +1210,7 @@ fn main()
                                         if update_size == true
                                         {
                                             //println!("update_position: {update_position}");
-                                            object_settings::object_actions::update_shape::size(&object, gameengine_objects, window);
-                                            /*
-                                            gameengine_objects
-                                                .get_mut(&object.0.label.0)
-                                                .unwrap()
-                                                .resize(object.1.size[0].value, object.1.size[1].value, object.1.size[2].value, window.inner_size());
-                                            */
-                                            
+                                            common::object_actions::update_shape::size(&object, gameengine_objects, window);
                                         }
                                         
                                     });
@@ -1207,15 +1222,15 @@ fn main()
                                         
                                         for (i, rotation) in object.1.rotation.iter_mut().enumerate()
                                         {
-                                            ui.label(format!("{}:", mapper::three_d_lables(i) as char));
+                                            ui.label(format!("{}:", common::mapper::three_d_lables::label(i) as char));
     
                                             // Use Response::changed or whatever to determine if the value has been changed
                                             if ui.add(egui::DragValue::new(rotation).speed(editor_settings.slider_speed)).changed()
                                             {
-                                                object_settings::object_actions::update_shape::rotation
+                                                common::object_actions::update_shape::rotation
                                                 (
                                                     &object.0.label,
-                                                    mapper::three_d_lables(i),
+                                                    common::mapper::three_d_lables::enumm(i),
                                                     *rotation,
                                                     gameengine_objects,
                                                 )
@@ -1271,9 +1286,9 @@ fn main()
                                     {
                                         if objects[i].0.selected == true
                                         {
-                                            object_settings::object_actions::delete_shape(&objects[i].0.label, gameengine_objects);
+                                            common::object_actions::delete_shape(&objects[i].0.label, gameengine_objects);
                                             objects.remove(i);
-                                            Objects::recalculate_id(&mut objects);
+                                            common::Objects::recalculate_id(&mut objects);
                                             break;
                                         }
                                     }
@@ -1288,7 +1303,7 @@ fn main()
                                         if scenes[i].0.selected == true
                                         {
                                             scenes.remove(i);
-                                            Scenes::recalculate_id(&mut scenes);
+                                            common::Scenes::recalculate_id(&mut scenes);
                                             break;
                                         }
                                     }
@@ -1335,6 +1350,7 @@ mod radio_options
     }
 }
 
+/*
 // Maps numbers with names i.e. 0 => Square etc!
 mod mapper
 {
@@ -1377,3 +1393,4 @@ mod mapper
         return game_types[position];
     }
 }
+*/
