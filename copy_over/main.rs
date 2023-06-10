@@ -35,7 +35,7 @@ fn main()
     |
         renderer,
         window,
-        gameengine_objects,
+        objects,
         _,
         _,
         plugins

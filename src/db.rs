@@ -59,7 +59,7 @@ pub mod scenes
     const VERSION: f32 = 0.1;
     const FILE_NAME: &'static str = "scene_manager";
 
-    pub fn save(scenes: &[(common::Scenes, common::SceneSettings)], file_paths: &crate::FilePaths)
+    pub fn save(scenes: &[(common::Scene, common::SceneSettings)], file_paths: &crate::FilePaths)
     {
         let data = postcard::to_stdvec(&(VERSION, scenes)).unwrap();
 
@@ -69,7 +69,7 @@ pub mod scenes
             Err(e)       => println!("Save error: {e}"),
         }
     }
-    pub fn load(scenes: &mut Vec<(common::Scenes, common::SceneSettings)>, file_paths: &crate::FilePaths)
+    pub fn load(scenes: &mut Vec<(common::Scene, common::SceneSettings)>, file_paths: &crate::FilePaths)
     {
         let mut file = match std::fs::File::open(format!("{}/{FILE_NAME}", file_paths.scenes.display()))
         {
@@ -85,7 +85,7 @@ pub mod scenes
         }
 
         //let value: (f32, Vec<(Object, Object1)>) = match postcard::from_bytes(&file)
-        let value: (f32, Vec<(common::Scenes, common::SceneSettings)>) = match postcard::from_bytes(&data)
+        let value: (f32, Vec<(common::Scene, common::SceneSettings)>) = match postcard::from_bytes(&data)
         {
             Ok(d)      => d,
             Err(e)                                     => {println!("Error on load: {e}"); return;},
@@ -115,24 +115,24 @@ pub mod objects
 
     mod alter_shapes
     {
-        pub fn delete_shapes(objects: &mut Vec<(common::Objects, common::ObjectSettings)>, gameengine_objects: &mut crate::ObjectStorage)
+        pub fn delete_shapes(objects: &mut Vec<(common::Objects, common::ObjectSettings)>, objects: &mut crate::ObjectStorage)
         {
             // Destroys all shapes from the scene
             for object in objects.iter_mut()
             {
-                crate::object_settings::object_actions::delete_shape(&object.0.label, gameengine_objects);
+                crate::object_settings::object_actions::delete_shape(&object.0.label, objects);
             }
         }
         pub fn create_shapes(objects: &mut Vec<(common::Objects, common::ObjectSettings)>,
-        /*Game engine shit*/    renderer: &mut crate::Renderer, gameengine_objects: &mut crate::ObjectStorage, window: &crate::Window)
+        /*Game engine shit*/    renderer: &mut crate::Renderer, objects: &mut crate::ObjectStorage, window: &crate::Window)
         {
             for object in objects.iter()
             {
-                common::object_actions::create_shape(object, renderer, gameengine_objects, window);
+                common::object_actions::create_shape(object, renderer, objects, window);
                 /*
                 for i in 0..object.1.object_type.len()
                 {
-                    if crate::object_settings::object_actions::create_shape(object, i, renderer, gameengine_objects, window) == true
+                    if crate::object_settings::object_actions::create_shape(object, i, renderer, objects, window) == true
                     {
                         break;
                     }
@@ -155,7 +155,7 @@ pub mod objects
 
     }
     pub fn load(objects: &mut Vec<(common::Objects, common::ObjectSettings)>, scene: &crate::Scenes,
-        /*Game engine shit*/ renderer: &mut crate::Renderer, gameengine_objects: &mut crate::ObjectStorage, window: &crate::Window)
+        /*Game engine shit*/ renderer: &mut crate::Renderer, objects: &mut crate::ObjectStorage, window: &crate::Window)
     {
 
         let mut file = match std::fs::File::open(format!("{}/{}", scene.dir_save, scene.label))
@@ -166,14 +166,14 @@ pub mod objects
                                 println!("Load error on objects: {}: {e}", scene.label);
                                 
                                 // Deletes shapes
-                                alter_shapes::delete_shapes(objects, gameengine_objects);
+                                alter_shapes::delete_shapes(objects, objects);
                                 
                                 // Creates new vector and pushes shit
                                 *objects = Vec::new();
                                 objects.push((common::Objects::init(0), common::ObjectSettings::init()));
 
                                 // Creates new shapes
-                                alter_shapes::create_shapes(objects, renderer, gameengine_objects, window);
+                                alter_shapes::create_shapes(objects, renderer, objects, window);
                                 
                                 return;
                             }
@@ -196,7 +196,7 @@ pub mod objects
         };
 
         // Deletes shapes
-        alter_shapes::delete_shapes(objects, gameengine_objects);
+        alter_shapes::delete_shapes(objects, objects);
 
         *objects = Vec::new();
 
@@ -207,7 +207,7 @@ pub mod objects
 
 
         // Create all the shapes after loading into memory
-        alter_shapes::create_shapes(objects, renderer, gameengine_objects, window);
+        alter_shapes::create_shapes(objects, renderer, objects, window);
 
         //println!("db version Objects {}: {version}", scene.label);
     }

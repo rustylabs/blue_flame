@@ -127,7 +127,7 @@ impl Objects
             }
         }
     }
-    // When user deletes the objects, we need to re calculate ids
+    // When user deletes the flameobjects, we need to re calculate ids
     fn recalculate_id(list: &mut  [(Self, ObjectSettings)])
     {
         for (i, item) in list.iter_mut().enumerate()
@@ -365,27 +365,27 @@ mod issues
     /*
     pub mod issue_checks
     {
-        pub fn labels(objects: &mut [(crate::Objects, crate::ObjectSettings)])
+        pub fn labels(flameobjects: &mut [(crate::Objects, crate::ObjectSettings)])
         {
-            if objects.len() == 1
+            if flameobjects.len() == 1
             {
-                objects[0].0.label.1.error = false;
+                flameobjects[0].0.label.1.error = false;
                 return;
             }
-            for i in 0..objects.len()
+            for i in 0..flameobjects.len()
             {
-                for j in 0..objects.len()
+                for j in 0..flameobjects.len()
                 {
                     if i != j
                     {
-                        if objects[i].0.label.1.error != true && objects[i].0.label.0 == objects[j].0.label.0
+                        if flameobjects[i].0.label.1.error != true && flameobjects[i].0.label.0 == flameobjects[j].0.label.0
                         {
-                            objects[i].0.label.1.error = true;
+                            flameobjects[i].0.label.1.error = true;
                             break;
                         }
                         else
                         {
-                            objects[i].0.label.1.error = false;    
+                            flameobjects[i].0.label.1.error = false;    
                         }
                     }
                 }
@@ -425,9 +425,9 @@ fn main()
         projects:
             (true, false /*Create new project*/,
             (true /*Create new project with "cargo new"*/, String::new() /*Dir name <project_name>*/),
-            (false /*Window for delete project*/, false /*Delete entire project dir*/),
+            (false /*Window for delete project*/, true /*Delete entire project dir*/),
             ),
-        main: (false, [true /*objects mode*/, false /*scenes mode*/]),
+        main: (false, [true /*flameobjects mode*/, false /*scenes mode*/]),
     };
 
     let mut file_paths: FilePaths = FilePaths::init();
@@ -469,10 +469,10 @@ fn main()
 
     // DB Variables
 
-    // objects & scenes
-    //let mut objects: Vec<(Objects, ObjectSettings)> = Vec::new();
-    let mut objects: Vec<(common::Objects, common::ObjectSettings)> = Vec::new();
-    let mut scenes: Vec<(common::Scenes, common::SceneSettings)> = Vec::new();
+    // flameobjects & scenes
+    //let mut flameobjects: Vec<(Objects, ObjectSettings)> = Vec::new();
+    let mut flameobjects: Vec<(common::Flameobject, common::FlameobjectSettings)> = Vec::new();
+    let mut scenes: Vec<(common::Scene, common::SceneSettings)> = Vec::new();
     let mut projects: Vec<Projects> = Vec::new();
 
 
@@ -492,7 +492,7 @@ fn main()
     engine.plugins.push(Box::new(gui_context));
 
     // Determines the current object's name and the puts the name in the backup_label
-    for object in objects.iter()
+    for object in flameobjects.iter()
     {
         if object.0.selected == true
         {
@@ -507,7 +507,7 @@ fn main()
     |
         renderer,
         window,
-        gameengine_objects,
+        objects,
         _,
         _,
         plugins
@@ -516,7 +516,7 @@ fn main()
         let window_size = WindowSize::init(&window);
 
         // Label error checking
-        //issues::issue_checks::labels(&mut objects);
+        //issues::issue_checks::labels(&mut flameobjects);
 
         // obtain the plugin
         let egui_plugin = plugins[0]
@@ -527,12 +527,12 @@ fn main()
 
 
 
-        fn add_scene(scenes: &mut Vec<(common::Scenes, common::SceneSettings)>)
+        fn add_scene(scenes: &mut Vec<(common::Scene, common::SceneSettings)>)
         {
             let len = scenes.len() as u16;
 
-            scenes.push((common::Scenes::init(len), common::SceneSettings::default()));
-            common::Scenes::change_choice(scenes, len);
+            scenes.push((common::Scene::init(len), common::SceneSettings::default()));
+            common::Scene::change_choice(scenes, len);
         }
 
         // ui function will provide the context
@@ -544,10 +544,10 @@ fn main()
             {
 
 
-                fn load_project_scene(objects: &mut Vec<(common::Objects, common::ObjectSettings)>, scenes: &mut Vec<(common::Scenes, common::SceneSettings)>,
+                fn load_project_scene(flameobjects: &mut Vec<(common::Flameobject, common::FlameobjectSettings)>, scenes: &mut Vec<(common::Scene, common::SceneSettings)>,
                 projects: &mut [Projects], file_paths: &mut FilePaths, editor_modes: &mut EditorModes,
                     
-                    /*Engine shit*/ renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window
+                    /*Engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window
                 )
                 {
                     let projects_len = (projects.len() - 1) as u8;
@@ -575,7 +575,7 @@ fn main()
                             {
                                 if scene.0.selected == true
                                 {
-                                    common::db::objects::load(objects, &scene.0.file_path(), true, renderer, gameengine_objects, window);
+                                    common::db::flameobjects::load(flameobjects, &scene.0.file_path(), true, renderer, objects, window);
                                     break;
                                 }
                             }
@@ -612,7 +612,7 @@ fn main()
                     {
                         if ui.button("Load scene").clicked()
                         {
-                            load_project_scene(&mut objects, &mut scenes, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window);
+                            load_project_scene(&mut flameobjects, &mut scenes, &mut projects, &mut file_paths, &mut editor_modes, renderer, objects, &window);
                         }
                         if ui.button("➕ Create/import project").clicked()
                         {
@@ -783,7 +783,7 @@ fn main()
                                     }
 
 
-                                    load_project_scene(&mut objects, &mut scenes, &mut projects, &mut file_paths, &mut editor_modes, renderer, gameengine_objects, &window);
+                                    load_project_scene(&mut flameobjects, &mut scenes, &mut projects, &mut file_paths, &mut editor_modes, renderer, objects, &window);
                                 }
                             });
                         });
@@ -876,7 +876,7 @@ fn main()
                                         {
                                             if scene.0.selected == true
                                             {
-                                                common::db::objects::save(&objects, &scene.0.file_path());
+                                                common::db::flameobjects::save(&flameobjects, &scene.0.file_path());
                                                 break;
                                             }
                                         }
@@ -913,7 +913,7 @@ fn main()
                     ui.horizontal(|ui|
                     {
                         ui.label(format!("Current scene: {}", current_scene(&scenes)));
-                        fn current_scene(scenes: &[(common::Scenes, common::SceneSettings)]) -> String
+                        fn current_scene(scenes: &[(common::Scene, common::SceneSettings)]) -> String
                         {
                             for scene in scenes.iter()
                             {
@@ -954,17 +954,17 @@ fn main()
                                 // Create new object
                                 if ui.button("➕ Create object").clicked()
                                 {
-                                    let len = objects.len() as u16;
+                                    let len = flameobjects.len() as u16;
     
-                                    objects.push((common::Objects::init(len), common::ObjectSettings::init()));
-                                    common::Objects::change_choice(&mut objects, len);
+                                    flameobjects.push((common::Flameobject::init(len), common::FlameobjectSettings::init()));
+                                    common::Flameobject::change_choice(&mut flameobjects, len);
     
                                     // Creates new object for the game engine
-                                    for object_type in objects[len as usize].1.object_type.iter()
+                                    for object_type in flameobjects[len as usize].1.object_type.iter()
                                     {
                                         if *object_type == true
                                         {
-                                            common::object_actions::create_shape(&objects[len as usize], renderer, gameengine_objects, window);
+                                            common::object_actions::create_shape(&flameobjects[len as usize], renderer, objects, window);
                                         }
                                     }
                                 }
@@ -974,7 +974,7 @@ fn main()
                                     {
                                         if scene.0.selected == true
                                         {
-                                            common::db::objects::save(&objects, &scene.0.file_path());
+                                            common::db::flameobjects::save(&flameobjects, &scene.0.file_path());
                                             break;
                                         }
                                     }
@@ -987,7 +987,7 @@ fn main()
                                 if ui.button("➕ Create scene").clicked()
                                 {
                                     add_scene(&mut scenes);
-                                    common::db::objects::load(&mut objects, &scenes[i].0.file_path(), true, renderer, gameengine_objects, window);
+                                    common::db::flameobjects::load(&mut flameobjects, &scenes[i].0.file_path(), true, renderer, objects, window);
                                 }
                                 if ui.button("💾 Save scene settings").clicked()
                                 {
@@ -1013,27 +1013,27 @@ fn main()
                     
                     ui.separator();
 
-                    // Displays all objects/scenes button
+                    // Displays all flameobjects/scenes button
                     for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                     {
                         if common::mapper::view_mode(i) == "Objects" && *view_mode == true
                         {
-                            for i in 0..objects.len()
+                            for i in 0..flameobjects.len()
                             {
                                 ui.horizontal(|ui|
                                 {
-                                    ui.collapsing(format!("id: {}", &objects[i].0.id), |ui|
+                                    ui.collapsing(format!("id: {}", &flameobjects[i].0.id), |ui|
                                     {
                                         ui.label("some stuff");
                                     });
-                                    if ui.selectable_label(objects[i].0.selected, &objects[i].0.label).clicked()
+                                    if ui.selectable_label(flameobjects[i].0.selected, &flameobjects[i].0.label).clicked()
                                     {
-                                        common::Objects::change_choice(&mut objects, i as u16);
-                                        label_backup = objects[i].0.label.clone();
+                                        common::Flameobject::change_choice(&mut flameobjects, i as u16);
+                                        label_backup = flameobjects[i].0.label.clone();
                                         //println!("label_backup: {}", label_backup);
                                     }
-                                    ui.checkbox(&mut objects[i].0.visible, "");
-                                    if objects[i].0.visible == true
+                                    ui.checkbox(&mut flameobjects[i].0.visible, "");
+                                    if flameobjects[i].0.visible == true
                                     {
                                         ui.label("👁");
                                     }
@@ -1041,12 +1041,12 @@ fn main()
                                     // Checks if variable names are correct or not
                                     // Warnings
                                     /*
-                                    if objects[i].0.label.1.warning == true
+                                    if flameobjects[i].0.label.1.warning == true
                                     {
                                         ui.label(issues::output_symbols().0);
                                     }
                                     // Errors
-                                    if objects[i].0.label.1.error == true
+                                    if flameobjects[i].0.label.1.error == true
                                     {
                                         ui.label(issues::output_symbols().1);
                                     }
@@ -1064,10 +1064,10 @@ fn main()
                                     ui.label(format!("id: {}", &scenes[i].0.id));
                                     if ui.selectable_label(scenes[i].0.selected, &scenes[i].0.label).clicked()
                                     {
-                                        common::Scenes::change_choice(&mut scenes, i as u16);
+                                        common::Scene::change_choice(&mut scenes, i as u16);
                                         // load scene
 
-                                        common::db::objects::load(&mut objects, &scenes[i].0.file_path(), true, renderer, gameengine_objects, window);
+                                        common::db::flameobjects::load(&mut flameobjects, &scenes[i].0.file_path(), true, renderer, objects, window);
                                     }
                                 });
                             }
@@ -1087,21 +1087,21 @@ fn main()
                         if i == 0 /*Objects*/ && *view_mode == true
                         {
                             // Object name
-                            for object in objects.iter_mut()
+                            for object in flameobjects.iter_mut()
                             {
                                 if object.0.selected == true
                                 {
                                     if ui.add(egui::TextEdit::singleline(&mut object.0.label)).changed()
                                     {
                                         // Destroys hashmap
-                                        common::object_actions::delete_shape(&label_backup, gameengine_objects);
+                                        common::object_actions::delete_shape(&label_backup, objects);
                                         
                                         // Determines the current shape
                                         for current_shape in object.1.object_type.iter()
                                         {
                                             if *current_shape == true
                                             {
-                                                common::object_actions::create_shape(object, renderer, gameengine_objects, window);
+                                                common::object_actions::create_shape(object, renderer, objects, window);
                                                 break;
                                             }
                                         }
@@ -1111,7 +1111,7 @@ fn main()
                                 }
                             }
                             // Object type
-                            for object in objects.iter_mut()
+                            for object in flameobjects.iter_mut()
                             {
                                 if object.0.selected == true
                                 {
@@ -1125,7 +1125,7 @@ fn main()
                                                 radio_options::change_choice(&mut object.1.object_type, i as u8);
     
                                                 // Creates new object and/or changes object if the user clicks on some random choice button
-                                                common::object_actions::create_shape(object, renderer, gameengine_objects, window);
+                                                common::object_actions::create_shape(object, renderer, objects, window);
                                             }
                                         }
                                     });
@@ -1136,7 +1136,7 @@ fn main()
                                     ui.label("Location of Texture");
                                     if ui.add(egui::TextEdit::singleline(&mut object.1.texture.file_location)).changed()
                                     {
-                                        common::object_actions::update_shape::texture(&object, gameengine_objects, renderer);
+                                        common::object_actions::update_shape::texture(&object, objects, renderer);
                                     }
             
             
@@ -1146,7 +1146,7 @@ fn main()
                                         if ui.radio(object.1.texture.mode[i], common::mapper::texture::label(i)).clicked()
                                         {
                                             radio_options::change_choice(&mut object.1.texture.mode, i as u8);
-                                            common::object_actions::update_shape::texture(&object, gameengine_objects, renderer);
+                                            common::object_actions::update_shape::texture(&object, objects, renderer);
                                         }
                                     }
                                     ui.separator();
@@ -1156,7 +1156,7 @@ fn main()
                                     {
                                         if ui.color_edit_button_rgba_unmultiplied(&mut object.1.color).changed()
                                         {
-                                            common::object_actions::update_shape::color(&object, gameengine_objects);
+                                            common::object_actions::update_shape::color(&object, objects);
                                         }
                                     });
                                     ui.separator();
@@ -1181,7 +1181,7 @@ fn main()
                                         // Updates the shape's position if the user has changed its value
                                         if update_position == true
                                         {
-                                            common::object_actions::update_shape::position(&object, gameengine_objects);
+                                            common::object_actions::update_shape::position(&object, objects);
                                         }
     
                                         
@@ -1210,7 +1210,7 @@ fn main()
                                         if update_size == true
                                         {
                                             //println!("update_position: {update_position}");
-                                            common::object_actions::update_shape::size(&object, gameengine_objects, window);
+                                            common::object_actions::update_shape::size(&object, objects, window);
                                         }
                                         
                                     });
@@ -1232,7 +1232,7 @@ fn main()
                                                     &object.0.label,
                                                     common::mapper::three_d_lables::enumm(i),
                                                     *rotation,
-                                                    gameengine_objects,
+                                                    objects,
                                                 )
                                             }
                                             
@@ -1282,13 +1282,13 @@ fn main()
                             {
                                 if ui.button("🗑 Delete object").clicked()
                                 {
-                                    for i in 0..objects.len()
+                                    for i in 0..flameobjects.len()
                                     {
-                                        if objects[i].0.selected == true
+                                        if flameobjects[i].0.selected == true
                                         {
-                                            common::object_actions::delete_shape(&objects[i].0.label, gameengine_objects);
-                                            objects.remove(i);
-                                            common::Objects::recalculate_id(&mut objects);
+                                            common::object_actions::delete_shape(&flameobjects[i].0.label, objects);
+                                            flameobjects.remove(i);
+                                            common::Flameobject::recalculate_id(&mut flameobjects);
                                             break;
                                         }
                                     }
@@ -1303,7 +1303,7 @@ fn main()
                                         if scenes[i].0.selected == true
                                         {
                                             scenes.remove(i);
-                                            common::Scenes::recalculate_id(&mut scenes);
+                                            common::Scene::recalculate_id(&mut scenes);
                                             break;
                                         }
                                     }
