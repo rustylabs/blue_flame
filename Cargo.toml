@@ -20,4 +20,4 @@ serde = "1.0.157"
 dirs = "3.0"
 
 # Common (my libraries)
-common = {path = "/home/nishant/.local/share/blue_flame/common"}
+common = {path = "$HOME/.local/share/blue_flame/common"}
