@@ -18,7 +18,7 @@ use dirs;
 // Defines where all the file paths are
 pub struct FilePaths
 {
-    projects        : PathBuf, // ~/.config/blue_flame
+    projects        : PathBuf, // ~/.config/blue_flame/common
     scenes          : PathBuf,
     library         : PathBuf,
 }
@@ -411,10 +411,28 @@ fn create_project_config(path: &PathBuf)
     }
 }
 
-// Determines what "mode" we are in, for example projects we want to see or the main game editor?
+// Creates library dir if it does not exist and also statically builds src dir into binary executable
+fn init_lib(lib_path: &PathBuf)
+{
+    match
+        Command::new("sh")
+        .arg("-c")
+        .arg(format!("cargo new \"{}\" --lib", lib_path.to_str().unwrap()))
+        //.arg("cargo new \"../testing\" --bin")
+        .output()
+        {
+            Ok(_)              => println!("Created lib dir"),
+            Err(e)      => println!("Unable to create lib dir: {e}"),
+        }
+}
 
 fn main()
 {
+
+    let mut file_paths: FilePaths = FilePaths::init();
+
+    // Creates lib dir
+    init_lib(&file_paths.library);
 
     // object's previous label just before it is modified
     let mut label_backup = String::new();
@@ -430,7 +448,7 @@ fn main()
         main: (false, [true /*flameobjects mode*/, false /*scenes mode*/]),
     };
 
-    let mut file_paths: FilePaths = FilePaths::init();
+    
 
 
     let editor_settings = EditorSettings::init();
@@ -1349,48 +1367,3 @@ mod radio_options
         }
     }
 }
-
-/*
-// Maps numbers with names i.e. 0 => Square etc!
-mod mapper
-{
-    // position means position of array/Vector
-    // What shape, i.e. circle, triangle etc
-    pub fn object_type(position: usize) -> &'static str
-    {
-        let shapes: &[&'static str] = &["Square", "Triangle", "Line"];
-        return shapes[position];
-    }
-    // x, y, z
-    pub fn three_d_lables(position: usize) -> u8
-    {
-        let axis: [u8; 3] = [b'x', b'y', b'z'];
-        return axis[position];
-    }
-    pub mod texture
-    {
-        pub fn text(position: usize) -> &'static str
-        {
-            let textures: &[&'static str] = &["Clamp", "Repeat", "Mirror Repeat"];
-            return textures[position];
-        }
-        pub fn enumm(position: usize) -> blue_engine::TextureMode
-        {
-            let textures = &[blue_engine::TextureMode::Clamp, blue_engine::TextureMode::Repeat, blue_engine::TextureMode::MirrorRepeat];
-            return textures[position];
-        }
-    }
-    pub fn view_mode(position: usize) -> &'static str
-    {
-        //let mut view_modes = object_settings::radio_options::init(&["Objects", "Scenes"]);
-        let view_modes = ["Objects", "Scenes"];
-        return view_modes[position];
-    }
-    pub fn game_type(position: usize) -> &'static str
-    {
-        //let mut view_modes = object_settings::radio_options::init(&["Objects", "Scenes"]);
-        let game_types = ["2D", "3D"];
-        return game_types[position];
-    }
-}
-*/

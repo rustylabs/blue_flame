@@ -5,4 +5,4 @@ This is a game editor to the game engine [BlueEngine](https://github.com/ElhamAr
 
 egui is used to draw the menus, gluesql is being used to save and load your project settings.
 
-This is in its VERY early stages and currently you can't use it with the game engine or do anyting practical with it!
+This is in its VERY early stages it is possible to make games however it is VERY limited at this stage!
