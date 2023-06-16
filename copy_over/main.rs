@@ -1,6 +1,6 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window};
 use blue_engine::{primitive_shapes::{triangle, square}};
-use common;
+use blue_flame_common;
 mod blue_flame;
 
 

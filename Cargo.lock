@@ -277,7 +277,18 @@ version = "0.1.0"
 dependencies = [
  "blue_engine",
  "blue_engine_egui",
- "common",
+ "blue_flame_common",
+ "dirs",
+ "postcard",
+ "serde",
+]
+
+[[package]]
+name = "blue_flame_common"
+version = "0.1.0"
+dependencies = [
+ "blue_engine",
+ "blue_engine_egui",
  "dirs",
  "postcard",
  "serde",
@@ -408,17 +419,6 @@ checksum = "35ed6e9d84f0b51a7f52daf1c7d71dd136fd7a3f41a8462b8cdb8c78d920fad4"
 dependencies = [
  "bytes",
  "memchr",
-]
-
-[[package]]
-name = "common"
-version = "0.1.0"
-dependencies = [
- "blue_engine",
- "blue_engine_egui",
- "dirs",
- "postcard",
- "serde",
 ]
 
 [[package]]

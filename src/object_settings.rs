@@ -4,7 +4,7 @@ pub mod object_actions
 {
 
     use blue_engine::{primitive_shapes::{triangle, square}, Renderer, header, ObjectStorage, Window};
-    use common::{Objects, ObjectSettings};
+    use blue_flame_common::{Objects, ObjectSettings};
     
     // Either puts new shape or changes shape
     pub fn create_shape(object: &(Objects, ObjectSettings), renderer: &mut Renderer, gameengine_objects: &mut ObjectStorage, window: &Window)
@@ -47,7 +47,7 @@ pub mod object_actions
     pub mod update_shape
     {
         use blue_engine::{ObjectStorage, Window, Renderer};
-        use common::{Objects, ObjectSettings};
+        use blue_flame_common::{Objects, ObjectSettings};
 
         pub fn size(object: &(Objects, ObjectSettings), gameengine_objects: &mut ObjectStorage, window: &Window)
         {
