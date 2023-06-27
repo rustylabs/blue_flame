@@ -1,39 +1,58 @@
-use std::path::PathBuf;
+use std::vec;
+
+struct Flameobject
+{
+    id              : u16,
+    visible         : bool,
+    standard_fields : StandardFields,
+    //label       : (String, issues::Issues),
+}
+
+struct Scene
+{
+    id                  : u16,
+    dir_save            : String,
+    standard_fields     : StandardFields,
+}
+impl VecExts for Vec<Scene>
+{
+    fn return_selected_dir(&self) -> Option<&String>
+    {
+        for item in self.iter()
+        {
+            if item.standard_fields.is_selected() == true
+            {
+                return Some(&item.dir_save);
+            }
+        }
+        return None;
+    }
+}
+
+trait VecExts
+{
+    fn return_selected_dir(&self) -> Option<&String>;
+}
+
+struct StandardFields
+{
+    selected    : bool,
+    label       : String,
+}
+impl StandardFields
+{
+    fn is_selected(&self) -> bool
+    {
+        return self.selected;
+    }
+}
 
 pub fn main()
 {
-    //let file_path       = "/mnt/Windows10/Users/Nishant/Desktop/My made programs/Projects/Game Engine/blue_flame/scenes";
-    let project_dir     = "/mnt/Windows10/Users/Nishant/Desktop/My made programs/Projects/Game Engine/blue_flame";
-    let file_path       = "/mnt/Windows10/Users/Nishant/Desktop/My made programs/Projects/Game Engine/Assets/scenes/";
-    //let file_path       = "/mnt/Windows10/Users/Nishant/Desktop/My made programs/Projects/Game Engine/blue_flame/Assets/scenes/";
+    let scenes = vec![
+        Scene{id: 0, dir_save: String::from("asd"), standard_fields: StandardFields{selected: false, label: String::from("asd")}},
+        Scene{id: 0, dir_save: String::from("asdasdadss"), standard_fields: StandardFields{selected: true, label: String::from("asdadsasdasd")}}
+    ];
 
-    let mut relative_path = PathBuf::new();
-    relative_path.push("..");
-    
-
-    //println!("relative_path: {}", relative_path.display().to_string());
-    
-    //println!("{}", blue_flame_common::file_path_handling::fullpath_to_relativepath(file_path));
-    return;
-
-
-    return;
-    let file_path = "/mnt/Windows10/Users/Nishant/Desktop/My made programs/Projects/Game Engine/Assets/scenes";
-
-    println!("{}", blue_flame_common::file_path_handling::fullpath_to_relativepath(file_path));
-    return;
-    //let file_path = "$HOME/Desktop";
-
-    let tmp = blue_flame_common::file_path_handling::fullpath_to_relativepath(file_path);
-    let tmp = tmp.as_str();
-
-    println!("tmp: {tmp}");
-    /*
-    //blue_flame_common::file_path_handling::relativepath_to_fullpath(file_path);
-
-    use std::env;
-
-    let current_dir = env::current_dir().unwrap();
-    println!("{}", current_dir.display());
-    */
+    println!("current scene is: {}", scenes.return_selected_dir().unwrap());
 }

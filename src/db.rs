@@ -8,7 +8,7 @@ pub mod projects
     const FILE_NAME: &'static str = "projects";
 
 
-    pub fn save(projects: &[crate::Projects], file_paths: &crate::FilePaths)
+    pub fn save(projects: &[crate::Project], file_paths: &crate::FilePaths)
     {
 
         // This is where we actually save the file
@@ -17,16 +17,16 @@ pub mod projects
 
         match std::fs::write(format!("{}/{FILE_NAME}", file_paths.projects.display()), &data)
         {
-            Ok(_)               => println!("Projects file saved!"),
+            Ok(_)               => println!("Project file saved!"),
             Err(e)       => println!("Save error: {e}"),
         }
     }
 
-    pub fn load(projects: &mut Vec<crate::Projects>, file_paths: &crate::FilePaths)
+    pub fn load(projects: &mut Vec<crate::Project>, file_paths: &crate::FilePaths)
     {
         let mut file = match std::fs::File::open(format!("{}/{FILE_NAME}", file_paths.projects.display(), ))
         {
-            Ok(d)               => {println!("Projects: {FILE_NAME} loaded!"); d},
+            Ok(d)               => {println!("Project: {FILE_NAME} loaded!"); d},
             Err(e)             => {println!("Load projects error on {FILE_NAME} {e}"); return;}
         };
 
@@ -38,7 +38,7 @@ pub mod projects
         }
 
         //let value: (f32, Vec<(Object, Object1)>) = match postcard::from_bytes(&file)
-        let value: (f32, Vec<crate::Projects>) = match postcard::from_bytes(&data)
+        let value: (f32, Vec<crate::Project>) = match postcard::from_bytes(&data)
         {
             Ok(d)      => d,
             Err(e)                                     => {println!("Error on load: {e}"); return;},
@@ -47,7 +47,7 @@ pub mod projects
         let version = value.0;
         *projects = value.1;
 
-        println!("db version Projects {FILE_NAME}: {}", version);
+        println!("db version Project {FILE_NAME}: {}", version);
     }
 }
 
