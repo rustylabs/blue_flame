@@ -13,4 +13,4 @@ postcard = {verison = "1.0.4", features = ["use-std"]}
 serde = "1.0.157"
 
 # Common (my libraries)
-common = {path = "{library}"}
+blue_flame_common = {path = "{library}"}

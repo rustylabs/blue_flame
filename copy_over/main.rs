@@ -21,7 +21,7 @@ fn main()
 
     
     blue_flame::load(
-        "{scene_path}/blue_flame/Scene 0",
+        "blue_flame/Scene 0",
         false,
         &mut engine.renderer,
         &mut engine.objects,

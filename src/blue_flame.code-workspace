@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": ".."
+		},
+		{
+			"path": "../../../../../../../../../../home/nishant/.local/share/blue_flame/blue_flame_common"
 		}
 	],
 	"settings": {}

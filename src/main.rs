@@ -1,5 +1,6 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window};
 use blue_engine_egui::{self, egui};
+use blue_flame_common::filepath_handling;
 use std::{process::Command, io::Write};
 
 use std::process::exit;
@@ -17,6 +18,38 @@ use dirs;
 trait VecExtensions
 {
     fn return_selected_dir(&self) -> Option<&String>;
+    fn change_choice(&mut self, choice_true: u16);
+}
+
+impl VecExtensions for Vec<Project>
+{
+    fn return_selected_dir(&self) -> Option<&String>
+    {
+        for list in self.iter()
+        {
+            if list.status == true
+            {
+                return Some(&list.dir);
+            }
+        }
+        return None;
+    }
+    fn change_choice(&mut self, choice_true: u16)
+    {
+        for (i, item) in self.iter_mut().enumerate()
+        {
+            if i as u16 == choice_true
+            {
+                item.status = true;
+                //*current_project_dir = item.dir.clone();
+            }
+            else
+            {
+                item.status = false;
+            }
+        }
+    }
+    
 }
 // Defines where all the file paths are
 pub struct FilePaths
@@ -181,20 +214,7 @@ impl Project
     }
 }
 
-impl VecExtensions for Vec<Project>
-{
-    fn return_selected_dir(&self) -> Option<&String>
-    {
-        for list in self.iter()
-        {
-            if list.status == true
-            {
-                return Some(&list.dir);
-            }
-        }
-        return None;
-    }
-}
+
 
 // Editor modes and options for creating new scene
 struct EditorModes
@@ -333,6 +353,9 @@ fn main()
 
     let mut filepaths: FilePaths = FilePaths::init();
 
+    // So that I don't have to keep finding out what is the current project dir
+    let mut current_project_dir = String::new();
+
     // Creates lib dir
     init_lib(&filepaths.library);
 
@@ -360,7 +383,7 @@ fn main()
 
     let debug = Debug
     {
-        practice        : true,
+        practice        : false,
         resolution      : true,
     };
 
@@ -449,9 +472,9 @@ fn main()
 
         fn add_scene(scenes: &mut Vec<(blue_flame_common::Scene, blue_flame_common::SceneSettings)>)
         {
-            let len = scenes.len() as u16;
+            let len = scenes.len();
 
-            scenes.push((blue_flame_common::Scene::init(len), blue_flame_common::SceneSettings::default()));
+            scenes.push((blue_flame_common::Scene::init(len as u16), blue_flame_common::SceneSettings::default()));
             blue_flame_common::Scene::change_choice(scenes, len);
         }
 
@@ -465,13 +488,26 @@ fn main()
 
 
                 fn load_project_scene(flameobjects: &mut Vec<(blue_flame_common::Flameobject, blue_flame_common::FlameobjectSettings)>, scenes: &mut Vec<(blue_flame_common::Scene, blue_flame_common::SceneSettings)>,
-                projects: &mut [Project], filepaths: &mut FilePaths, editor_modes: &mut EditorModes,
+                projects: &mut [Project], filepaths: &mut FilePaths, current_project_dir: &mut String, editor_modes: &mut EditorModes,
                     
                     /*Engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window
                 )
                 {
-                    let projects_len = (projects.len() - 1) as u8;
-                    Project::change_choice(projects, projects_len);
+                    let projects_len = projects.len() - 1;
+
+                    //Project::change_choice(projects, projects_len);
+                    for (i, project) in projects.iter_mut().enumerate()
+                    {
+                        if i == projects_len
+                        {
+                            project.status = true;
+                            *current_project_dir = project.dir.clone();
+                        }
+                        else
+                        {
+                            project.status = false;
+                        }
+                    }
 
                     db::projects::save(projects, filepaths);
 
@@ -500,6 +536,7 @@ fn main()
                                 }
                             }
 
+                            // If this is a new project we just created
                             if scenes.len() == 0
                             {
                                 add_scene(scenes);
@@ -507,7 +544,8 @@ fn main()
                                 {
                                     if scene.0.selected == true
                                     {
-                                        scene.0.dir_save = String::from(format!("{}", filepaths.scenes.display()));
+                                        scene.0.dir_save = String::from(format!("{}",
+                                        filepath_handling::fullpath_to_relativepath(&filepaths.scenes.display().to_string(), current_project_dir)));
                                     }
                                 }
                             }
@@ -532,14 +570,15 @@ fn main()
                     {
                         if ui.button("Load scene").clicked()
                         {
-                            load_project_scene(&mut flameobjects, &mut scenes, &mut projects, &mut filepaths, &mut editor_modes, renderer, objects, &window);
+                            load_project_scene(&mut flameobjects, &mut scenes, &mut projects, &mut filepaths, &mut current_project_dir, &mut editor_modes, renderer, objects, &window);
                         }
                         if ui.button("➕ Create/import project").clicked()
                         {
                             projects.push(Project::init());
                             
-                            let len = projects.len() - 1;
-                            Project::change_choice(&mut projects, len as u8);
+                            let len = (projects.len() - 1) as u16;
+                            //Project::change_choice(&mut projects, len as u8);
+                            projects.change_choice(len);
                             
                             editor_modes.projects.1 = true;
                         }
@@ -570,7 +609,8 @@ fn main()
 
                         tab_spaces((window_size.x/4f32) as u16))).clicked()
                         {
-                            Project::change_choice(&mut projects, i as u8);
+                            //Project::change_choice(&mut projects, i as u8);
+                            projects.change_choice(i as u16);
                         }
                     }
 
@@ -681,7 +721,8 @@ fn main()
                                             // main.rs
                                             let mut loaded_content = String::from(copy_over.main);
                                             loaded_content = loaded_content.replace("{project_name}", &project.name);
-                                            loaded_content = loaded_content.replace("{scene_path}", &project.dir);
+                                            //loaded_content = loaded_content.replace("{scene_path}", &project.dir);
+
                                             let mut output_file = std::fs::File::create(format!("{dir_src}/main.rs")).unwrap();
                                             output_file.write_all(loaded_content.as_bytes()).unwrap();
 
@@ -702,7 +743,7 @@ fn main()
                                     }
 
 
-                                    load_project_scene(&mut flameobjects, &mut scenes, &mut projects, &mut filepaths, &mut editor_modes, renderer, objects, &window);
+                                    load_project_scene(&mut flameobjects, &mut scenes, &mut projects, &mut filepaths, &mut current_project_dir, &mut editor_modes, renderer, objects, &window);
                                 }
                             });
                         });
@@ -795,7 +836,7 @@ fn main()
                                         {
                                             if scene.0.selected == true
                                             {
-                                                blue_flame_common::db::flameobjects::save(&flameobjects, &scene.0.filepath());
+                                                blue_flame_common::db::flameobjects::save(&flameobjects, &scene.0.filepath(), &current_project_dir);
                                                 break;
                                             }
                                         }
@@ -871,7 +912,7 @@ fn main()
                             if blue_flame_common::mapper::view_mode(i) == "Objects" && *view_mode == true
                             {
                                 // Create new flameobject
-                                if ui.button("➕ Create flameobject").clicked()
+                                if ui.button("➕ Create object").clicked()
                                 {
                                     let len = flameobjects.len() as u16;
     
@@ -893,7 +934,7 @@ fn main()
                                     {
                                         if scene.0.selected == true
                                         {
-                                            blue_flame_common::db::flameobjects::save(&flameobjects, &scene.0.filepath());
+                                            blue_flame_common::db::flameobjects::save(&flameobjects, &scene.0.filepath(), &current_project_dir);
                                             break;
                                         }
                                     }
@@ -983,7 +1024,7 @@ fn main()
                                     ui.label(format!("id: {}", &scenes[i].0.id));
                                     if ui.selectable_label(scenes[i].0.selected, &scenes[i].0.label).clicked()
                                     {
-                                        blue_flame_common::Scene::change_choice(&mut scenes, i as u16);
+                                        blue_flame_common::Scene::change_choice(&mut scenes, i);
                                         // load scene
 
                                         blue_flame_common::db::flameobjects::load(&mut flameobjects, &Project::selected_dir(&projects), &scenes[i].0.filepath(), true, renderer, objects, window);
@@ -1207,7 +1248,7 @@ fn main()
                         {
                             if i == 0 /*Objects*/ && *view_mode == true
                             {
-                                if ui.button("🗑 Delete flameobject").clicked()
+                                if ui.button("🗑 Delete object").clicked()
                                 {
                                     for i in 0..flameobjects.len()
                                     {
