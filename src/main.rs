@@ -892,9 +892,15 @@ fn main()
                     ui.horizontal(|ui|
                     {
                         ui.label("Current display:");
+                        
                         for i in 0..editor_modes.main.1.len()
                         {
-                            if ui.selectable_label(editor_modes.main.1[i], blue_flame_common::mapper::view_mode(i)).clicked()
+                            if ui.selectable_label(editor_modes.main.1[i],
+                                match blue_flame_common::mapper::ViewModes::view_mode(i)
+                                {
+                                    blue_flame_common::mapper::ViewModes::Objects(label)  => label,
+                                    blue_flame_common::mapper::ViewModes::Scenes(label)   => label,
+                                }).clicked()
                             {
                                 radio_options::change_choice(&mut editor_modes.main.1, i as u8);
                             }
@@ -909,7 +915,11 @@ fn main()
                     {
                         for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                         {
-                            if blue_flame_common::mapper::view_mode(i) == "Objects" && *view_mode == true
+                            if *view_mode == false
+                            {
+                                continue;
+                            }
+                            if let blue_flame_common::mapper::ViewModes::Objects(_) = blue_flame_common::mapper::ViewModes::view_mode(i)
                             {
                                 // Create new flameobject
                                 if ui.button("➕ Create object").clicked()
@@ -941,7 +951,7 @@ fn main()
                                     
                                 }
                             }
-                            else if blue_flame_common::mapper::view_mode(i) == "Scenes" && *view_mode == true
+                            else if let blue_flame_common::mapper::ViewModes::Scenes(label) = blue_flame_common::mapper::ViewModes::view_mode(i)
                             {
                                 // Create new flameobject
                                 if ui.button("➕ Create scene").clicked()
@@ -976,7 +986,12 @@ fn main()
                     // Displays all flameobjects/scenes button
                     for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                     {
-                        if blue_flame_common::mapper::view_mode(i) == "Objects" && *view_mode == true
+                        if *view_mode == false
+                        {
+                            continue;
+                        }
+
+                        if let blue_flame_common::mapper::ViewModes::Objects(label) = blue_flame_common::mapper::ViewModes::view_mode(i)
                         {
                             for i in 0..flameobjects.len()
                             {
@@ -1015,7 +1030,7 @@ fn main()
                                 });
                             }
                         }
-                        else if blue_flame_common::mapper::view_mode(i) == "Scenes" && *view_mode == true
+                        else if let blue_flame_common::mapper::ViewModes::Scenes(label) = blue_flame_common::mapper::ViewModes::view_mode(i)
                         {
                             for i in 0..scenes.len()
                             {
