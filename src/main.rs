@@ -896,7 +896,7 @@ fn main()
                         for i in 0..editor_modes.main.1.len()
                         {
                             if ui.selectable_label(editor_modes.main.1[i],
-                                match blue_flame_common::mapper::ViewModes::view_mode(i)
+                                match blue_flame_common::mapper::ViewModes::value(i)
                                 {
                                     blue_flame_common::mapper::ViewModes::Objects(label)  => label,
                                     blue_flame_common::mapper::ViewModes::Scenes(label)   => label,
@@ -919,7 +919,7 @@ fn main()
                             {
                                 continue;
                             }
-                            if let blue_flame_common::mapper::ViewModes::Objects(_) = blue_flame_common::mapper::ViewModes::view_mode(i)
+                            if let blue_flame_common::mapper::ViewModes::Objects(_) = blue_flame_common::mapper::ViewModes::value(i)
                             {
                                 // Create new flameobject
                                 if ui.button("➕ Create object").clicked()
@@ -951,7 +951,7 @@ fn main()
                                     
                                 }
                             }
-                            else if let blue_flame_common::mapper::ViewModes::Scenes(label) = blue_flame_common::mapper::ViewModes::view_mode(i)
+                            else if let blue_flame_common::mapper::ViewModes::Scenes(_) = blue_flame_common::mapper::ViewModes::value(i)
                             {
                                 // Create new flameobject
                                 if ui.button("➕ Create scene").clicked()
@@ -968,19 +968,6 @@ fn main()
     
                     });
 
-                    for (i, view_mode) in editor_modes.main.1.iter().enumerate()
-                    {
-                        /*
-                        if *view_mode == true
-                        {
-                            if ui.button("Load scene").clicked()
-                            {
-    
-                            }
-                        }
-                        */
-                    }
-                    
                     ui.separator();
 
                     // Displays all flameobjects/scenes button
@@ -991,7 +978,7 @@ fn main()
                             continue;
                         }
 
-                        if let blue_flame_common::mapper::ViewModes::Objects(label) = blue_flame_common::mapper::ViewModes::view_mode(i)
+                        if let blue_flame_common::mapper::ViewModes::Objects(_) = blue_flame_common::mapper::ViewModes::value(i)
                         {
                             for i in 0..flameobjects.len()
                             {
@@ -1030,7 +1017,7 @@ fn main()
                                 });
                             }
                         }
-                        else if let blue_flame_common::mapper::ViewModes::Scenes(label) = blue_flame_common::mapper::ViewModes::view_mode(i)
+                        else if let blue_flame_common::mapper::ViewModes::Scenes(_) = blue_flame_common::mapper::ViewModes::value(i)
                         {
                             for i in 0..scenes.len()
                             {
@@ -1059,7 +1046,11 @@ fn main()
                     ui.set_width(ui.available_width());
                     for (i, view_mode) in editor_modes.main.1.iter().enumerate()
                     {
-                        if i == 0 /*Objects*/ && *view_mode == true
+                        if *view_mode == false
+                        {
+                            continue;
+                        }
+                        if let blue_flame_common::mapper::ViewModes::Objects(_) = blue_flame_common::mapper::ViewModes::value(i)
                         {
                             // Object name
                             for flameobject in flameobjects.iter_mut()
@@ -1095,7 +1086,14 @@ fn main()
                                     {
                                         for i in 0..flameobject.1.object_type.len()
                                         {
-                                            if ui.radio(flameobject.1.object_type[i], blue_flame_common::mapper::object_type(i)).clicked()
+                                            if ui.radio(flameobject.1.object_type[i],
+                                                match blue_flame_common::mapper::ObjectType::value(i)
+                                                {
+                                                    blue_flame_common::mapper::ObjectType::Square(label)        => label,
+                                                    blue_flame_common::mapper::ObjectType::Triangle(label)      => label,
+                                                    blue_flame_common::mapper::ObjectType::Line(label)          => label,
+                                                }
+                                        ).clicked()
                                             {
                                                 radio_options::change_choice(&mut flameobject.1.object_type, i as u8);
     
@@ -1148,7 +1146,15 @@ fn main()
                                         
                                         for (i, position) in flameobject.1.position.iter_mut().enumerate()
                                         {
-                                            ui.label(format!("{}:", blue_flame_common::mapper::three_d_lables::label(i) as char));
+                                            ui.label(format!("{}:",
+                                                match blue_flame_common::mapper::ThreeDLabels::value(i)
+                                                {
+                                                    blue_flame_common::mapper::ThreeDLabels::X(label, _)       => label as char,
+                                                    blue_flame_common::mapper::ThreeDLabels::Y(label, _)       => label as char,
+                                                    blue_flame_common::mapper::ThreeDLabels::Z(label, _)       => label as char,
+                                                }
+                                        
+                                            ));
     
                                             // Use Response::changed or whatever to determine if the value has been changed
                                             if ui.add(egui::DragValue::new(position).speed(editor_settings.slider_speed)).changed()
@@ -1175,7 +1181,15 @@ fn main()
                                         
                                         for (i, size) in flameobject.1.size.iter_mut().enumerate()
                                         {
-                                            ui.label(format!("{}:", blue_flame_common::mapper::three_d_lables::label(i) as char));
+                                            ui.label(format!("{}:",
+                                                match blue_flame_common::mapper::ThreeDLabels::value(i)
+                                                {
+                                                    blue_flame_common::mapper::ThreeDLabels::X(label, _)       => label as char,
+                                                    blue_flame_common::mapper::ThreeDLabels::Y(label, _)       => label as char,
+                                                    blue_flame_common::mapper::ThreeDLabels::Z(label, _)       => label as char,
+                                                }
+                                        
+                                            ));
     
                                             // Use Response::changed or whatever to determine if the value has been changed
                                             if ui.add(egui::DragValue::new(size).speed(editor_settings.slider_speed)).changed()
@@ -1201,15 +1215,28 @@ fn main()
                                         
                                         for (i, rotation) in flameobject.1.rotation.iter_mut().enumerate()
                                         {
-                                            ui.label(format!("{}:", blue_flame_common::mapper::three_d_lables::label(i) as char));
+                                            ui.label(format!("{}:",
+                                                match blue_flame_common::mapper::ThreeDLabels::value(i)
+                                                {
+                                                    blue_flame_common::mapper::ThreeDLabels::X(label, _)       => label as char,
+                                                    blue_flame_common::mapper::ThreeDLabels::Y(label, _)       => label as char,
+                                                    blue_flame_common::mapper::ThreeDLabels::Z(label, _)       => label as char,
+                                                }
+                                        
+                                            ));
     
                                             // Use Response::changed or whatever to determine if the value has been changed
                                             if ui.add(egui::DragValue::new(rotation).speed(editor_settings.slider_speed)).changed()
                                             {
                                                 blue_flame_common::object_actions::update_shape::rotation
                                                 (
-                                                    &flameobject.0.label,
-                                                    blue_flame_common::mapper::three_d_lables::enumm(i),
+                                                    &flameobject.0.label, 
+                                                        match blue_flame_common::mapper::ThreeDLabels::value(i) 
+                                                        {
+                                                            blue_flame_common::mapper::ThreeDLabels::X(_, axis)       => axis,
+                                                            blue_flame_common::mapper::ThreeDLabels::Y(_, axis)       => axis,
+                                                            blue_flame_common::mapper::ThreeDLabels::Z(_, axis)       => axis,
+                                                        },
                                                     *rotation,
                                                     objects,
                                                 )
@@ -1222,7 +1249,7 @@ fn main()
                                 }
                             }
                         }
-                        else if i == 1 /*Scenes*/ && *view_mode == true
+                        else if let blue_flame_common::mapper::ViewModes::Scenes(_) = blue_flame_common::mapper::ViewModes::value(i)
                         {
                             for scene in scenes.iter_mut()
                             {
@@ -1261,7 +1288,11 @@ fn main()
                     {
                         for (i, view_mode)in editor_modes.main.1.iter().enumerate()
                         {
-                            if i == 0 /*Objects*/ && *view_mode == true
+                            if *view_mode == false
+                            {
+                                continue;
+                            }
+                            if let blue_flame_common::mapper::ViewModes::Objects(_) = blue_flame_common::mapper::ViewModes::value(i)
                             {
                                 if ui.button("🗑 Delete object").clicked()
                                 {
@@ -1277,7 +1308,7 @@ fn main()
                                     }
                                 }
                             }
-                            else if i == 1 /*Scenes*/ && *view_mode == true
+                            else if let blue_flame_common::mapper::ViewModes::Scenes(_) = blue_flame_common::mapper::ViewModes::value(i)
                             {
                                 if ui.button("🗑 Delete scene").clicked()
                                 {
