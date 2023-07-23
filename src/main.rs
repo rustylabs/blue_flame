@@ -1,5 +1,5 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window};
-use blue_engine_egui::{self, egui};
+use blue_engine_egui::{self, egui::{self, Ui}};
 use blue_flame_common::{filepath_handling, structures::{flameobject::Flameobject, scene::Scene, project_config::ProjectConfig}};
 use blue_flame_common::radio_options::ViewModes;
 use std::{process::Command, io::Write};
@@ -355,6 +355,46 @@ fn invert_pathtype(filepath: &str, projects: &Vec<Project>) -> String
     return newpath.to_string();
 }
 
+
+// Has radio buttons and creates flameobject
+fn object_management(flameobject: &mut Flameobject, projects: &mut [Project], renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window, ui: &mut Ui)
+{
+    use blue_flame_common::radio_options::object_type::{ObjectType, shape, light};
+
+    let mut change_shape = false;
+
+    match flameobject.settings.object_type
+    {
+        ObjectType::Empty => println!("todo!: Empty"),
+        ObjectType::Shape(ref mut dimension) => match dimension
+        {
+            shape::Dimension::D2(ref mut shape) =>
+            {
+                for (element, label) in shape::Shape2D::elements()
+                {
+                    if ui.radio_value(shape, element, label).changed()
+                    {
+                        change_shape = true;
+                    }
+                }
+            }
+            shape::Dimension::D3(ref mut shape) => match shape
+            {
+                shape::Shape3D::Cube => println!("todo!: cube()"),
+            }
+        }
+        ObjectType::Light(ref mut light) => match light
+        {
+            light::Light::Direction => println!("todo!: light()"),
+        }
+    }
+    if change_shape == true
+    {
+        blue_flame_common::object_actions::create_shape(flameobject, &Project::selected_dir(&projects), renderer, objects, window);
+    }
+    
+}
+
 // Used for either loading already existing project or a brand new project
 fn load_project_scene(is_new_project: bool, scene: &mut Scene, projects: &mut [Project],  filepaths: &mut FilePaths,
     project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes,
@@ -606,10 +646,10 @@ fn main()
                         }
                         */
 
-                        if ui.selectable_label(projects[i].status, format!("{}: {} {}{}",
+                        if ui.selectable_label(projects[i].status, format!("{}: {} {}",
                         projects[i].name,
                         projects[i].dir,
-                        GameTypeDimensions::label(&projects[i].game_type),
+                        //GameTypeDimensions::elements(&projects[i].game_type),
                         //blue_flame_common::mapper::game_type(game_type_pos),
 
                         tab_spaces((window_size.x/4f32) as u16))).clicked()
@@ -652,12 +692,12 @@ fn main()
                                 //use blue_flame_common::radio_options::GameTypeDimensions;
                                 if project.status == true
                                 {
-                                    let elements  = GameTypeDimensions::elements();
+                                    //let elements  = GameTypeDimensions::elements();
                                     ui.horizontal(|ui|
                                     {
-                                        for element in elements
+                                        for (element, label) in GameTypeDimensions::elements()
                                         {
-                                            ui.radio_value(&mut project.game_type, element, GameTypeDimensions::label(&element));
+                                            ui.radio_value(&mut project.game_type, element, label);
                                         }
                                     });
 
@@ -930,6 +970,8 @@ fn main()
                                 Flameobject::change_choice(&mut scene.flameobjects, len);
 
                                 // Creates new flameobject for the game engine
+                                blue_flame_common::object_actions::create_shape(&scene.flameobjects[len as usize], &Project::selected_dir(&projects), renderer, objects, window);
+                                /*
                                 for object_type in scene.flameobjects[len as usize].settings.object_type.iter()
                                 {
                                     if *object_type == true
@@ -937,6 +979,7 @@ fn main()
                                         blue_flame_common::object_actions::create_shape(&scene.flameobjects[len as usize], &Project::selected_dir(&projects), renderer, objects, window);
                                     }
                                 }
+                                */
                             }
                         }
                         else if let ViewModes::Scenes = editor_modes.main.1
@@ -1048,20 +1091,15 @@ fn main()
                                     blue_flame_common::object_actions::delete_shape(&label_backup, objects);
                                     
                                     // Determines the current shape
-                                    for current_shape in flameobject.settings.object_type.iter()
-                                    {
-                                        if *current_shape == true
-                                        {
-                                            blue_flame_common::object_actions::create_shape(flameobject, &Project::selected_dir(&projects), renderer, objects, window);
-                                            break;
-                                        }
-                                    }
+                                    
+                                    object_management(flameobject, &mut projects, renderer, objects, window, ui);
+
                                     label_backup = flameobject.label.clone();
                                     //println!("label_backup {}", label_backup);
                                 }
                             }
                         }
-                        // Object type
+                        // Object type (radio buttons e.g. Square, Triangle, Line)
                         for flameobject in scene.flameobjects.iter_mut()
                         {
                             if flameobject.selected == true
@@ -1069,6 +1107,11 @@ fn main()
                                 ui.label("Object type");
                                 ui.horizontal(|ui|
                                 {
+                                    object_management(flameobject, &mut projects, renderer, objects, window, ui);
+
+
+
+                                    /*
                                     for i in 0..flameobject.settings.object_type.len()
                                     {
                                         if ui.radio(flameobject.settings.object_type[i],
@@ -1085,6 +1128,7 @@ fn main()
                                             blue_flame_common::object_actions::create_shape(flameobject, &Project::selected_dir(&projects), renderer, objects, window);
                                         }
                                     }
+                                    */
                                 });
                                 ui.separator();
         
@@ -1104,9 +1148,9 @@ fn main()
                                 // Radio buttons for texturemodes
                                 {
                                     use blue_flame_common::radio_options::Texture;
-                                    let elements = Texture::elements();
+                                    //let elements = Texture::elements();
 
-                                    for element in elements
+                                    for element in Texture::elements()
                                     {
                                         if ui.radio_value(&mut flameobject.settings.texture.mode, element, Texture::label(&element)).changed()
                                         {
