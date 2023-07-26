@@ -7,8 +7,9 @@ edition = "2021"
 
 [dependencies]
 # blue engine
-blue_engine = {version = "0.4.27", default-features = false}
-blue_engine_egui = "0.4.3"
+# 0.4.27 original
+blue_engine = {version = "0.4.28", default-features = false}
+blue_engine_egui = "0.4.4"
 #blue_engine_egui = "0.4.1"
 
 
