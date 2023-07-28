@@ -221,10 +221,11 @@ impl Project
 
 
 
-// Editor modes and options for creating new scene
+
+
 struct EditorModes
 {
-    projects        :   (bool, bool /*"New Project" scene*/,
+    projects        :   (bool, bool /*"New Project" scene window*/,
                         (bool /*2.0 Create new project with "cargo new" (checkbox)*/, String /*2.1 Label for <project_name>*/),
                         (bool /*3 Window for delete project*/, bool /*Delete entire project dir (checkbox)*/),
                         ),
@@ -464,6 +465,8 @@ fn main()
 {
 
     let mut filepaths: FilePaths = FilePaths::init();
+    
+    let mut right_clicked = false;
 
     // So that I don't have to keep finding out what is the current project dir
     let mut current_project_dir = String::new();
@@ -609,6 +612,7 @@ fn main()
                     ui.horizontal(|ui|
                     {
                         if ui.button("Load scene").clicked()
+                        || ui.input(|i| i.key_pressed(egui::Key::Enter))
                         {
                             // Load existing project
                             load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes,
@@ -924,18 +928,63 @@ fn main()
                     */
 
                     // Shortcuts
+
+                    // Deselects every object
+                    if ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.alt)
+                    {
+                        for flameobject in scene.flameobjects.iter_mut()
+                        {
+                            flameobject.selected = false;
+                        }
+                    }
+
+                    // Selects all objects
+                    else if ui.input(|i| i.key_pressed(egui::Key::A) && !(i.modifiers.shift))
+                    {
+                        for flameobject in scene.flameobjects.iter_mut()
+                        {
+                            flameobject.selected = true;
+                        }
+                    }
+
+
+                    /*
                     if ui.input(|i| i.key_released(egui::Key::A) && i.modifiers.shift
                     || i.pointer.button_clicked(egui::PointerButton::Secondary)
                     )
                     {
-                        println!("It worked!");
-                        /*
-                        ui.button("im a button with a context menu").context_menu(|ui|
-                        {
-                            ui.label("im inside the context menu for this button!");
-                        });
-                        */
+                        right_clicked = true;
+                        editor_modes.main.2 = true;
                     }
+                    */
+                    /*
+                    ui.interact(egui::Rect::EVERYTHING, egui::Id::new("Right click menu"), egui::Sense::hover()).context_menu(|ui|
+                    {
+                        for (element, label) in blue_flame_common::radio_options::object_type::ObjectType::elements()
+                        {
+                            if ui.button(format!("{label}")).clicked()
+                            {
+
+                            }
+                        }
+                    });
+                    */
+                    // Disable right_clicked
+                    /*
+                    if ui.input(|i| i.key_pressed(egui::Key::Escape)
+                    //|| i.pointer.button_clicked(egui::PointerButton::Primary)
+                    )
+                    {
+                        right_clicked = false;
+                        editor_modes.main.2 = false;
+                    }
+
+                    if right_clicked == true
+                    {
+
+
+                    }
+                    */
                     /*
                     ui.button("im a button with a context menu").context_menu(|ui|
                     {
@@ -962,10 +1011,10 @@ fn main()
                     {
                         ui.label("Current display:");
 
-                        let elements = ViewModes::elements();
-                        for element in elements
+                        //let elements = ViewModes::elements();
+                        for (element, label) in ViewModes::elements()
                         {
-                            ui.selectable_value(&mut editor_modes.main.1, element, ViewModes::label(&element));
+                            ui.selectable_value(&mut editor_modes.main.1, element, label);
                         }
 
                         /*
@@ -994,6 +1043,8 @@ fn main()
                         {
                             // Create new flameobject
                             if ui.button("➕ Create object").clicked()
+                            || ui.input(|i| i.key_released(egui::Key::A) && i.modifiers.shift)
+                                //|| i.pointer.button_clicked(egui::PointerButton::Secondary))
                             {
                                 editor_modes.main.2 = true;
 
@@ -1030,6 +1081,21 @@ fn main()
                                         if flameobject.selected == true
                                         {
                                             ui.label("Select object type:");
+
+                                            for (value, label) in ObjectType::elements()
+                                            {
+                                                if ui.selectable_value(&mut flameobject.settings.object_type, value, label).changed()
+                                                {
+                                                    blue_flame_common::object_actions::delete_shape(&flameobject.label, objects);
+                                                    blue_flame_common::object_actions::create_shape(flameobject, &Project::selected_dir(&projects), renderer, objects, window);
+                                                }
+                                            }
+                                            ui.horizontal(|ui|
+                                            {
+                                                object_management(flameobject, &mut projects, renderer, objects, window, ui);
+                                            });
+                                            
+                                            /*
                                             egui::ComboBox::from_label("")
                                             .selected_text(format!("{}", flameobject.settings.object_type.current_selected_label()))
                                             .show_ui(ui, |ui| 
@@ -1043,6 +1109,7 @@ fn main()
                                                     }
                                                 }
                                             });
+                                            */
                                             //break;
                                         }
                                     }
@@ -1050,6 +1117,7 @@ fn main()
                                     ui.horizontal(|ui|
                                     {
                                         if ui.button("⛔ Cancel").clicked()
+                                        || ui.input(|i| i.key_pressed(egui::Key::Escape))
                                         {
                                             for flameobject in scene.flameobjects.iter_mut()
                                             {
@@ -1064,6 +1132,7 @@ fn main()
                                             editor_modes.main.2 = false;
                                         }
                                         if ui.button("➕ Create").clicked()
+                                        || ui.input(|i| i.key_pressed(egui::Key::Enter))
                                         {
                                             editor_modes.main.2 = false;
                                         }
@@ -1089,6 +1158,7 @@ fn main()
                             }
                         }
                         if ui.button("💾 Save current scene").clicked()
+                        || ui.input(|i| i.key_released(egui::Key::S) && i.modifiers.ctrl)
                         {
                             if blue_flame_common::db::flameobjects::save(&scene, &filepaths.current_scene, &current_project_dir) == true
                             {
@@ -1113,8 +1183,17 @@ fn main()
                                 });
                                 if ui.selectable_label(scene.flameobjects[i].selected, &scene.flameobjects[i].label).clicked()
                                 {
-                                    Flameobject::change_choice(&mut scene.flameobjects, i as u16);
-                                    label_backup = scene.flameobjects[i].label.clone();
+                                    // if we are not attempting to select multiple items
+                                    if !(ui.input(|i| i.modifiers.shift_only()))
+                                    {
+                                        Flameobject::change_choice(&mut scene.flameobjects, i as u16);
+                                        label_backup = scene.flameobjects[i].label.clone();
+                                    }
+                                    else
+                                    {
+                                        scene.flameobjects[i].selected = !scene.flameobjects[i].selected;
+                                    }
+
                                     //println!("label_backup: {}", label_backup);
                                 }
                                 ui.checkbox(&mut scene.flameobjects[i].visible, "");
@@ -1172,25 +1251,52 @@ fn main()
 
                     if let ViewModes::Objects = editor_modes.main.1
                     {
+                        let mut selected_objects_labels: String = String::new();
+                        let mut selected_objects_counter: usize = 0;
+                        let mut singleline_enabled = true;
+
+                        // Counts the amount of selected objects
+                        for flameobject in scene.flameobjects.iter()
+                        {
+                            if flameobject.selected == true
+                            {
+                                if selected_objects_counter > 0
+                                {
+                                    selected_objects_labels.push_str(", ");
+                                }
+                                selected_objects_labels.push_str(&format!("{}", flameobject.label.clone()));
+                                selected_objects_counter += 1;
+                            }
+                        }
+                        if selected_objects_counter > 1 {singleline_enabled = false}
+                     
                         // Object name
                         for flameobject in scene.flameobjects.iter_mut()
                         {
                             if flameobject.selected == true
                             {
                                 ui.label("Object name");
-                                if ui.add(egui::TextEdit::singleline(&mut flameobject.label)).changed()
+                                //let mut prefilled_text = String::from("Multiple objects selected!");
+
+                                if ui.add_enabled(singleline_enabled, egui::TextEdit::singleline(if singleline_enabled {&mut flameobject.label} else {&mut selected_objects_labels}
+                                )).changed()
                                 {
                                     // Destroys hashmap
                                     blue_flame_common::object_actions::delete_shape(&label_backup, objects);
                                     
-                                    // Determines the current shape
-                                    object_management(flameobject, &mut projects, renderer, objects, window, ui);
+                                    // Creates new shape
+                                    //object_management(flameobject, &mut projects, renderer, objects, window, ui);
+                                    blue_flame_common::object_actions::create_shape(flameobject, &current_project_dir, renderer, objects, window);
 
                                     label_backup = flameobject.label.clone();
                                     //println!("label_backup {}", label_backup);
                                 }
+                                break;
+
                             }
                         }
+                        
+
                         // Object type (radio buttons e.g. Square, Triangle, Line)
                         for flameobject in scene.flameobjects.iter_mut()
                         {
@@ -1199,7 +1305,7 @@ fn main()
                                 ui.label("Object type");
                                 ui.horizontal(|ui|
                                 {
-                                    object_management(flameobject, &mut projects, renderer, objects, window, ui);
+                                    //object_management(flameobject, &mut projects, renderer, objects, window, ui);
 
 
 
@@ -1397,17 +1503,25 @@ fn main()
                         if let ViewModes::Objects = editor_modes.main.1
                         {
                             if ui.button("🗑 Delete object").clicked()
+                            || ui.input(|i| i.key_pressed(egui::Key::X))
                             {
-                                for i in 0..scene.flameobjects.len()
+                                let mut remove_indexes: Vec<usize> = Vec::new();
+                                
+                                // Deletes object from game engine and stores the index of vector to remove
+                                for (i, flameobject) in scene.flameobjects.iter().enumerate()
                                 {
-                                    if scene.flameobjects[i].selected == true
+                                    if flameobject.selected == true
                                     {
-                                        blue_flame_common::object_actions::delete_shape(&scene.flameobjects[i].label, objects);
-                                        scene.flameobjects.remove(i);
-                                        Flameobject::recalculate_id(&mut scene.flameobjects);
-                                        break;
+                                        blue_flame_common::object_actions::delete_shape(&flameobject.label, objects);
+                                        remove_indexes.push(i);
                                     }
                                 }
+                                // Removes any element in flameobjects from vector based on the remove_indexes vector
+                                for remove_index in remove_indexes.iter().rev()
+                                {
+                                    scene.flameobjects.remove(*remove_index);
+                                }
+                                Flameobject::recalculate_id(&mut scene.flameobjects);
                             }
                         }
                         else if let ViewModes::Scenes = editor_modes.main.1
