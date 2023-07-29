@@ -1,5 +1,5 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window};
-use blue_engine_egui::{self, egui::{self, Ui}};
+use blue_engine_egui::{self, egui::{self, Ui, InputState}};
 use blue_flame_common::{filepath_handling, structures::{flameobject::Flameobject, scene::Scene, project_config::ProjectConfig}, db::flameobjects};
 use blue_flame_common::radio_options::ViewModes;
 use std::{process::Command, io::Write};
@@ -332,6 +332,45 @@ fn init_lib(lib_path: &PathBuf)
         }
 }
 */
+// Is it horrizontal or vertical key press movement
+enum KeyMovement
+{
+    Vertical,
+    Horizontal,
+}
+// Based on key presses should we return 1 or -1
+fn move_direction_keys(key_movement: KeyMovement, ui: &mut Ui) -> i8
+{
+    let mut move_direction: i8 = 0;
+
+    match key_movement
+    {
+        KeyMovement::Vertical =>
+        {
+            if ui.input(|i| i.key_pressed(egui::Key::ArrowDown))
+            {
+                move_direction = 1;
+            }
+            else if ui.input(|i| i.key_pressed(egui::Key::ArrowUp))
+            {
+                move_direction = -1;
+            }
+        }
+        KeyMovement::Horizontal =>
+        {
+            if ui.input(|i| i.key_pressed(egui::Key::ArrowRight))
+            {
+                move_direction = 1;
+            }
+            else if ui.input(|i| i.key_pressed(egui::Key::ArrowLeft))
+            {
+                move_direction = -1;
+            }
+        }
+    }
+
+    return move_direction;
+}
 // Converts from fullpath to relativepath and vice versa
 fn invert_pathtype(filepath: &str, projects: &Vec<Project>) -> String
 {
@@ -366,7 +405,7 @@ fn object_management(flameobject: &mut Flameobject, projects: &mut [Project], re
 
     match flameobject.settings.object_type
     {
-        ObjectType::Empty => println!("todo!: Empty"),
+        ObjectType::Empty => {},
         ObjectType::Shape(ref mut dimension) => match dimension
         {
             shape::Dimension::D2(ref mut shape) =>
@@ -381,12 +420,12 @@ fn object_management(flameobject: &mut Flameobject, projects: &mut [Project], re
             }
             shape::Dimension::D3(ref mut shape) => match shape
             {
-                shape::Shape3D::Cube => println!("todo!: cube()"),
+                shape::Shape3D::Cube => {},
             }
         }
         ObjectType::Light(ref mut light) => match light
         {
-            light::Light::Direction => println!("todo!: light()"),
+            light::Light::Direction => {},
         }
     }
     if change_shape == true
@@ -489,7 +528,6 @@ fn main()
         ),
     };
 
-    
 
 
     let editor_settings = EditorSettings::init();
@@ -1042,8 +1080,9 @@ fn main()
                         if let ViewModes::Objects = editor_modes.main.1
                         {
                             // Create new flameobject
-                            if ui.button("➕ Create object").clicked()
-                            || ui.input(|i| i.key_released(egui::Key::A) && i.modifiers.shift)
+                            if (ui.button("➕ Create object").clicked()
+                            || ui.input(|i| i.key_released(egui::Key::A) && i.modifiers.shift))
+                            && editor_modes.main.2 == false
                                 //|| i.pointer.button_clicked(egui::PointerButton::Secondary))
                             {
                                 editor_modes.main.2 = true;
@@ -1082,7 +1121,7 @@ fn main()
                                         {
                                             ui.label("Select object type:");
 
-                                            for (value, label) in ObjectType::elements()
+                                            for (value, label) in ObjectType::elements(Some(flameobject.settings.object_type))
                                             {
                                                 if ui.selectable_value(&mut flameobject.settings.object_type, value, label).changed()
                                                 {
@@ -1090,27 +1129,70 @@ fn main()
                                                     blue_flame_common::object_actions::create_shape(flameobject, &Project::selected_dir(&projects), renderer, objects, window);
                                                 }
                                             }
+                                            // Shortcuts for moving up and down
+                                            let move_direction: i8 = move_direction_keys(KeyMovement::Vertical, ui);
+                                            if move_direction != 0
+                                            {
+                                                let object_type_len = ObjectType::elements(None).len();
+                                                let mut current_index: usize = 0;
+                                                for (value, _) in ObjectType::elements(None)
+                                                {
+                                                    if flameobject.settings.object_type == value
+                                                    {
+                                                        if (current_index == 0 && move_direction == -1) || (current_index == (object_type_len - 1) && move_direction == 1) {break}
+                                                        
+                                                        flameobject.settings.object_type = ObjectType::elements(None)[(current_index as i32 + move_direction as i32) as usize].0;
+                                                        break;
+                                                    }
+                                                    current_index += 1;
+                                                }
+                                            }
+
+                                            // Shows object type radio buttons i.e. Square, Triangle, Line
                                             ui.horizontal(|ui|
                                             {
                                                 object_management(flameobject, &mut projects, renderer, objects, window, ui);
                                             });
-                                            
-                                            /*
-                                            egui::ComboBox::from_label("")
-                                            .selected_text(format!("{}", flameobject.settings.object_type.current_selected_label()))
-                                            .show_ui(ui, |ui| 
+
+                                            // Shortcuts for changing radio button options i.e. Square, Triangle, Line etc
+                                            let move_direction: i8 = move_direction_keys(KeyMovement::Horizontal, ui);
+                                           
+                                            if move_direction != 0
                                             {
-                                                for (value, label) in ObjectType::elements()
+                                                use blue_flame_common::radio_options::object_type::{light, shape};
+
+                                                // object_type_child is like the sub category, for example Shape is Square, Triangle, Line
+                                                
+
+                                                match flameobject.settings.object_type
                                                 {
-                                                    if ui.selectable_value(&mut flameobject.settings.object_type, value, label).changed()
+                                                    ObjectType::Light(_) => {},
+                                                    ObjectType::Shape(ref mut dimension) => match dimension
                                                     {
-                                                        blue_flame_common::object_actions::delete_shape(&flameobject.label, objects);
-                                                        blue_flame_common::object_actions::create_shape(flameobject, &Project::selected_dir(&projects), renderer, objects, window);
+                                                        shape::Dimension::D2(ref mut current_shape) =>
+                                                        {
+                                                            let object_type_child_len: usize = shape::Shape2D::elements().len();
+                                                            let mut current_index: usize = 0;
+                                                            for (value, _) in shape::Shape2D::elements()
+                                                            {
+                                                                if *current_shape == value
+                                                                {
+                                                                    if (current_index == 0 && move_direction == -1) || (current_index == (object_type_child_len - 1) && move_direction == 1)
+                                                                    {break}
+                                                                    
+                                                                    *current_shape = shape::Shape2D::elements()[(current_index as i32 + move_direction as i32) as usize].0;
+                                                                    break;
+                                                                }
+                                                                current_index += 1;
+                                                            }
+                                                        },
+                                                        shape::Dimension::D3(_) => {},
                                                     }
-                                                }
-                                            });
-                                            */
-                                            //break;
+                                                    ObjectType::Empty => {},
+                                                };
+                                                let mut current_index: usize = 0;
+
+                                            }
                                         }
                                     }
                                     // Create or Cancel buttons
