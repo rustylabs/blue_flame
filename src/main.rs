@@ -1,4 +1,4 @@
-use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window};
+use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode};
 use blue_engine_egui::{self, egui::{self, Ui, InputState}};
 use blue_flame_common::{filepath_handling, structures::{flameobject::Flameobject, scene::Scene, project_config::ProjectConfig}, db::flameobjects};
 use blue_flame_common::radio_options::ViewModes;
@@ -339,7 +339,7 @@ enum KeyMovement
     Horizontal,
 }
 // Based on key presses should we return 1 or -1
-fn move_direction_keys(key_movement: KeyMovement, ui: &mut Ui) -> i8
+fn move_direction_keys(key_movement: KeyMovement, input: &blue_engine::InputHelper) -> i8
 {
     let mut move_direction: i8 = 0;
 
@@ -347,22 +347,23 @@ fn move_direction_keys(key_movement: KeyMovement, ui: &mut Ui) -> i8
     {
         KeyMovement::Vertical =>
         {
-            if ui.input(|i| i.key_pressed(egui::Key::ArrowDown))
+            //if ui.input(|i| i.key_pressed(egui::Key::ArrowDown))
+            if input.key_pressed_os(VirtualKeyCode::Down)
             {
                 move_direction = 1;
             }
-            else if ui.input(|i| i.key_pressed(egui::Key::ArrowUp))
+            else if input.key_pressed_os(VirtualKeyCode::Up)
             {
                 move_direction = -1;
             }
         }
         KeyMovement::Horizontal =>
         {
-            if ui.input(|i| i.key_pressed(egui::Key::ArrowRight))
+            if input.key_pressed_os(VirtualKeyCode::Right)
             {
                 move_direction = 1;
             }
-            else if ui.input(|i| i.key_pressed(egui::Key::ArrowLeft))
+            else if input.key_pressed_os(VirtualKeyCode::Left)
             {
                 move_direction = -1;
             }
@@ -633,7 +634,6 @@ fn main()
         // ui function will provide the context
         egui_plugin.ui(|ctx|
         {
-
             // if true load project scene
             if editor_modes.projects.0 == true
             {
@@ -654,7 +654,8 @@ fn main()
                     ui.horizontal(|ui|
                     {
                         if ui.button("Load scene").clicked()
-                        || ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        //|| ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        || (input.key_pressed(VirtualKeyCode::Return) || input.key_pressed(VirtualKeyCode::NumpadEnter))
                         {
                             // Load existing project
                             load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
@@ -973,7 +974,8 @@ fn main()
                     // Shortcuts
 
                     // Deselects every object when pressing alt + A
-                    if ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.alt)
+                    //if ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.alt)
+                    if input.key_held(VirtualKeyCode::LAlt) && input.key_pressed(VirtualKeyCode::A)
                     {
                         for flameobject in scene.flameobjects.iter_mut()
                         {
@@ -982,7 +984,7 @@ fn main()
                     }
 
                     // Selects all objects when pressing A
-                    else if ui.input(|i| i.key_pressed(egui::Key::A) && !(i.modifiers.shift))
+                    else if !input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
                     {
                         for flameobject in scene.flameobjects.iter_mut()
                         {
@@ -1023,8 +1025,9 @@ fn main()
                         if let ViewModes::Objects = editor_modes.main.1
                         {
                             // Create new flameobject
-                            if (ui.button("➕ Create object").clicked()
-                            || ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.shift))
+                            if ui.button("➕ Create object").clicked()
+                            //|| ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.shift))
+                            || input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
                             && editor_modes.main.2 == false
                             {
                                 editor_modes.main.2 = true;
@@ -1059,7 +1062,7 @@ fn main()
                                                 ui.selectable_value(&mut flameobject.settings.object_type, value, label);
                                             }
                                             // Shortcuts for moving up and down
-                                            let move_direction: i8 = move_direction_keys(KeyMovement::Vertical, ui);
+                                            let move_direction: i8 = move_direction_keys(KeyMovement::Vertical, input);
                                             if move_direction != 0
                                             {
                                                 let object_type_len = ObjectType::elements(None).len();
@@ -1084,7 +1087,7 @@ fn main()
                                             });
 
                                             // Shortcuts for changing radio button options i.e. Square, Triangle, Line etc
-                                            let move_direction: i8 = move_direction_keys(KeyMovement::Horizontal, ui);
+                                            let move_direction: i8 = move_direction_keys(KeyMovement::Horizontal, input);
                                            
                                             if move_direction != 0
                                             {
@@ -1125,13 +1128,15 @@ fn main()
                                     ui.horizontal(|ui|
                                     {
                                         if ui.button("⛔ Cancel").clicked()
-                                        || ui.input(|i| i.key_pressed(egui::Key::Escape))
+                                        //|| ui.input(|i| i.key_pressed(egui::Key::Escape))
+                                        || input.key_pressed(VirtualKeyCode::Escape)
                                         {
                                             scene.flameobjects.pop();
                                             editor_modes.main.2 = false;
                                         }
                                         if ui.button("➕ Create").clicked()
-                                        || ui.input(|i| i.key_pressed(egui::Key::Enter))
+                                        //|| ui.input(|i| i.key_pressed(egui::Key::Enter))
+                                        || input.key_pressed(VirtualKeyCode::Return)
                                         {
                                             for flameobject in scene.flameobjects.iter_mut()
                                             {
@@ -1166,8 +1171,8 @@ fn main()
                             }
                         }
                         if ui.button("💾 Save current scene").clicked()
-                        || ui.input(|i| i.key_released(egui::Key::S) && i.modifiers.ctrl)
-                        //|| input.key_pressed(blue_engine::VirtualKeyCode::LControl || blue_engine::VirtualKeyCode::S)
+                        || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
+                        //|| input.key_pressed(VirtualKeyCode::LControl || VirtualKeyCode::S)
                         {
                             if blue_flame_common::db::flameobjects::save(&scene, &filepaths.current_scene, &current_project_dir) == true
                             {
@@ -1181,32 +1186,38 @@ fn main()
                     // Displays all flameobjects/scenes button
                     if let ViewModes::Objects = editor_modes.main.1
                     {
-                        for i in 0..scene.flameobjects.len()
+                        // Only change chance labels if a single select was performed on labels
+                        let mut change_choice = false;
+
+                        for (i, flameobject) in scene.flameobjects.iter_mut().enumerate()
                         {
                             ui.horizontal(|ui|
                             {
-                                ui.collapsing(format!("id: {}", &scene.flameobjects[i].id), |ui|
+                                ui.collapsing(format!("id: {}", flameobject.id), |ui|
                                 {
                                     ui.label("some stuff");
                                 });
-                                if ui.selectable_label(scene.flameobjects[i].selected, &scene.flameobjects[i].label).clicked()
+                                if ui.selectable_label(flameobject.selected, &flameobject.label).clicked()
                                 {
                                     // if we are not attempting to select multiple items
-                                    if !(ui.input(|i| i.modifiers.shift_only()))
+                                    //if !ui.input(|i| i.modifiers.shift_only())
+                                    if !input.key_held(VirtualKeyCode::LShift)
                                     {
-                                        Flameobject::change_choice(&mut scene.flameobjects, i as u16);
-                                        label_backup = scene.flameobjects[i].label.clone();
+                                        //Flameobject::change_choice(&mut scene.flameobjects, i as u16);
+                                        label_backup = flameobject.label.clone();
                                         flameobjects_selected_parent_idx = i as u16;
+                                        change_choice = true;
                                     }
+                                    // Multiple select via shift click keys
                                     else
                                     {
-                                        scene.flameobjects[i].selected = !scene.flameobjects[i].selected;
+                                        flameobject.selected = !flameobject.selected;
                                     }
 
                                     //println!("label_backup: {}", label_backup);
                                 }
-                                ui.checkbox(&mut scene.flameobjects[i].visible, "");
-                                if scene.flameobjects[i].visible == true
+                                ui.checkbox(&mut flameobject.visible, "");
+                                if flameobject.visible == true
                                 {
                                     ui.label("👁");
                                 }
@@ -1227,6 +1238,7 @@ fn main()
         
                             });
                         }
+                        if change_choice == true {Flameobject::change_choice(&mut scene.flameobjects, flameobjects_selected_parent_idx as u16)}
                     }
                     else if let ViewModes::Scenes = editor_modes.main.1
                     {
@@ -1254,221 +1266,186 @@ fn main()
                 // Right side
                 egui::SidePanel::right("Object Settings").show(ctx, |ui|
                 {
+
                     ui.set_enabled(!alert_window.0);
 
                     ui.set_width(ui.available_width());
 
                     if let ViewModes::Objects = editor_modes.main.1
                     {
-                        let mut selected_objects_labels: String = String::new();
-                        let mut selected_objects_counter: usize = 0;
-                        let mut singleline_enabled = true;
-
-                        // Counts the amount of selected objects
-                        for flameobject in scene.flameobjects.iter()
-                        {
-                            if flameobject.selected == true
-                            {
-                                if selected_objects_counter > 0
-                                {
-                                    selected_objects_labels.push_str(", ");
-                                }
-                                selected_objects_labels.push_str(&format!("{}", flameobject.label.clone()));
-                                selected_objects_counter += 1;
-                            }
-                        }
-                        if selected_objects_counter > 1 {singleline_enabled = false}
-                     
+                        let flameobject = &mut scene.flameobjects[flameobjects_selected_parent_idx as usize];
                         // Object name
-                        for flameobject in scene.flameobjects.iter_mut()
+                        if ui.add(egui::TextEdit::singleline(&mut flameobject.label)).changed()
                         {
-                            if flameobject.selected == true
-                            {
-                                ui.label("Object name");
-                                //let mut prefilled_text = String::from("Multiple objects selected!");
+                            // Destroys hashmap
+                            blue_flame_common::object_actions::delete_shape(&label_backup, objects);
+                            
+                            // Creates new shape
+                            //object_management(flameobject, &mut projects, renderer, objects, window, ui);
+                            blue_flame_common::object_actions::create_shape(flameobject, &current_project_dir, renderer, objects, window);
 
-                                if ui.add_enabled(singleline_enabled, egui::TextEdit::singleline(if singleline_enabled {&mut flameobject.label} else {&mut selected_objects_labels}
-                                )).changed()
-                                {
-                                    // Destroys hashmap
-                                    blue_flame_common::object_actions::delete_shape(&label_backup, objects);
-                                    
-                                    // Creates new shape
-                                    //object_management(flameobject, &mut projects, renderer, objects, window, ui);
-                                    blue_flame_common::object_actions::create_shape(flameobject, &current_project_dir, renderer, objects, window);
-
-                                    label_backup = flameobject.label.clone();
-                                    //println!("label_backup {}", label_backup);
-                                }
-                                break;
-
-                            }
+                            label_backup = flameobject.label.clone();
+                            //println!("label_backup {}", label_backup);
                         }
-                        
-
                         // Shows many object setting such as object type and position
-                        for flameobject in scene.flameobjects.iter_mut()
+                        ui.label("Object type");
+                        ui.horizontal(|ui|
                         {
-                            if flameobject.selected == true
+                            //object_management(flameobject, &mut projects, renderer, objects, window, ui);
+
+
+
+                            /*
+                            for i in 0..flameobject.settings.object_type.len()
                             {
-                                ui.label("Object type");
-                                ui.horizontal(|ui|
-                                {
-                                    //object_management(flameobject, &mut projects, renderer, objects, window, ui);
-
-
-
-                                    /*
-                                    for i in 0..flameobject.settings.object_type.len()
+                                if ui.radio(flameobject.settings.object_type[i],
+                                    match blue_flame_common::mapper::ObjectType::value(i)
                                     {
-                                        if ui.radio(flameobject.settings.object_type[i],
-                                            match blue_flame_common::mapper::ObjectType::value(i)
-                                            {
-                                                blue_flame_common::mapper::ObjectType::Square(label)        => label,
-                                                blue_flame_common::mapper::ObjectType::Triangle(label)      => label,
-                                                blue_flame_common::mapper::ObjectType::Line(label)          => label,
-                                            }).clicked()
-                                        {
-                                            radio_options::change_choice(&mut flameobject.settings.object_type, i as u8);
+                                        blue_flame_common::mapper::ObjectType::Square(label)        => label,
+                                        blue_flame_common::mapper::ObjectType::Triangle(label)      => label,
+                                        blue_flame_common::mapper::ObjectType::Line(label)          => label,
+                                    }).clicked()
+                                {
+                                    radio_options::change_choice(&mut flameobject.settings.object_type, i as u8);
 
-                                            // Creates new flameobject and/or changes flameobject if the user clicks on some random choice button
-                                            blue_flame_common::object_actions::create_shape(flameobject, &Project::selected_dir(&projects), renderer, objects, window);
-                                        }
-                                    }
-                                    */
-                                });
-                                ui.separator();
-        
-                                // Locatin of texture
-                                ui.label("TextureMode");
-                                ui.label("Location of Texture");
-                                if ui.add(egui::TextEdit::singleline(&mut flameobject.settings.texture.file_location)).changed()
+                                    // Creates new flameobject and/or changes flameobject if the user clicks on some random choice button
+                                    blue_flame_common::object_actions::create_shape(flameobject, &Project::selected_dir(&projects), renderer, objects, window);
+                                }
+                            }
+                            */
+                        });
+                        ui.separator();
+
+                        // Locatin of texture
+                        ui.label("TextureMode");
+                        ui.label("Location of Texture");
+                        if ui.add(egui::TextEdit::singleline(&mut flameobject.settings.texture.file_location)).changed()
+                        {
+                            blue_flame_common::object_actions::update_shape::texture(&flameobject, &Project::selected_dir(&projects), objects, renderer);
+                        }
+                        if ui.button("Invert filepath type").clicked()
+                        {
+                            flameobject.settings.texture.file_location = invert_pathtype(&flameobject.settings.texture.file_location, &projects);
+                        }
+
+
+                        // Radio buttons for texturemodes
+                        {
+                            use blue_flame_common::radio_options::Texture;
+                            //let elements = Texture::elements();
+
+                            for element in Texture::elements()
+                            {
+                                if ui.radio_value(&mut flameobject.settings.texture.mode, element, Texture::label(&element)).changed()
                                 {
                                     blue_flame_common::object_actions::update_shape::texture(&flameobject, &Project::selected_dir(&projects), objects, renderer);
                                 }
-                                if ui.button("Invert filepath type").clicked()
-                                {
-                                    flameobject.settings.texture.file_location = invert_pathtype(&flameobject.settings.texture.file_location, &projects);
-                                }
-        
-        
-                                // Radio buttons for texturemodes
-                                {
-                                    use blue_flame_common::radio_options::Texture;
-                                    //let elements = Texture::elements();
-
-                                    for element in Texture::elements()
-                                    {
-                                        if ui.radio_value(&mut flameobject.settings.texture.mode, element, Texture::label(&element)).changed()
-                                        {
-                                            blue_flame_common::object_actions::update_shape::texture(&flameobject, &Project::selected_dir(&projects), objects, renderer);
-                                        }
-                                    }
-                                }
-
-
-                                /*
-                                for i in 0..flameobject.1.texture.mode.len()
-                                {
-                                    if ui.radio(flameobject.1.texture.mode[i], blue_flame_common::mapper::texture::label(i)).clicked()
-                                    {
-                                        radio_options::change_choice(&mut flameobject.1.texture.mode, i as u8);
-                                        blue_flame_common::object_actions::update_shape::texture(&flameobject, &Project::selected_dir(&projects), objects, renderer);
-                                    }
-                                }
-                                */
-                                ui.separator();
-
-                                ui.label("Color");
-                                ui.horizontal(|ui|
-                                {
-                                    if ui.color_edit_button_rgba_unmultiplied(&mut flameobject.settings.color).changed()
-                                    {
-                                        blue_flame_common::object_actions::update_shape::color(&flameobject, objects);
-                                    }
-                                });
-                                ui.separator();
-        
-                                ui.label("Position");
-                                ui.horizontal(|ui|
-                                {
-                                    // Has user moved the shape or not
-                                    let mut update_position = false;
-                                    //let elements = flameobject.settings.position.elements();
-                                    for (value, label) in flameobject.settings.position.elements()
-                                    {
-                                        ui.label(format!("{}:", label as char));
-
-                                        // Use Response::changed or whatever to determine if the value has been changed
-                                        if ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed)).changed()
-                                        {
-                                            update_position = true;
-                                        }
-                                        
-                                    }
-                                    // Updates the shape's position if the user has changed its value
-                                    if update_position == true
-                                    {
-                                        blue_flame_common::object_actions::update_shape::position(&flameobject, objects);
-                                    }
-
-                                    
-                                });
-                                ui.separator();
-
-                                ui.label("Size");
-                                ui.horizontal(|ui|
-                                {
-                                    // Has user moved the shape or not
-                                    let mut update_size = false;
-                                    
-                                    for (value, label) in flameobject.settings.size.elements()
-                                    {
-                                        ui.label(format!("{}:", label as char));
-
-                                        // Use Response::changed or whatever to determine if the value has been changed
-                                        if ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed)).changed()
-                                        {
-                                            //println!("Changed!");
-                                            update_size = true;
-                                        }
-                                        
-                                    }
-                                    // Updates the shape's size if the user has changed its value
-                                    if update_size == true
-                                    {
-                                        //println!("update_position: {update_position}");
-                                        blue_flame_common::object_actions::update_shape::size(&flameobject, objects, window);
-                                    }
-                                    
-                                });
-                                ui.separator();
-
-                                ui.label("Rotation");
-                                ui.horizontal(|ui|
-                                {
-                                    
-                                    for (value, label) in flameobject.settings.rotation.elements()
-                                    {
-                                        ui.label(format!("{}:", label as char));
-
-                                        // Use Response::changed or whatever to determine if the value has been changed
-                                        if ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed)).changed()
-                                        {
-                                            /*
-                                            blue_flame_common::object_actions::update_shape::rotation
-                                            (
-
-                                            )
-                                            */
-                                        }
-                                        
-                                    }
-
-                                    
-                                });
                             }
-                        }  
+                        }
+
+
+                        /*
+                        for i in 0..flameobject.1.texture.mode.len()
+                        {
+                            if ui.radio(flameobject.1.texture.mode[i], blue_flame_common::mapper::texture::label(i)).clicked()
+                            {
+                                radio_options::change_choice(&mut flameobject.1.texture.mode, i as u8);
+                                blue_flame_common::object_actions::update_shape::texture(&flameobject, &Project::selected_dir(&projects), objects, renderer);
+                            }
+                        }
+                        */
+                        ui.separator();
+
+                        ui.label("Color");
+                        ui.horizontal(|ui|
+                        {
+                            if ui.color_edit_button_rgba_unmultiplied(&mut flameobject.settings.color).changed()
+                            {
+                                blue_flame_common::object_actions::update_shape::color(&flameobject, objects);
+                            }
+                        });
+                        ui.separator();
+
+                        ui.label("Position");
+                        ui.horizontal(|ui|
+                        {
+                            // Has user moved the shape or not
+                            let mut update_position = false;
+                            //let elements = flameobject.settings.position.elements();
+                            for (value, label) in flameobject.settings.position.elements()
+                            {
+                                ui.label(format!("{}:", label as char));
+
+                                // Use Response::changed or whatever to determine if the value has been changed
+                                if ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed)).changed()
+                                {
+                                    update_position = true;
+                                }
+                                
+                            }
+                            // Updates the shape's position if the user has changed its value
+                            if update_position == true
+                            {
+                                blue_flame_common::object_actions::update_shape::position(&flameobject, objects);
+                            }
+
+                            
+                        });
+                        ui.separator();
+
+                        ui.label("Size");
+                        ui.horizontal(|ui|
+                        {
+                            // Has user moved the shape or not
+                            let mut update_size = false;
+                            
+                            for (value, label) in flameobject.settings.size.elements()
+                            {
+                                ui.label(format!("{}:", label as char));
+
+                                // Use Response::changed or whatever to determine if the value has been changed
+                                if ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed)).changed()
+                                {
+                                    //println!("Changed!");
+                                    update_size = true;
+                                }
+                                
+                            }
+                            // Updates the shape's size if the user has changed its value
+                            if update_size == true
+                            {
+                                //println!("update_position: {update_position}");
+                                blue_flame_common::object_actions::update_shape::size(&flameobject, objects, window);
+                            }
+                            
+                        });
+                        ui.separator();
+
+                        ui.label("Rotation");
+                        ui.horizontal(|ui|
+                        {
+                            
+                            for (value, label) in flameobject.settings.rotation.elements()
+                            {
+                                ui.label(format!("{}:", label as char));
+
+                                // Use Response::changed or whatever to determine if the value has been changed
+                                if ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed)).changed()
+                                {
+                                    /*
+                                    blue_flame_common::object_actions::update_shape::rotation
+                                    (
+
+                                    )
+                                    */
+                                }
+                                
+                            }
+
+                            
+                        });
+                            
+
                     }
 
                     else if let ViewModes::Scenes = editor_modes.main.1
@@ -1512,7 +1489,8 @@ fn main()
                         if let ViewModes::Objects = editor_modes.main.1
                         {
                             if ui.button("🗑 Delete object").clicked()
-                            || ui.input(|i| i.key_pressed(egui::Key::X))
+                            //|| ui.input(|i| i.key_pressed(egui::Key::X))
+                            || input.key_pressed(VirtualKeyCode::X)
                             {
                                 let mut remove_indexes: Vec<usize> = Vec::new();
                                 
