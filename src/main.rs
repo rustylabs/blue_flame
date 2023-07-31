@@ -518,6 +518,9 @@ fn main()
     // So that I don't have to keep finding out what is the current project dir
     let mut current_project_dir = String::new();
 
+    // If we are typing in text fields we do not want to enable shortcuts such as select all 'a' and delete 'x'
+    let mut enable_shortcuts = true;
+
     // Creates lib dir
     //init_lib(&filepaths.library);
 
@@ -634,6 +637,7 @@ fn main()
         // ui function will provide the context
         egui_plugin.ui(|ctx|
         {
+            enable_shortcuts = true;
             // if true load project scene
             if editor_modes.projects.0 == true
             {
@@ -970,24 +974,7 @@ fn main()
 
                     // Shortcuts
 
-                    // Deselects every object when pressing alt + A
-                    //if ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.alt)
-                    if input.key_held(VirtualKeyCode::LAlt) && input.key_pressed(VirtualKeyCode::A)
-                    {
-                        for flameobject in scene.flameobjects.iter_mut()
-                        {
-                            flameobject.selected = false;
-                        }
-                    }
 
-                    // Selects all objects when pressing A
-                    else if !input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
-                    {
-                        for flameobject in scene.flameobjects.iter_mut()
-                        {
-                            flameobject.selected = true;
-                        }
-                    }
 
                     ui.set_enabled(!alert_window.0);
 
@@ -1270,8 +1257,6 @@ fn main()
 
                     if let ViewModes::Objects = editor_modes.main.1
                     {
-                        // Commands such as grab, size object, rotation etc
-                        shortcut_commands(&mut scene.flameobjects, input);
 
                         if scene.flameobjects.len() > 0
                         {
@@ -1279,6 +1264,7 @@ fn main()
                             // Object name
                             if ui.add(egui::TextEdit::singleline(&mut flameobject.label)).changed()
                             {
+                                enable_shortcuts = false;
                                 // Destroys hashmap
                                 blue_flame_common::object_actions::delete_shape(&label_backup, objects);
                                 
@@ -1295,6 +1281,7 @@ fn main()
                             ui.label("Location of Texture");
                             if ui.add(egui::TextEdit::singleline(&mut flameobject.settings.texture.file_location)).changed()
                             {
+                                enable_shortcuts = false;
                                 blue_flame_common::object_actions::update_shape::texture(&flameobject, &Project::selected_dir(&projects), objects, renderer);
                             }
                             if ui.button("Invert filepath type").clicked()
@@ -1417,6 +1404,7 @@ fn main()
                                 }
                             });
                         }
+                        if enable_shortcuts == true {shortcut_commands(&mut scene.flameobjects, input)}
                     }
 
                     else if let ViewModes::Scenes = editor_modes.main.1
@@ -1461,7 +1449,7 @@ fn main()
                         {
                             if ui.button("🗑 Delete object").clicked()
                             //|| ui.input(|i| i.key_pressed(egui::Key::X))
-                            || input.key_pressed(VirtualKeyCode::X)
+                            || input.key_pressed(VirtualKeyCode::X) && enable_shortcuts == true
                             {
                                 let mut remove_indexes: Vec<usize> = Vec::new();
                                 
@@ -1514,9 +1502,27 @@ fn main()
 
 }
 
+// Commands such as grab, size object, rotation etc
 fn shortcut_commands(flameobjects: &mut [Flameobject], input: &blue_engine::InputHelper)
 {
+    // Deselects every object when pressing alt + A
+    //if ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.alt)
+    if input.key_held(VirtualKeyCode::LAlt) && input.key_pressed(VirtualKeyCode::A)
+    {
+        for flameobject in flameobjects.iter_mut()
+        {
+            flameobject.selected = false;
+        }
+    }
 
+    // Selects all objects when pressing A
+    else if !input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
+    {
+        for flameobject in flameobjects.iter_mut()
+        {
+            flameobject.selected = true;
+        }
+    }
 }
 
 fn tab_spaces(tab_spaces_times: u16) -> String
