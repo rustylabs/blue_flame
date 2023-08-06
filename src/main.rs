@@ -1,7 +1,7 @@
-use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode};
+use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode, MouseButton};
 use blue_engine_egui::{self, egui::{self, Ui, InputState}};
 use blue_flame_common::{filepath_handling, structures::{flameobject::Flameobject, scene::Scene, project_config::ProjectConfig}, db::flameobjects};
-use blue_flame_common::radio_options::ViewModes;
+use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType};
 use std::{process::Command, io::Write};
 
 use std::process::exit;
@@ -506,6 +506,12 @@ fn load_project_scene(is_new_project: bool, scene: &mut Scene, projects: &mut [P
     }
 }
 
+// Invoked via shift+A
+struct RightClickMenu
+{
+    menu_level              : u8, // 0 means not selected, 1 selected, 2 sub menu etc
+    object_type_captured    : Option<ObjectType>,
+}
 
 fn main()
 {
@@ -520,6 +526,10 @@ fn main()
 
     // If we are typing in text fields we do not want to enable shortcuts such as select all 'a' and delete 'x'
     let mut enable_shortcuts = true;
+
+    // 0 not clicked, 1 clicked, 2 sub menu
+    let mut right_click_menu = RightClickMenu{menu_level: 0, object_type_captured: None};
+
 
     // Creates lib dir
     //init_lib(&filepaths.library);
@@ -1011,14 +1021,14 @@ fn main()
                             // Create new flameobject
                             if ui.button("➕ Create object").clicked()
                             //|| ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.shift))
-                            || input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
+                            //|| input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
                             && editor_modes.main.2 == false
                             {
                                 editor_modes.main.2 = true;
 
                                 let len = scene.flameobjects.len() as u16;
 
-                                scene.flameobjects.push(Flameobject::init(len));
+                                scene.flameobjects.push(Flameobject::init(len, None));
                                 Flameobject::change_choice(&mut scene.flameobjects, len);
                                 
                             }
@@ -1404,7 +1414,8 @@ fn main()
                                 }
                             });
                         }
-                        if enable_shortcuts == true {shortcut_commands(&mut scene.flameobjects, input)}
+                        if enable_shortcuts == true {shortcut_commands(&mut scene, &mut editor_modes, &mut right_click_menu, &current_project_dir, input, ctx, ui,
+                            renderer, objects, window)}
                     }
 
                     else if let ViewModes::Scenes = editor_modes.main.1
@@ -1503,13 +1514,111 @@ fn main()
 }
 
 // Commands such as grab, size object, rotation etc
-fn shortcut_commands(flameobjects: &mut [Flameobject], input: &blue_engine::InputHelper)
+fn shortcut_commands(scene: &mut Scene, editor_modes: &mut EditorModes, right_click_menu: &mut RightClickMenu, project_dir: &str, input: &blue_engine::InputHelper,
+    /*Game engine shit*/ ctx: &egui::Context, ui: &mut Ui, renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
 {
+    // selectable_label
+    ui.interact(egui::Rect::EVERYTHING, egui::Id::new("Right click"), egui::Sense::hover()).context_menu(|ui|
+    {
+        ui.label("One");
+        ui.label("Two");
+    });
+
+    struct Axis {x: f32, y: f32}
+    let axis = Axis{x: 300f32, y: 300f32};
+
+    // shift + A: Right click menu
+    if input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A) {right_click_menu.menu_level = 1}
+    if right_click_menu.menu_level >= 1
+    {
+        use blue_flame_common::radio_options::object_type::ObjectType;
+        use blue_flame_common::radio_options::object_type::{light, shape};
+
+        egui::Area::new("right click").fixed_pos(egui::pos2(axis.x, axis.y)).show(ctx, |ui|
+        {
+
+            
+            //egui::Frame::menu(style);
+            //egui::Frame::none()
+            ui.visuals_mut().button_frame = false;
+            egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
+            {
+                // main menu
+                for (object_type, label) in ObjectType::elements(None)
+                {
+                    if ui.button(format!("{}", label)).hovered() {right_click_menu.menu_level = 2; right_click_menu.object_type_captured = Some(object_type)}
+                }
+                
+                // sub menu
+                if right_click_menu.menu_level == 2
+                {
+                    egui::Area::new("sub menu").fixed_pos(egui::pos2(axis.x + 100f32, axis.y)).show(ctx, |ui|
+                    {
+                        ui.visuals_mut().button_frame = false;
+                        egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
+                        {
+                            match right_click_menu.object_type_captured.unwrap()
+                            {
+                                ObjectType::Light(_) => {},
+                                ObjectType::Shape(dimensions) => match dimensions
+                                {
+                                    shape::Dimension::D2(shapes) =>
+                                    {
+                                        for (shape, label) in shape::Shape2D::elements()
+                                        {
+                                            if ui.button(format!("{}", label)).clicked()
+                                            {
+                                                let len = scene.flameobjects.len() as u16;
+                                                right_click_menu.object_type_captured = Some(ObjectType::Shape(shape::Dimension::D2(shape)));
+                                                scene.flameobjects.push(Flameobject::init(len, Some(right_click_menu.object_type_captured.unwrap())));
+                                                Flameobject::change_choice(&mut scene.flameobjects, len);
+                                                for flameobject in scene.flameobjects.iter()
+                                                {
+                                                    if flameobject.selected == true
+                                                    {
+                                                        blue_flame_common::object_actions::create_shape(flameobject, project_dir, renderer, objects, window);
+                                                    }
+                                                }
+                                                
+                                            }
+                                        }
+                                    }
+                                    shape::Dimension::D3(_) => {}
+                                }
+                                ObjectType::Empty => {}
+                            }
+                            
+                        });
+            
+                    });
+                }
+            });
+
+        });
+        ui.visuals_mut().button_frame = true;
+    }
+    else if input.key_pressed_os(VirtualKeyCode::Escape) || input.mouse_pressed(0 /*Left click*/) {right_click_menu.menu_level = 0}
+
+    // Use response https://docs.rs/egui/latest/egui/struct.Response.html#method.context_menu to auto right click
+
+    ui.menu_button("My menu", |ui|
+    {
+        ui.menu_button("Item 1", |ui|
+        {
+            // Handle the action for item 1
+        });
+        ui.menu_button("Item 2", |ui| {
+            // Handle the action for item 2
+        });
+    });
+    
+
+
     // Deselects every object when pressing alt + A
     //if ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.alt)
     if input.key_held(VirtualKeyCode::LAlt) && input.key_pressed(VirtualKeyCode::A)
     {
-        for flameobject in flameobjects.iter_mut()
+        for flameobject in scene.flameobjects.iter_mut()
         {
             flameobject.selected = false;
         }
@@ -1518,10 +1627,16 @@ fn shortcut_commands(flameobjects: &mut [Flameobject], input: &blue_engine::Inpu
     // Selects all objects when pressing A
     else if !input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
     {
-        for flameobject in flameobjects.iter_mut()
+        for flameobject in scene.flameobjects.iter_mut()
         {
             flameobject.selected = true;
         }
+    }
+
+    // Grab objects (position)
+    else if !input.key_held(VirtualKeyCode::G)
+    {
+
     }
 }
 
