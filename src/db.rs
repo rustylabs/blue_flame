@@ -41,7 +41,7 @@ pub mod projects
         let value: (f32, Vec<crate::Project>) = match postcard::from_bytes(&data)
         {
             Ok(d)      => d,
-            Err(e)                                     => {println!("Error on load: {e}"); return;},
+            Err(e)                   => {println!("Error on load: {e}"); return;},
         };
 
         let version = value.0;

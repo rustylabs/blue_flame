@@ -1,6 +1,6 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode, MouseButton};
 use blue_engine_egui::{self, egui::{self, Ui, InputState}};
-use blue_flame_common::{filepath_handling, structures::{flameobject::Flameobject, scene::Scene, project_config::ProjectConfig}, db::flameobjects};
+use blue_flame_common::{filepath_handling, structures::{flameobject::Flameobject, scene::Scene, project_config::ProjectConfig}, db::scene};
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
 use std::{process::Command, io::Write};
 
@@ -489,7 +489,7 @@ fn load_project_scene(is_new_project: bool, scene: &mut Scene, projects: &mut [P
             db::project_config::load(project_config, filepaths, current_project_dir);
 
             //db::scenes::load(scenes, filepaths);
-            blue_flame_common::db::flameobjects::load(scene, &Project::selected_dir(&projects),
+            blue_flame_common::db::scene::load(scene, &Project::selected_dir(&projects),
             &project_config.last_scene_filepath , true, renderer, objects, window);
 
             // If this is a new project we just created
@@ -518,6 +518,7 @@ struct MouseFunctions
     object_mouse_movement   : Option<ObjectMouseMovement>, // grab to move the object etc
 }
 
+const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
 {
 
@@ -541,6 +542,8 @@ fn main()
         object_mouse_movement: None,
     };
 
+    // Used for flameobject's blueprints
+    let mut flameobject_blueprints: Option<blue_flame_common::structures::flameobject::Settings> = None;
 
     // Creates lib dir
     //init_lib(&filepaths.library);
@@ -559,6 +562,8 @@ fn main()
             false /*Create new object window*/
         ),
     };
+
+    let mut previous_viewmode = editor_modes.main.1.clone();
 
 
 
@@ -962,7 +967,7 @@ fn main()
                                 {
                                     if list.label == "💾 Save"
                                     {
-                                        blue_flame_common::db::flameobjects::save(&scene, &filepaths.current_scene, &current_project_dir);
+                                        blue_flame_common::db::scene::save(&scene, &filepaths.current_scene, &current_project_dir);
                                         break;
                                     }
 
@@ -1018,7 +1023,51 @@ fn main()
                         //let elements = ViewModes::elements();
                         for (element, label) in ViewModes::elements()
                         {
-                            ui.selectable_value(&mut editor_modes.main.1, element, label);
+                            if ui.selectable_value(&mut editor_modes.main.1, element, label).changed()
+                            {
+                                match editor_modes.main.1
+                                {
+                                    ViewModes::Objects => 
+                                    {
+                                        if previous_viewmode == ViewModes::Blueprints
+                                        {
+                                            blue_flame_common::object_actions::delete_shape(FLAMEOBJECT_BLUEPRINT_LABEL, objects);
+                                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
+                                                renderer, objects, &window);
+                                        }
+                                        previous_viewmode = editor_modes.main.1.clone();
+                                    }
+                                    ViewModes::Scenes => 
+                                    {
+                                        if previous_viewmode == ViewModes::Blueprints
+                                        {
+                                            blue_flame_common::object_actions::delete_shape(FLAMEOBJECT_BLUEPRINT_LABEL, objects);
+                                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
+                                                renderer, objects, &window);
+                                        }
+                                        previous_viewmode = editor_modes.main.1.clone();
+                                    }
+                                    ViewModes::Blueprints => 
+                                    {
+                                        // Remove all objects from scene then load or create a new object for blueprints variable
+                                        for flameobject in scene.flameobjects.iter()
+                                        {
+                                            blue_flame_common::object_actions::delete_shape(&flameobject.label, objects);
+                                        }
+                                        match flameobject_blueprints
+                                        {
+                                            Some(ref flameobject) =>
+                                            {
+                                                blue_flame_common::object_actions::create_shape(flameobject, &current_project_dir, renderer, objects, window)
+                                            },
+                                            None => {panic!()},
+                                        };
+                                        //blue_flame_common::object_actions::create_shape(flameobject, project_dir, renderer, objects, window)
+
+                                        previous_viewmode = editor_modes.main.1.clone();
+                                    }
+                                }
+                            }
                         }
                         
                     });
@@ -1159,6 +1208,15 @@ fn main()
 
                                 });
                             }
+                            if ui.button("💾 Save current scene").clicked()
+                            || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
+                            //|| input.key_pressed(VirtualKeyCode::LControl || VirtualKeyCode::S)
+                            {
+                                if blue_flame_common::db::scene::save(&scene, &filepaths.current_scene, &current_project_dir) == true
+                                {
+                                    db::project_config::save(&mut project_config, &mut filepaths, &current_project_dir);
+                                }
+                            }
 
 
                         }
@@ -1175,16 +1233,29 @@ fn main()
                                 scene = Scene::init(0);
                                 filepaths.current_scene = String::new();
                             }
-                        }
-                        if ui.button("💾 Save current scene").clicked()
-                        || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
-                        //|| input.key_pressed(VirtualKeyCode::LControl || VirtualKeyCode::S)
-                        {
-                            if blue_flame_common::db::flameobjects::save(&scene, &filepaths.current_scene, &current_project_dir) == true
+                            if ui.button("💾 Save current scene").clicked()
+                            || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
+                            //|| input.key_pressed(VirtualKeyCode::LControl || VirtualKeyCode::S)
                             {
-                                db::project_config::save(&mut project_config, &mut filepaths, &current_project_dir);
+                                if blue_flame_common::db::scene::save(&scene, &filepaths.current_scene, &current_project_dir) == true
+                                {
+                                    db::project_config::save(&mut project_config, &mut filepaths, &current_project_dir);
+                                }
                             }
                         }
+                        else if let ViewModes::Blueprints = editor_modes.main.1
+                        {
+                            if ui.button("➕ Create object").clicked()
+                            {
+
+                            }
+                            if ui.button("💾 Save current blueprint").clicked()
+                            || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
+                            {
+                                blue_flame_common::db::blueprints::save(flameobject_blueprints.as_ref().unwrap(), &filepaths.current_scene, &current_project_dir);
+                            }
+                        }
+
                     });
 
                     ui.separator();
@@ -1260,12 +1331,14 @@ fn main()
                                     //Scene::change_choice(&mut loaded_scene.scene, i);
                                     // load scene
 
-                                    blue_flame_common::db::flameobjects::load(&mut loaded_scene.flameobjects, &Project::selected_dir(&projects), &loaded_scene.scene.filepath(), true, renderer, objects, window);
+                                    blue_flame_common::db::scene::load(&mut loaded_scene.flameobjects, &Project::selected_dir(&projects), &loaded_scene.scene.filepath(), true, renderer, objects, window);
                                 }
                             });
                         }
                         */
                     }
+
+
 
                 }); // Left side
 
@@ -1364,7 +1437,6 @@ fn main()
                                     {
                                         update_position = true;
                                     }
-                                    
                                 }
                                 // Updates the shape's position if the user has changed its value
                                 if update_position == true
@@ -1446,7 +1518,7 @@ fn main()
                         }
                         if ui.button("Load scene").clicked()
                         {
-                            if blue_flame_common::db::flameobjects::load(&mut scene, &current_project_dir, &filepaths.current_scene, true,
+                            if blue_flame_common::db::scene::load(&mut scene, &current_project_dir, &filepaths.current_scene, true,
                                 renderer, objects, window) == true
                             {
                                 project_config.last_scene_filepath = filepaths.current_scene.clone();
@@ -1534,11 +1606,6 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
 {
     use blue_flame_common::convert_graphic_2_math_coords;
 
-
-    {
-        let (mouse_x, mouse_y) = convert_graphic_2_math_coords(input.mouse().unwrap_or_default(), window_size.return_tuple());
-        println!("mouse_x: {mouse_x}, mouse_y: {mouse_y}");
-    }
 
     //println!("mouse_x: {:?}, mouse_y: ", input.mouse_diff());
     // selectable_label
@@ -1647,6 +1714,7 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
     }
 
     // Do something with mouse objects i.e. grab, rotate, size based on key input
+    //else if let mou
     else if input.key_pressed(VirtualKeyCode::G)
     {
         mouse_functions.object_mouse_movement = Some(ObjectMouseMovement::Grab);
@@ -1657,6 +1725,8 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
             {
                 let (mouse_x, mouse_y) = convert_graphic_2_math_coords(input.mouse().unwrap_or_default(), window_size.return_tuple());
                 mouse_functions.captured_coordinates = (mouse_x - flameobject.settings.position.x, mouse_y - flameobject.settings.position.y); // Being used as differences
+                println!("mouse_x: {}", mouse_x);
+                //println!("mouse_functions.captured_coordinates: {:?}\n", mouse_functions.captured_coordinates);
             };
         }
     }
