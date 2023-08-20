@@ -434,7 +434,7 @@ fn object_management(flameobject: &mut Flameobject, projects: &mut [Project], re
     }
     if change_shape == true
     {
-        blue_flame_common::object_actions::create_shape(flameobject, &Project::selected_dir(&projects), renderer, objects, window);
+        blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), renderer, objects, window);
     }
     
 }
@@ -631,7 +631,7 @@ fn main()
     {
         if flameobject.selected == true
         {
-            label_backup = flameobject.label.clone();
+            label_backup = flameobject.settings.label.clone();
             //println!("label_backup: {}", label_backup);
             break;
         }
@@ -1052,13 +1052,13 @@ fn main()
                                         // Remove all objects from scene then load or create a new object for blueprints variable
                                         for flameobject in scene.flameobjects.iter()
                                         {
-                                            blue_flame_common::object_actions::delete_shape(&flameobject.label, objects);
+                                            blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, objects);
                                         }
                                         match flameobject_blueprints
                                         {
-                                            Some(ref flameobject) =>
+                                            Some(ref flameobject_settings) =>
                                             {
-                                                blue_flame_common::object_actions::create_shape(flameobject, &current_project_dir, renderer, objects, window)
+                                                blue_flame_common::object_actions::create_shape(&flameobject_settings, &current_project_dir, renderer, objects, window)
                                             },
                                             None => {panic!()},
                                         };
@@ -1197,7 +1197,7 @@ fn main()
                                                 if flameobject.selected == true
                                                 {
                                                     flameobjects_selected_parent_idx = i as u16;
-                                                    blue_flame_common::object_actions::create_shape(flameobject, &Project::selected_dir(&projects), renderer, objects, window);
+                                                    blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), renderer, objects, window);
                                                     break;
                                                 }
                                             }
@@ -1227,7 +1227,7 @@ fn main()
                             {
                                 for flameobject in scene.flameobjects.iter_mut()
                                 {
-                                    blue_flame_common::object_actions::delete_shape(&flameobject.label, objects);
+                                    blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, objects);
                                 }
 
                                 scene = Scene::init(0);
@@ -1274,14 +1274,14 @@ fn main()
                                 {
                                     ui.label("some stuff");
                                 });
-                                if ui.selectable_label(flameobject.selected, &flameobject.label).clicked()
+                                if ui.selectable_label(flameobject.selected, &flameobject.settings.label).clicked()
                                 {
                                     // if we are not attempting to select multiple items
                                     //if !ui.input(|i| i.modifiers.shift_only())
                                     if !input.key_held(VirtualKeyCode::LShift)
                                     {
                                         //Flameobject::change_choice(&mut scene.flameobjects, i as u16);
-                                        label_backup = flameobject.label.clone();
+                                        label_backup = flameobject.settings.label.clone();
                                         flameobjects_selected_parent_idx = i as u16;
                                         change_choice = true;
                                     }
@@ -1357,7 +1357,7 @@ fn main()
                         {
                             let flameobject = &mut scene.flameobjects[flameobjects_selected_parent_idx as usize];
                             // Object name
-                            if ui.add(egui::TextEdit::singleline(&mut flameobject.label)).changed()
+                            if ui.add(egui::TextEdit::singleline(&mut flameobject.settings.label)).changed()
                             {
                                 enable_shortcuts = false;
                                 // Destroys hashmap
@@ -1365,9 +1365,9 @@ fn main()
                                 
                                 // Creates new shape
                                 //object_management(flameobject, &mut projects, renderer, objects, window, ui);
-                                blue_flame_common::object_actions::create_shape(flameobject, &current_project_dir, renderer, objects, window);
+                                blue_flame_common::object_actions::create_shape(&flameobject.settings, &current_project_dir, renderer, objects, window);
 
-                                label_backup = flameobject.label.clone();
+                                label_backup = flameobject.settings.label.clone();
                                 //println!("label_backup {}", label_backup);
                             }
 
@@ -1377,7 +1377,7 @@ fn main()
                             if ui.add(egui::TextEdit::singleline(&mut flameobject.settings.texture.file_location)).changed()
                             {
                                 enable_shortcuts = false;
-                                blue_flame_common::object_actions::update_shape::texture(&flameobject, &Project::selected_dir(&projects), objects, renderer);
+                                blue_flame_common::object_actions::update_shape::texture(&flameobject.settings, &Project::selected_dir(&projects), objects, renderer);
                             }
                             if ui.button("Invert filepath type").clicked()
                             {
@@ -1394,7 +1394,7 @@ fn main()
                                 {
                                     if ui.radio_value(&mut flameobject.settings.texture.mode, element, Texture::label(&element)).changed()
                                     {
-                                        blue_flame_common::object_actions::update_shape::texture(&flameobject, &Project::selected_dir(&projects), objects, renderer);
+                                        blue_flame_common::object_actions::update_shape::texture(&flameobject.settings, &Project::selected_dir(&projects), objects, renderer);
                                     }
                                 }
                             }
@@ -1417,7 +1417,7 @@ fn main()
                             {
                                 if ui.color_edit_button_rgba_unmultiplied(&mut flameobject.settings.color).changed()
                                 {
-                                    blue_flame_common::object_actions::update_shape::color(&flameobject, objects);
+                                    blue_flame_common::object_actions::update_shape::color(&flameobject.settings, objects);
                                 }
                             });
                             ui.separator();
@@ -1441,7 +1441,7 @@ fn main()
                                 // Updates the shape's position if the user has changed its value
                                 if update_position == true
                                 {
-                                    blue_flame_common::object_actions::update_shape::position(&flameobject, objects);
+                                    blue_flame_common::object_actions::update_shape::position(&flameobject.settings, objects);
                                 }
 
                                 
@@ -1470,7 +1470,7 @@ fn main()
                                 if update_size == true
                                 {
                                     //println!("update_position: {update_position}");
-                                    blue_flame_common::object_actions::update_shape::size(&flameobject, objects, window);
+                                    blue_flame_common::object_actions::update_shape::size(&flameobject.settings, objects, window);
                                 }
                                 
                             });
@@ -1555,7 +1555,7 @@ fn main()
                                 {
                                     if flameobject.selected == true
                                     {
-                                        blue_flame_common::object_actions::delete_shape(&flameobject.label, objects);
+                                        blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, objects);
                                         remove_indexes.push(i);
                                     }
                                 }
@@ -1670,7 +1670,7 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
                                                     if flameobject.selected == true
                                                     {
                                                         *flameobjects_selected_parent_idx = i as u16;
-                                                        blue_flame_common::object_actions::create_shape(flameobject, project_dir, renderer, objects, window);
+                                                        blue_flame_common::object_actions::create_shape(&flameobject.settings, project_dir, renderer, objects, window);
                                                     }
                                                 }
                                                 
