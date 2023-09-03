@@ -1,4 +1,54 @@
 // Manages all projects and points to scenes
+// Blue prints for a particular object's settings such as texture, color etc, essecially saving the flameboject's settings structure
+pub mod blueprint
+{
+    use std::io::Read;
+    use blue_flame_common::structures::flameobject;
+    use crate::filepath_handling;
+    
+
+    const VERSION: f32 = 0.1;
+
+    pub fn save(flameobject_blueprints: &flameobject::Settings, filepath: &str, project_dir: &str)
+    {
+        let data = postcard::to_stdvec(&(VERSION, flameobject_blueprints)).unwrap();
+
+        match std::fs::write(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)), &data)
+        {
+            Ok(_)               => {println!("blueprints saved!")},
+            Err(e)       => {println!("blueprints save error: {e}")},
+        }
+    }
+
+    pub fn load(flameobject_blueprints: &mut flameobject::Settings, filepath: &str, project_dir: &str)
+    {
+        let mut file = match std::fs::File::open(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)))
+        {
+            Ok(d) => {println!("blueprints: {} loaded!", filepath); d},
+            Err(e) => {println!("Load error on blueprints: {}: {e}", filepath); return},
+        };
+
+        let mut data = Vec::new();
+        match file.read_to_end(&mut data)
+        {
+            Ok(_)               => {},
+            Err(e)       => println!("read_to_end error {e}"),
+        }
+
+        //let value: (f32, Vec<(Object, Object1)>) = match postcard::from_bytes(&file)
+        let value: (f32, flameobject::Settings) = match postcard::from_bytes(&data)
+        {
+            Ok(d)      => d,
+            Err(e)                  => {println!("Error on load: {e}"); return},
+        };
+
+        let version = value.0;
+        *flameobject_blueprints = value.1;
+
+        //println!("db version blueprints {FILE_NAME}: {}", version);
+    }
+}
+
 pub mod projects
 {
     use std::io::Read;
