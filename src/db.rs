@@ -4,23 +4,33 @@ pub mod blueprint
 {
     use std::io::Read;
     use blue_flame_common::structures::flameobject;
+    use blue_engine::{ObjectStorage, Window, Renderer};
     use crate::filepath_handling;
     
 
     const VERSION: f32 = 0.1;
 
-    pub fn save(flameobject_blueprints: &flameobject::Settings, filepath: &str, project_dir: &str)
+    pub fn save(flameobject_blueprints: &Option<flameobject::Settings>, filepath: &str, project_dir: &str)
     {
-        let data = postcard::to_stdvec(&(VERSION, flameobject_blueprints)).unwrap();
-
-        match std::fs::write(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)), &data)
+        println!("Executed");
+        match flameobject_blueprints
         {
-            Ok(_)               => {println!("blueprints saved!")},
-            Err(e)       => {println!("blueprints save error: {e}")},
+            Some(value) =>
+            {
+                let data = postcard::to_stdvec(&(VERSION, value)).unwrap();
+                match std::fs::write(format!("{}/{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir), value.label), &data)
+                {
+                    Ok(_)               => {println!("blueprints saved!")},
+                    Err(e)       => {println!("blueprints save error: {e}")},
+                }
+            }
+            None => {println!("flameobject_blueprints is None, NOT saving!")}
         }
+
     }
 
-    pub fn load(flameobject_blueprints: &mut flameobject::Settings, filepath: &str, project_dir: &str)
+    pub fn load(flameobject_blueprints: &mut Option<flameobject::Settings>, filepath: &str, project_dir: &str,
+    /*Game engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
     {
         let mut file = match std::fs::File::open(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)))
         {
@@ -43,7 +53,9 @@ pub mod blueprint
         };
 
         let version = value.0;
-        *flameobject_blueprints = value.1;
+        *flameobject_blueprints = Some(value.1);
+
+        blue_flame_common::object_actions::create_shape(flameobject_blueprints.as_ref().unwrap(), project_dir, renderer, objects, window);
 
         //println!("db version blueprints {FILE_NAME}: {}", version);
     }

@@ -445,6 +445,20 @@ fn load_project_scene(is_new_project: bool, scene: &mut Scene, projects: &mut [P
     /*Engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window
 )
 {
+    // If we have already loaded up the project just load the stuff from memory rather than db
+    if is_new_project == false
+    {
+        for (i, flameobject) in scene.flameobjects.iter().enumerate()
+        {
+            if flameobject.selected == true
+            {
+                *flameobjects_selected_parent_idx = i as u16;
+            }
+            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), renderer, objects, window);
+        }
+        return;
+    }
+
     let projects_len = projects.len() - 1;
 
     //Project::change_choice(projects, projects_len);
@@ -692,7 +706,7 @@ fn main()
                         || (input.key_pressed(VirtualKeyCode::Return) || input.key_pressed(VirtualKeyCode::NumpadEnter))
                         {
                             // Load existing project
-                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
+                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
                                 renderer, objects, &window);
                         }
                         if ui.button(format!("{} Create/import project", emojis.add)).clicked()
@@ -1028,6 +1042,7 @@ fn main()
                         {
                             if ui.selectable_value(&mut editor_modes.main.1, element, label).changed()
                             {
+                                // Switching between tabs
                                 match editor_modes.main.1
                                 {
                                     ViewModes::Objects => 
@@ -1206,16 +1221,40 @@ fn main()
                                     None => {}
                                 }
                             }
-
+                            // Top left hand side when in blueprint view mode
                             if ui.button(format!("{} Save blueprint", emojis.save)).clicked()
                             || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
                             {
-                                save_blueprint(flameobject_blueprint.as_ref().unwrap(), &blueprint_savefolderpath, &current_project_dir);
+                                save_blueprint(&flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir);
                                 //db::blueprints::save(flameobject_blueprint.as_ref().unwrap(), &filepaths.current_scene, &current_project_dir);
                             }
                         }
 
                     });
+
+                    // Temporary solution, will remove it when file explorer can be integrated
+                    // Only created for testing purposes
+                    if let ViewModes::Objects = editor_modes.main.1
+                    {
+                        if ui.button(format!("{} Load current blueprint", emojis.load)).clicked()
+                        {
+                            match flameobject_blueprint
+                            {
+                                Some(ref value) => 
+                                {
+                                    let len = scene.flameobjects.len() as u16;
+                                    scene.flameobjects.push(Flameobject::init(len, None));
+                                    scene.flameobjects[len as usize].settings = value.clone();
+                                    Flameobject::change_choice(&mut scene.flameobjects, len);
+
+                                    flameobjects_selected_parent_idx = len;
+                                    blue_flame_common::object_actions::create_shape(&scene.flameobjects[len as usize].settings,
+                                        &Project::selected_dir(&projects), renderer, objects, window);
+                                }
+                                None => println!("None in flameobject_blueprint"),
+                            }
+                        }
+                    }
 
                     ui.separator();
 
@@ -1301,6 +1340,10 @@ fn main()
                     {
                         ui.label("Save location of blueprint:");
                         ui.add(egui::TextEdit::singleline(&mut blueprint_savefolderpath));
+                        if ui.button("Load blueprint").clicked()
+                        {
+                            db::blueprint::load(&mut flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir, renderer, objects, window);
+                        }
                     }
 
                 }); // Left side
@@ -1396,7 +1439,7 @@ fn main()
                         // blue print save button
                         if ui.button(format!("{} Save blueprint", emojis.save)).clicked()
                         {
-                            save_blueprint(flameobject_blueprint.as_ref().unwrap(), &blueprint_savefolderpath, &current_project_dir);
+                            save_blueprint(&flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir);
                         }
                     }
 
@@ -1883,28 +1926,7 @@ fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects:
 
 }
 
-fn save_blueprint(flameobject_blueprint: &flameobject::Settings, folderpath: &str, current_project_dir: &str)
+fn save_blueprint(flameobject_blueprint: &Option<flameobject::Settings>, folderpath: &str, current_project_dir: &str)
 {
-    if folderpath != ""
-    {
-        db::blueprint::save(&flameobject_blueprint, &format!("{}/{}", folderpath, flameobject_blueprint.label), current_project_dir);
-    }
-}
-
-mod radio_options
-{
-    pub fn change_choice(list: &mut[bool], choice_true: u8)
-    {
-        for (i, item) in list.iter_mut().enumerate()
-        {
-            if i as u8 == choice_true
-            {
-                *item = true;
-            }
-            else
-            {
-                *item = false;
-            }
-        }
-    }
+    db::blueprint::save(&flameobject_blueprint, folderpath, current_project_dir);
 }
