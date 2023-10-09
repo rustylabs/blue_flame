@@ -10,10 +10,10 @@ pub mod blueprint
 
     const VERSION: f32 = 0.1;
 
-    pub fn save(flameobject_blueprints: &Option<flameobject::Settings>, filepath: &str, project_dir: &str)
+    pub fn save(flameobject_blueprint: &Option<flameobject::Settings>, filepath: &str, project_dir: &str)
     {
         println!("Executed");
-        match flameobject_blueprints
+        match flameobject_blueprint
         {
             Some(value) =>
             {
@@ -24,12 +24,12 @@ pub mod blueprint
                     Err(e)       => {println!("blueprints save error: {e}")},
                 }
             }
-            None => {println!("flameobject_blueprints is None, NOT saving!")}
+            None => {println!("flameobject_blueprint is None, NOT saving!")}
         }
 
     }
 
-    pub fn load(flameobject_blueprints: &mut Option<flameobject::Settings>, filepath: &str, project_dir: &str,
+    pub fn load(flameobject_blueprint: &mut Option<flameobject::Settings>, filepath: &str, project_dir: &str,
     /*Game engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
     {
         let mut file = match std::fs::File::open(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)))
@@ -53,9 +53,9 @@ pub mod blueprint
         };
 
         let version = value.0;
-        *flameobject_blueprints = Some(value.1);
+        *flameobject_blueprint = Some(value.1);
 
-        blue_flame_common::object_actions::create_shape(flameobject_blueprints.as_ref().unwrap(), project_dir, renderer, objects, window);
+        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, renderer, objects, window);
 
         //println!("db version blueprints {FILE_NAME}: {}", version);
     }

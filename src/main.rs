@@ -440,13 +440,13 @@ fn object_management(flameobject_settings: &mut flameobject::Settings, projects:
 }
 
 // Used for either loading already existing project or a brand new project
-fn load_project_scene(is_new_project: bool, scene: &mut Scene, projects: &mut [Project],  filepaths: &mut FilePaths,
+fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Project],  filepaths: &mut FilePaths,
     project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes, flameobjects_selected_parent_idx: &mut u16,
     /*Engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window
 )
 {
     // If we have already loaded up the project just load the stuff from memory rather than db
-    if is_new_project == false
+    if is_loaded == true
     {
         for (i, flameobject) in scene.flameobjects.iter().enumerate()
         {
@@ -706,7 +706,7 @@ fn main()
                         || (input.key_pressed(VirtualKeyCode::Return) || input.key_pressed(VirtualKeyCode::NumpadEnter))
                         {
                             // Load existing project
-                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
+                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
                                 renderer, objects, &window);
                         }
                         if ui.button(format!("{} Create/import project", emojis.add)).clicked()
@@ -895,7 +895,7 @@ fn main()
                                     }
 
                                     // Load new project
-                                    load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
+                                    load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
                                         renderer, objects, &window);
                                 }
                             });
@@ -1053,7 +1053,7 @@ fn main()
                                             {
                                                 blue_flame_common::object_actions::delete_shape(&value.label, objects);
                                             }
-                                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
+                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
                                                 renderer, objects, &window);
                                         }
                                         previous_viewmode = editor_modes.main.1.clone();
@@ -1066,7 +1066,7 @@ fn main()
                                             {
                                                 blue_flame_common::object_actions::delete_shape(&value.label, objects);
                                             }
-                                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
+                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
                                                 renderer, objects, &window);
                                         }
                                         previous_viewmode = editor_modes.main.1.clone();
@@ -1225,7 +1225,33 @@ fn main()
                             if ui.button(format!("{} Save blueprint", emojis.save)).clicked()
                             || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
                             {
+                                
                                 save_blueprint(&flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir);
+                                match flameobject_blueprint
+                                {
+                                    // WHen user preses save for blueprint object, any regular object inherited from blueprint and its changes will be affected 
+                                    Some(ref flameobject_blueprint) =>
+                                    {
+                                        for flameobject in scene.flameobjects.iter_mut()
+                                        {
+                                            match flameobject.settings.blueprint_label
+                                            {
+                                                Some(ref blueprint_label) =>
+                                                {
+                                                    if *blueprint_label == flameobject_blueprint.label
+                                                    {
+                                                        flameobject.settings.texture = flameobject_blueprint.texture.clone();
+                                                        flameobject.settings.color = flameobject_blueprint.color.clone();
+                                                        flameobject.settings.rotation = flameobject_blueprint.rotation.clone();
+                                                        flameobject.settings.size = flameobject_blueprint.size.clone();
+                                                    }
+                                                }
+                                                None => continue,
+                                            }
+                                        }
+                                    },
+                                    None => {},
+                                }
                                 //db::blueprints::save(flameobject_blueprint.as_ref().unwrap(), &filepaths.current_scene, &current_project_dir);
                             }
                         }
@@ -1236,7 +1262,7 @@ fn main()
                     // Only created for testing purposes
                     if let ViewModes::Objects = editor_modes.main.1
                     {
-                        if ui.button(format!("{} Load current blueprint", emojis.load)).clicked()
+                        if ui.button(format!("{} Blueprint in main scene", emojis.load)).clicked()
                         {
                             match flameobject_blueprint
                             {
@@ -1245,6 +1271,7 @@ fn main()
                                     let len = scene.flameobjects.len() as u16;
                                     scene.flameobjects.push(Flameobject::init(len, None));
                                     scene.flameobjects[len as usize].settings = value.clone();
+                                    scene.flameobjects[len as usize].settings.blueprint_label = Some(String::from(format!("{}", value.label)));
                                     Flameobject::change_choice(&mut scene.flameobjects, len);
 
                                     flameobjects_selected_parent_idx = len;
@@ -1368,10 +1395,22 @@ fn main()
                                 ui, renderer, objects, window);
 
                         }
+
+                        /*
                         if enable_shortcuts == true {shortcut_commands(&mut scene.flameobjects, &mut flameobjects_selected_parent_idx, &mut editor_modes, &mut mouse_functions,
                             &current_project_dir, &window_size,
                             input, ctx, ui,
                             renderer, objects, window)}
+                        */
+                        if enable_shortcuts == true
+                        {
+                            match right_click_menu(&mut mouse_functions, input, ctx)
+                            {
+                                Some(object_type_captured) => CreateNewFlameObject::flameobject(&object_type_captured, &mut scene.flameobjects,
+                                    &mut flameobjects_selected_parent_idx, &current_project_dir, renderer, objects, window),
+                                None => {},
+                            }
+                        }
                     }
 
                     else if let ViewModes::Scenes = editor_modes.main.1
@@ -1417,11 +1456,20 @@ fn main()
                             None => {}
                         }
 
+                        /*
                         if enable_shortcuts == true {shortcut_commands(&mut scene.flameobjects, &mut flameobjects_selected_parent_idx, &mut editor_modes, &mut mouse_functions,
                             &current_project_dir, &window_size,
                             input, ctx, ui,
                             renderer, objects, window)}
-                    
+                        */
+                        if enable_shortcuts == true
+                        {
+                            match right_click_menu(&mut mouse_functions, input, ctx)
+                            {
+                                Some(object_type_captured) => CreateNewFlameObject::blueprint(&object_type_captured, &mut flameobject_blueprint, &current_project_dir, renderer, objects, window),
+                                None => {},
+                            }
+                        }
  
                     }
 
@@ -1488,6 +1536,115 @@ fn main()
             
         }, &window)
     }).unwrap();
+
+}
+
+
+// Generic way to create either flameobject or blueprint
+struct CreateNewFlameObject;
+impl CreateNewFlameObject
+{
+    fn flameobject(object_type_captured: &ObjectType, flameobjects: &mut Vec<Flameobject>, flameobjects_selected_parent_idx: &mut u16, project_dir: &str,
+        renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
+    {
+        let len = flameobjects.len() as u16;
+        flameobjects.push(Flameobject::init(len, Some(*object_type_captured)));
+        Flameobject::change_choice(flameobjects, len);
+        for (i, flameobject) in flameobjects.iter().enumerate()
+        {
+            if flameobject.selected == true
+            {
+                *flameobjects_selected_parent_idx = i as u16;
+                blue_flame_common::object_actions::create_shape(&flameobject.settings, project_dir, renderer, objects, window);
+            }
+        }
+    }
+    fn blueprint(object_type_captured: &ObjectType, flameobject_blueprint: &mut Option<flameobject::Settings>, project_dir: &str,
+        renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
+    {
+        //flameobject_blueprint = Some(Flameobject::init(len, Some(*object_type_captured)));
+        *flameobject_blueprint = Some(flameobject::Settings::init(0, Some(*object_type_captured)));
+        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, renderer, objects, window);
+    }
+}
+
+fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::InputHelper, ctx: &egui::Context) -> Option<ObjectType>
+{
+    let mut create_object: Option<ObjectType> = None;
+    // shift + A: Right click menu
+    if input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
+    {
+        mouse_functions.is_right_clicked = true;
+        mouse_functions.captured_coordinates = input.mouse().unwrap_or_default();
+    }
+    if mouse_functions.is_right_clicked == true
+    {
+        //use blue_flame_common::radio_options::object_type::ObjectType;
+        use blue_flame_common::radio_options::object_type::{light, shape};
+
+        //egui::Area::new("right click").fixed_pos(egui::pos2(axis.x, axis.y)).show(ctx, |ui|
+        egui::Area::new("right click").fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0, mouse_functions.captured_coordinates.1)).show(ctx, |ui|
+        {
+            ui.visuals_mut().button_frame = false;
+            egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
+            {
+                // main menu
+                for (object_type, label) in ObjectType::elements(None)
+                {
+                    if ui.button(format!("{}", label)).hovered() {mouse_functions.object_type_captured = Some(object_type)}
+                }
+                
+                // sub menu
+                if mouse_functions.object_type_captured != None
+                {
+                    const SUBMENU_DISTANCE_OFFSET: f32 = 60f32;
+                    egui::Area::new("sub menu").fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0 + SUBMENU_DISTANCE_OFFSET, mouse_functions.captured_coordinates.1)).show(ctx, |ui|
+                    {
+                        ui.visuals_mut().button_frame = false;
+                        egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
+                        {
+                            match mouse_functions.object_type_captured.unwrap()
+                            {
+                                ObjectType::Light(_) => {},
+                                ObjectType::Shape(dimensions) => match dimensions
+                                {
+                                    shape::Dimension::D2(shape) =>
+                                    {
+                                        for (shape, label) in shape::Shape2D::elements()
+                                        {
+                                            if ui.button(format!("{}", label)).clicked()
+                                            {
+                                                mouse_functions.is_right_clicked = false;
+                                                create_object = Some(ObjectType::Shape(shape::Dimension::D2(shape)));
+                                            }
+                                        }
+                                    }
+                                    shape::Dimension::D3(_) => {}
+                                }
+                                ObjectType::Empty => {}
+                            }
+                            
+                        });
+            
+                    });
+                }
+            });
+
+        });
+    }
+    return create_object;
+}
+
+mod shortcut_commands
+{
+    // Determines what keyboard shortcut user has pressed, i.e. shift+A will then call right_click_menu()
+    fn shortcut_commands()
+    {
+
+    }
+    use super::*;
+    // Right click menu to add stuff such as object or light etc, pressed by shift + A
+
 
 }
 
@@ -1683,6 +1840,13 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         //println!("label_backup {}", label_backup);
     }
 
+    ui.label(format!("Blueprint label key: {}", match flameobject_settings.blueprint_label
+    {
+        Some(ref blueprint_label) => blueprint_label.clone(),
+        None => "None".to_string(),
+    }));
+    
+    ui.separator();
     // Locatin of texture
     ui.label("TextureMode");
     ui.label("Location of Texture");
