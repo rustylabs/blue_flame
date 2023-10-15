@@ -1225,7 +1225,6 @@ fn main()
                             if ui.button(format!("{} Save blueprint", emojis.save)).clicked()
                             || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
                             {
-                                
                                 save_blueprint(&flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir);
                                 match flameobject_blueprint
                                 {
@@ -1234,11 +1233,11 @@ fn main()
                                     {
                                         for flameobject in scene.flameobjects.iter_mut()
                                         {
-                                            match flameobject.settings.blueprint_label
+                                            match flameobject.settings.blueprint_key
                                             {
                                                 Some(ref blueprint_label) =>
                                                 {
-                                                    if *blueprint_label == flameobject_blueprint.label
+                                                    if blueprint_label.0 == flameobject_blueprint.label && blueprint_label.1 == true
                                                     {
                                                         flameobject.settings.texture = flameobject_blueprint.texture.clone();
                                                         flameobject.settings.color = flameobject_blueprint.color.clone();
@@ -1271,7 +1270,7 @@ fn main()
                                     let len = scene.flameobjects.len() as u16;
                                     scene.flameobjects.push(Flameobject::init(len, None));
                                     scene.flameobjects[len as usize].settings = value.clone();
-                                    scene.flameobjects[len as usize].settings.blueprint_label = Some(String::from(format!("{}", value.label)));
+                                    scene.flameobjects[len as usize].settings.blueprint_key = Some((String::from(format!("{}", value.label)), true));
                                     Flameobject::change_choice(&mut scene.flameobjects, len);
 
                                     flameobjects_selected_parent_idx = len;
@@ -1840,11 +1839,24 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         //println!("label_backup {}", label_backup);
     }
 
-    ui.label(format!("Blueprint label key: {}", match flameobject_settings.blueprint_label
+    ui.horizontal(|ui|
     {
-        Some(ref blueprint_label) => blueprint_label.clone(),
-        None => "None".to_string(),
-    }));
+        ui.label(format!("Blueprint label key: {}", match flameobject_settings.blueprint_key
+        {
+            Some(ref blueprint_key) => blueprint_key.0.clone(),
+            None => "None".to_string(),
+        }));
+    
+        match flameobject_settings.blueprint_key
+        {
+            Some(ref mut blueprint_key) => 
+            {
+                ui.checkbox(&mut blueprint_key.1, "Modify?");
+            },
+            None => {},
+        }
+    });
+
     
     ui.separator();
     // Locatin of texture
