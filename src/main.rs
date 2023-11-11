@@ -2,6 +2,7 @@ use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ 
 use blue_engine_egui::{self, egui::{self, Ui, InputState}};
 use blue_flame_common::{filepath_handling, structures::{flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig}, db::scene, emojis::Emojis};
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
+use blue_flame_common::undo_redo;
 use std::{process::Command, io::Write, f32::consts::E};
 
 use std::process::exit;
@@ -531,6 +532,7 @@ struct MouseFunctions
     captured_coordinates    : (f32, f32), // Captures the coordinates at any given time, can be even used with difference between object and mouse
     object_mouse_movement   : Option<ObjectMouseMovement>, // grab to move the object etc
 }
+
 
 //const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
@@ -1405,7 +1407,7 @@ fn main()
                         {
                             match right_click_menu(&mut mouse_functions, input, ctx)
                             {
-                                Some(object_type_captured) => CreateNewFlameObject::flameobject(&object_type_captured, &mut scene.flameobjects,
+                                Some(object_type_captured) => CreateNewFlameObject::flameobject(&object_type_captured, &mut scene,
                                     &mut flameobjects_selected_parent_idx, &current_project_dir, renderer, objects, window),
                                 None => {},
                             }
@@ -1500,6 +1502,7 @@ fn main()
                             || input.key_pressed(VirtualKeyCode::X) && enable_shortcuts == true
                             {
                                 let mut remove_indexes: Vec<usize> = Vec::new();
+                                let mut copy_over_undoredo: Vec<flameobject::Flameobject> = Vec::new();
                                 
                                 // Deletes object from game engine and stores the index of vector to remove
                                 for (i, flameobject) in scene.flameobjects.iter().enumerate()
@@ -1513,9 +1516,11 @@ fn main()
                                 // Removes any element in flameobjects from vector based on the remove_indexes vector
                                 for remove_index in remove_indexes.iter().rev()
                                 {
+                                    copy_over_undoredo.push(scene.flameobjects[*remove_index].copy());
                                     scene.flameobjects.remove(*remove_index);
                                 }
-                                Flameobject::recalculate_id(&mut scene.flameobjects);
+                                scene.undo_redo.save_action(undo_redo::Action::Delete(copy_over_undoredo));
+                                //Flameobject::recalculate_id(&mut scene.flameobjects);
                                 //flameobjects_selected_parent_idx = (scene.flameobjects.len() - 1) as u16;
                                 flameobjects_selected_parent_idx = blue_flame_common::range_limiter(scene.flameobjects.len() as i32 - 1i32,
                                 u16::MIN as i32, u16::MAX as i32) as u16
@@ -1532,7 +1537,6 @@ fn main()
 
                 }); // Right side
             }
-            
         }, &window)
     }).unwrap();
 
@@ -1543,13 +1547,22 @@ fn main()
 struct CreateNewFlameObject;
 impl CreateNewFlameObject
 {
-    fn flameobject(object_type_captured: &ObjectType, flameobjects: &mut Vec<Flameobject>, flameobjects_selected_parent_idx: &mut u16, project_dir: &str,
+    fn flameobject(object_type_captured: &ObjectType, /*flameobjects: &mut Vec<Flameobject>*/  scene: &mut Scene,
+        flameobjects_selected_parent_idx: &mut u16, project_dir: &str,
         renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
     {
-        let len = flameobjects.len() as u16;
-        flameobjects.push(Flameobject::init(len, Some(*object_type_captured)));
-        Flameobject::change_choice(flameobjects, len);
-        for (i, flameobject) in flameobjects.iter().enumerate()
+        let len = scene.flameobjects.len() as u16;
+        let id = Flameobject::get_available_id(&mut scene.flameobjects);
+        println!("id: {}", id);
+
+        scene.flameobjects.push(Flameobject::init(id, Some(*object_type_captured)));
+        Flameobject::change_choice(&mut scene.flameobjects, len);
+        *flameobjects_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
+        scene.undo_redo.save_action(undo_redo::Action::Create(scene.flameobjects[*flameobjects_selected_parent_idx as usize].settings.object_type));
+        blue_flame_common::object_actions::create_shape(&scene.flameobjects[*flameobjects_selected_parent_idx as usize].settings, project_dir, renderer, objects, window);
+
+        /*
+        for (i, flameobject) in scene.flameobjects.iter().enumerate()
         {
             if flameobject.selected == true
             {
@@ -1557,6 +1570,7 @@ impl CreateNewFlameObject
                 blue_flame_common::object_actions::create_shape(&flameobject.settings, project_dir, renderer, objects, window);
             }
         }
+        */
     }
     fn blueprint(object_type_captured: &ObjectType, flameobject_blueprint: &mut Option<flameobject::Settings>, project_dir: &str,
         renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
