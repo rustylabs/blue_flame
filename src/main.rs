@@ -1167,6 +1167,7 @@ fn main()
                                 }
                             }
 
+                            ui.separator();
 
                         }
                         else if let ViewModes::Scenes = editor_modes.main.1
@@ -1258,6 +1259,27 @@ fn main()
                         }
 
                     });
+                    ui.separator();
+                    // UndoRedo
+                    ui.horizontal(|ui|
+                    {
+                        if ui.button(format!("{} Undo", emojis.undo_redo.undo)).clicked()
+                        || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
+                        {
+                            scene.undo_redo.undo(&mut scene.flameobjects, &mut flameobjects_selected_parent_idx, &current_project_dir, renderer, objects, window);
+                        }
+                        if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
+                        || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::R)
+                        {
+                            scene.undo_redo.redo();
+                        }
+                        if ui.button(format!("{} Clear buf", emojis.trash)).clicked()
+                        {
+                            scene.undo_redo.clear_buffer();
+                        }
+                    });
+
+                    ui.separator();
 
                     // Temporary solution, will remove it when file explorer can be integrated
                     // Only created for testing purposes
@@ -1498,11 +1520,10 @@ fn main()
                         if let ViewModes::Objects = editor_modes.main.1
                         {
                             if ui.button(format!("{} Delete object", emojis.trash)).clicked()
-                            //|| ui.input(|i| i.key_pressed(egui::Key::X))
                             || input.key_pressed(VirtualKeyCode::X) && enable_shortcuts == true
                             {
                                 let mut remove_indexes: Vec<usize> = Vec::new();
-                                let mut copy_over_undoredo: Vec<flameobject::Flameobject> = Vec::new();
+                                let mut copy_over_undoredo: Vec<(flameobject::Flameobject, u16)> = Vec::new();
                                 
                                 // Deletes object from game engine and stores the index of vector to remove
                                 for (i, flameobject) in scene.flameobjects.iter().enumerate()
@@ -1516,7 +1537,7 @@ fn main()
                                 // Removes any element in flameobjects from vector based on the remove_indexes vector
                                 for remove_index in remove_indexes.iter().rev()
                                 {
-                                    copy_over_undoredo.push(scene.flameobjects[*remove_index].copy());
+                                    copy_over_undoredo.push((scene.flameobjects[*remove_index].copy(), *remove_index as u16));
                                     scene.flameobjects.remove(*remove_index);
                                 }
                                 scene.undo_redo.save_action(undo_redo::Action::Delete(copy_over_undoredo));
@@ -1661,8 +1682,10 @@ mod shortcut_commands
 
 }
 
+/*
+
 // Commands such as grab, size object, rotation etc
-fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_parent_idx: &mut u16, editor_modes: &mut EditorModes, mouse_functions: &mut MouseFunctions,
+fn shortcut_commands(scene: &mut Scene, flameobjects_selected_parent_idx: &mut u16, editor_modes: &mut EditorModes, mouse_functions: &mut MouseFunctions,
     project_dir: &str, window_size: &WindowSize,
     /*Game engine shit*/ input: &blue_engine::InputHelper, ctx: &egui::Context, ui: &mut Ui, renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
 {
@@ -1671,15 +1694,16 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
 
     //println!("mouse_x: {:?}, mouse_y: ", input.mouse_diff());
     // selectable_label
-    ui.interact(egui::Rect::EVERYTHING, egui::Id::new("Right click"), egui::Sense::hover()).context_menu(|ui|
-    {
-        ui.label("One");
-        ui.label("Two");
-    });
 
     //println!("x: {}, y: {}", input.mouse().unwrap_or_default().0, input.mouse().unwrap_or_default().1);
 
-    // shift + A: Right click menu
+    // Undo (ctrl + Z)
+    if input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
+    {
+
+    }
+    /*
+    // Right click menu (shift + A)
     if input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
     {
         mouse_functions.is_right_clicked = true;
@@ -1723,11 +1747,11 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
                                             {
                                                 mouse_functions.is_right_clicked = false;
 
-                                                let len = flameobjects.len() as u16;
+                                                let len = scene.flameobjects.len() as u16;
                                                 mouse_functions.object_type_captured = Some(ObjectType::Shape(shape::Dimension::D2(shape)));
-                                                flameobjects.push(Flameobject::init(len, Some(mouse_functions.object_type_captured.unwrap())));
-                                                Flameobject::change_choice(flameobjects, len);
-                                                for (i, flameobject) in flameobjects.iter().enumerate()
+                                                scene.flameobjects.push(Flameobject::init(len, Some(mouse_functions.object_type_captured.unwrap())));
+                                                Flameobject::change_choice(&mut scene.flameobjects, len);
+                                                for (i, flameobject) in scene.flameobjects.iter().enumerate()
                                                 {
                                                     if flameobject.selected == true
                                                     {
@@ -1760,7 +1784,7 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
     //if ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.alt)
     if input.key_held(VirtualKeyCode::LAlt) && input.key_pressed(VirtualKeyCode::A)
     {
-        for flameobject in flameobjects.iter_mut()
+        for flameobject in scene.flameobjects.iter_mut()
         {
             flameobject.selected = false;
         }
@@ -1769,7 +1793,7 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
     // Selects all objects when pressing A
     else if !input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
     {
-        for flameobject in flameobjects.iter_mut()
+        for flameobject in scene.flameobjects.iter_mut()
         {
             flameobject.selected = true;
         }
@@ -1781,7 +1805,7 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
     {
         mouse_functions.object_mouse_movement = Some(ObjectMouseMovement::Grab);
 
-        for flameobject in flameobjects.iter()
+        for flameobject in scene.flameobjects.iter()
         {
             if flameobject.selected == true
             {
@@ -1811,7 +1835,7 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
             {
                 ObjectMouseMovement::Grab =>
                 {
-                    for flameobject in flameobjects.iter_mut()
+                    for flameobject in scene.flameobjects.iter_mut()
                     {
                         if flameobject.selected == true
                         {
@@ -1831,7 +1855,9 @@ fn shortcut_commands(flameobjects: &mut Vec<Flameobject>, flameobjects_selected_
         }
         None => {}
     }
+    */
 }
+*/
 // Displays shit like rotation, size, position, label etc
 fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Settings, enable_shortcuts: &mut bool, label_backup: &mut String, current_project_dir: &str,
     projects: &Vec<Project>, editor_settings: &EditorSettings,
