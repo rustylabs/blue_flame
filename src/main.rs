@@ -442,7 +442,7 @@ fn object_management(flameobject_settings: &mut flameobject::Settings, projects:
 
 // Used for either loading already existing project or a brand new project
 fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Project],  filepaths: &mut FilePaths,
-    project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes, flameobjects_selected_parent_idx: &mut u16,
+    project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes,
     /*Engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window
 )
 {
@@ -453,7 +453,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
         {
             if flameobject.selected == true
             {
-                *flameobjects_selected_parent_idx = i as u16;
+                scene.flameobject_selected_parent_idx = i as u16;
             }
             blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), renderer, objects, window);
         }
@@ -518,7 +518,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
 
             for (i, flameobject) in scene.flameobjects.iter().enumerate()
             {
-                if flameobject.selected == true {*flameobjects_selected_parent_idx = i as u16}
+                if flameobject.selected == true {scene.flameobject_selected_parent_idx = i as u16}
             }
         }
     }
@@ -541,8 +541,6 @@ fn main()
     let emojis = Emojis::init();
     let mut filepaths: FilePaths = FilePaths::init();
 
-    // Which flameobject was selected first and stores its index
-    let mut flameobjects_selected_parent_idx: u16 = 0;
 
     let mut blueprint_savefolderpath = String::new();
 
@@ -708,7 +706,7 @@ fn main()
                         || (input.key_pressed(VirtualKeyCode::Return) || input.key_pressed(VirtualKeyCode::NumpadEnter))
                         {
                             // Load existing project
-                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
+                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes,
                                 renderer, objects, &window);
                         }
                         if ui.button(format!("{} Create/import project", emojis.add)).clicked()
@@ -897,8 +895,8 @@ fn main()
                                     }
 
                                     // Load new project
-                                    load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
-                                        renderer, objects, &window);
+                                    load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes,
+                                        renderer, objects, window);
                                 }
                             });
                         });
@@ -1055,8 +1053,8 @@ fn main()
                                             {
                                                 blue_flame_common::object_actions::delete_shape(&value.label, objects);
                                             }
-                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
-                                                renderer, objects, &window);
+                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes,
+                                                renderer, objects, window);
                                         }
                                         previous_viewmode = editor_modes.main.1.clone();
                                     }
@@ -1068,8 +1066,8 @@ fn main()
                                             {
                                                 blue_flame_common::object_actions::delete_shape(&value.label, objects);
                                             }
-                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes, &mut flameobjects_selected_parent_idx,
-                                                renderer, objects, &window);
+                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes,
+                                                renderer, objects, window);
                                         }
                                         previous_viewmode = editor_modes.main.1.clone();
                                     }
@@ -1139,7 +1137,7 @@ fn main()
                                                     // ➕ Create
                                                     true =>
                                                     {
-                                                        flameobjects_selected_parent_idx = i as u16;
+                                                        scene.flameobject_selected_parent_idx = i as u16;
                                                         blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), renderer, objects, window);
                                                         editor_modes.main.2 = false;
                                                         break;
@@ -1261,15 +1259,16 @@ fn main()
                     });
                     ui.separator();
                     // UndoRedo
+                    ui.label("Undo Redo");
                     ui.horizontal(|ui|
                     {
                         if ui.button(format!("{} Undo", emojis.undo_redo.undo)).clicked()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
                         {
-                            scene.undo_redo.undo(&mut scene.flameobjects, &mut flameobjects_selected_parent_idx, &current_project_dir, renderer, objects, window);
+                            scene.undo_redo.undo(&mut scene.flameobjects, &mut scene.flameobject_selected_parent_idx, &current_project_dir, renderer, objects, window);
                         }
                         if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
-                        || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::R)
+                        || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Y)
                         {
                             scene.undo_redo.redo();
                         }
@@ -1297,7 +1296,7 @@ fn main()
                                     scene.flameobjects[len as usize].settings.blueprint_key = Some((String::from(format!("{}", value.label)), true));
                                     Flameobject::change_choice(&mut scene.flameobjects, len);
 
-                                    flameobjects_selected_parent_idx = len;
+                                    scene.flameobject_selected_parent_idx = len;
                                     blue_flame_common::object_actions::create_shape(&scene.flameobjects[len as usize].settings,
                                         &Project::selected_dir(&projects), renderer, objects, window);
                                 }
@@ -1330,7 +1329,7 @@ fn main()
                                     {
                                         //Flameobject::change_choice(&mut scene.flameobjects, i as u16);
                                         label_backup = flameobject.settings.label.clone();
-                                        flameobjects_selected_parent_idx = i as u16;
+                                        scene.flameobject_selected_parent_idx = i as u16;
                                         change_choice = true;
                                     }
                                     // Multiple select via shift click keys
@@ -1363,7 +1362,7 @@ fn main()
         
                             });
                         }
-                        if change_choice == true {Flameobject::change_choice(&mut scene.flameobjects, flameobjects_selected_parent_idx as u16)}
+                        if change_choice == true {Flameobject::change_choice(&mut scene.flameobjects, scene.flameobject_selected_parent_idx)}
                     }
                     else if let ViewModes::Scenes = editor_modes.main.1
                     {
@@ -1411,7 +1410,7 @@ fn main()
 
                         if scene.flameobjects.len() > 0
                         {
-                            let flameobject = &mut scene.flameobjects[flameobjects_selected_parent_idx as usize];
+                            let flameobject = &mut scene.flameobjects[scene.flameobject_selected_parent_idx as usize];
 
                             right_panel_flameobject_settings(&mut flameobject.settings, &mut enable_shortcuts, &mut label_backup, &current_project_dir, &projects,
                                 &editor_settings,
@@ -1430,7 +1429,7 @@ fn main()
                             match right_click_menu(&mut mouse_functions, input, ctx)
                             {
                                 Some(object_type_captured) => CreateNewFlameObject::flameobject(&object_type_captured, &mut scene,
-                                    &mut flameobjects_selected_parent_idx, &current_project_dir, renderer, objects, window),
+                                    &current_project_dir, renderer, objects, window),
                                 None => {},
                             }
                         }
@@ -1523,7 +1522,8 @@ fn main()
                             || input.key_pressed(VirtualKeyCode::X) && enable_shortcuts == true
                             {
                                 let mut remove_indexes: Vec<usize> = Vec::new();
-                                let mut copy_over_undoredo: Vec<(flameobject::Flameobject, u16)> = Vec::new();
+                                //let mut copy_over_undoredo: Vec<(flameobject::Flameobject, u16)> = Vec::new();
+                                let mut copy_over_undoredo: (u16, Vec<(flameobject::Flameobject, u16)>) = (0, Vec::new());
                                 
                                 // Deletes object from game engine and stores the index of vector to remove
                                 for (i, flameobject) in scene.flameobjects.iter().enumerate()
@@ -1537,14 +1537,22 @@ fn main()
                                 // Removes any element in flameobjects from vector based on the remove_indexes vector
                                 for remove_index in remove_indexes.iter().rev()
                                 {
-                                    copy_over_undoredo.push((scene.flameobjects[*remove_index].copy(), *remove_index as u16));
+                                    copy_over_undoredo.1.push((scene.flameobjects[*remove_index].copy(), *remove_index as u16));
                                     scene.flameobjects.remove(*remove_index);
                                 }
+                                copy_over_undoredo.0 = scene.flameobject_selected_parent_idx;
                                 scene.undo_redo.save_action(undo_redo::Action::Delete(copy_over_undoredo));
                                 //Flameobject::recalculate_id(&mut scene.flameobjects);
                                 //flameobjects_selected_parent_idx = (scene.flameobjects.len() - 1) as u16;
-                                flameobjects_selected_parent_idx = blue_flame_common::range_limiter(scene.flameobjects.len() as i32 - 1i32,
-                                u16::MIN as i32, u16::MAX as i32) as u16
+
+                                if scene.flameobjects.len() > 0
+                                {
+                                    scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
+                                }
+                                else
+                                {
+                                    scene.flameobject_selected_parent_idx = 0;
+                                }
                             }
                         }
                         else if let ViewModes::Scenes = editor_modes.main.1
@@ -1568,8 +1576,7 @@ fn main()
 struct CreateNewFlameObject;
 impl CreateNewFlameObject
 {
-    fn flameobject(object_type_captured: &ObjectType, /*flameobjects: &mut Vec<Flameobject>*/  scene: &mut Scene,
-        flameobjects_selected_parent_idx: &mut u16, project_dir: &str,
+    fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, project_dir: &str,
         renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
     {
         let len = scene.flameobjects.len() as u16;
@@ -1578,16 +1585,16 @@ impl CreateNewFlameObject
 
         scene.flameobjects.push(Flameobject::init(id, Some(*object_type_captured)));
         Flameobject::change_choice(&mut scene.flameobjects, len);
-        *flameobjects_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
-        scene.undo_redo.save_action(undo_redo::Action::Create(scene.flameobjects[*flameobjects_selected_parent_idx as usize].settings.object_type));
-        blue_flame_common::object_actions::create_shape(&scene.flameobjects[*flameobjects_selected_parent_idx as usize].settings, project_dir, renderer, objects, window);
+        scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
+        scene.undo_redo.save_action(undo_redo::Action::Create(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.object_type));
+        blue_flame_common::object_actions::create_shape(&scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings, project_dir, renderer, objects, window);
 
         /*
         for (i, flameobject) in scene.flameobjects.iter().enumerate()
         {
             if flameobject.selected == true
             {
-                *flameobjects_selected_parent_idx = i as u16;
+                scene.flameobject_selected_parent_idx = i as u16;
                 blue_flame_common::object_actions::create_shape(&flameobject.settings, project_dir, renderer, objects, window);
             }
         }
@@ -1755,7 +1762,7 @@ fn shortcut_commands(scene: &mut Scene, flameobjects_selected_parent_idx: &mut u
                                                 {
                                                     if flameobject.selected == true
                                                     {
-                                                        *flameobjects_selected_parent_idx = i as u16;
+                                                        scene.flameobject_selected_parent_idx = i as u16;
                                                         blue_flame_common::object_actions::create_shape(&flameobject.settings, project_dir, renderer, objects, window);
                                                     }
                                                 }
