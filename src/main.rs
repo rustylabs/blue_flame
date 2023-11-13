@@ -1412,8 +1412,8 @@ fn main()
                         {
                             let flameobject = &mut scene.flameobjects[scene.flameobject_selected_parent_idx as usize];
 
-                            right_panel_flameobject_settings(&mut flameobject.settings, &mut enable_shortcuts, &mut label_backup, &current_project_dir, &projects,
-                                &editor_settings,
+                            right_panel_flameobject_settings(&mut flameobject.settings, &mut scene.undo_redo,
+                                &mut enable_shortcuts, &mut label_backup, &current_project_dir, &projects, &editor_settings,
                                 ui, renderer, objects, window);
 
                         }
@@ -1429,7 +1429,7 @@ fn main()
                             match right_click_menu(&mut mouse_functions, input, ctx)
                             {
                                 Some(object_type_captured) => CreateNewFlameObject::flameobject(&object_type_captured, &mut scene,
-                                    &current_project_dir, renderer, objects, window),
+                                    &mut label_backup, &current_project_dir, renderer, objects, window),
                                 None => {},
                             }
                         }
@@ -1471,9 +1471,8 @@ fn main()
                         {
                             Some(ref mut flameobject_settings) => 
                             {
-                                right_panel_flameobject_settings(flameobject_settings, &mut enable_shortcuts, &mut label_backup, &current_project_dir, &projects,
-                                    &editor_settings,
-                                    ui, renderer, objects, window);
+                                right_panel_flameobject_settings(flameobject_settings, &mut scene.undo_redo, &mut enable_shortcuts, &mut label_backup,
+                                    &current_project_dir, &projects, &editor_settings, ui, renderer, objects, window);
                             }
                             None => {}
                         }
@@ -1576,7 +1575,7 @@ fn main()
 struct CreateNewFlameObject;
 impl CreateNewFlameObject
 {
-    fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, project_dir: &str,
+    fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, label_backup: &mut String, project_dir: &str,
         renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
     {
         let len = scene.flameobjects.len() as u16;
@@ -1588,7 +1587,7 @@ impl CreateNewFlameObject
         scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
         scene.undo_redo.save_action(undo_redo::Action::Create(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.object_type));
         blue_flame_common::object_actions::create_shape(&scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings, project_dir, renderer, objects, window);
-
+        *label_backup = scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.label.clone();
         /*
         for (i, flameobject) in scene.flameobjects.iter().enumerate()
         {
@@ -1866,7 +1865,8 @@ fn shortcut_commands(scene: &mut Scene, flameobjects_selected_parent_idx: &mut u
 }
 */
 // Displays shit like rotation, size, position, label etc
-fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Settings, enable_shortcuts: &mut bool, label_backup: &mut String, current_project_dir: &str,
+fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Settings, undo_redo: &mut undo_redo::UndoRedo, enable_shortcuts: &mut bool, label_backup: &mut String,
+    current_project_dir: &str,
     projects: &Vec<Project>, editor_settings: &EditorSettings,
     /*Game engine shit*/ ui: &mut Ui, renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
 {
