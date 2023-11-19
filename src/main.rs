@@ -3,8 +3,9 @@ use blue_engine_egui::{self, egui::{self, Ui, InputState}};
 use blue_flame_common::{filepath_handling, structures::{flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig}, db::scene, emojis::Emojis};
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
 use blue_flame_common::undo_redo;
+use serde::de::value;
 use std::{process::Command, io::Write, f32::consts::E};
-
+use blue_flame_common::structures::StringBackups;
 use std::process::exit;
 
 
@@ -15,6 +16,7 @@ mod practice;
 // Directory related libraries
 use std::path::{Path, PathBuf};
 use dirs;
+
 
 
 trait VecExtensions
@@ -53,6 +55,8 @@ impl VecExtensions for Vec<Project>
     }
     
 }
+
+
 // Defines where all the file paths are
 pub struct FilePaths
 {
@@ -220,6 +224,7 @@ impl Project
     }
 }
 
+// For flameobjects
 
 
 
@@ -441,7 +446,7 @@ fn object_management(flameobject_settings: &mut flameobject::Settings, projects:
 }
 
 // Used for either loading already existing project or a brand new project
-fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Project],  filepaths: &mut FilePaths,
+fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Project],  filepaths: &mut FilePaths, string_backups: &mut StringBackups,
     project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes,
     /*Engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window
 )
@@ -520,6 +525,16 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             {
                 if flameobject.selected == true {scene.flameobject_selected_parent_idx = i as u16}
             }
+            // Determines the current flameobject's name and the puts the name in the label_backup
+            for flameobject in scene.flameobjects.iter()
+            {
+                if flameobject.selected == true
+                {
+                    string_backups.label = flameobject.settings.label.clone();
+                    //println!("label_backup: {}", label_backup);
+                    break;
+                }
+            }
         }
     }
 }
@@ -533,6 +548,22 @@ struct MouseFunctions
     object_mouse_movement   : Option<ObjectMouseMovement>, // grab to move the object etc
 }
 
+// Used for widgets such as color as dumbass egui devs can't be fucked to have an event to determine if its closed or not
+struct WidgetFunctions
+{
+    is_opened           : bool,
+    has_changed         : bool,
+    flameobject_old     : Option<flameobject::Settings>,
+}
+impl WidgetFunctions
+{
+    fn clear_everything(&mut self)
+    {
+        self.is_opened = false;
+        self.has_changed = false;
+        self.flameobject_old = None;
+    }
+}
 
 //const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
@@ -540,6 +571,9 @@ fn main()
 
     let emojis = Emojis::init();
     let mut filepaths: FilePaths = FilePaths::init();
+
+    
+    //let mut widget_opened = false;
 
 
     let mut blueprint_savefolderpath = String::new();
@@ -560,13 +594,14 @@ fn main()
     };
 
     // Used for flameobject's blueprints
-    let mut flameobject_blueprint: Option<blue_flame_common::structures::flameobject::Settings> = None;
+    let mut flameobject_blueprint: Option<flameobject::Settings> = None;
 
     // Creates lib dir
     //init_lib(&filepaths.library);
 
     // flameobject's previous label just before it is modified
-    let mut label_backup = String::new();
+    //let mut label_backup = String::new();
+    let mut string_backups = StringBackups{label: String::new(), texture: String::new()};
 
     // Show load screen or main game screen?
     let mut editor_modes = EditorModes
@@ -622,6 +657,7 @@ fn main()
 
     // flameobjects & scenes
     let mut scene = Scene::init(0);
+    let mut widget_functions = WidgetFunctions{is_opened: false, has_changed: false, flameobject_old: None};
     //let mut flameobjects: Vec<Flameobject> = Vec::new();
     //let mut scenes: Vec<Scene> = Vec::new();
     let mut projects: Vec<Project> = Vec::new();
@@ -643,16 +679,6 @@ fn main()
     // We add the gui as plugin, which runs once before everything else to fetch events, and once during render times for rendering and other stuff
     engine.plugins.push(Box::new(gui_context));
 
-    // Determines the current flameobject's name and the puts the name in the backup_label
-    for flameobject in scene.flameobjects.iter()
-    {
-        if flameobject.selected == true
-        {
-            label_backup = flameobject.settings.label.clone();
-            //println!("label_backup: {}", label_backup);
-            break;
-        }
-    }
 
     println!("----------Start of update_loop----------");
     engine.update_loop(move
@@ -706,7 +732,8 @@ fn main()
                         || (input.key_pressed(VirtualKeyCode::Return) || input.key_pressed(VirtualKeyCode::NumpadEnter))
                         {
                             // Load existing project
-                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes,
+                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut string_backups, 
+                                &mut project_config, &mut current_project_dir, &mut editor_modes,
                                 renderer, objects, &window);
                         }
                         if ui.button(format!("{} Create/import project", emojis.add)).clicked()
@@ -895,7 +922,7 @@ fn main()
                                     }
 
                                     // Load new project
-                                    load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes,
+                                    load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut project_config, &mut current_project_dir, &mut editor_modes,
                                         renderer, objects, window);
                                 }
                             });
@@ -1053,7 +1080,7 @@ fn main()
                                             {
                                                 blue_flame_common::object_actions::delete_shape(&value.label, objects);
                                             }
-                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes,
+                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut project_config, &mut current_project_dir, &mut editor_modes,
                                                 renderer, objects, window);
                                         }
                                         previous_viewmode = editor_modes.main.1.clone();
@@ -1066,7 +1093,7 @@ fn main()
                                             {
                                                 blue_flame_common::object_actions::delete_shape(&value.label, objects);
                                             }
-                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut project_config, &mut current_project_dir, &mut editor_modes,
+                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut project_config, &mut current_project_dir, &mut editor_modes,
                                                 renderer, objects, window);
                                         }
                                         previous_viewmode = editor_modes.main.1.clone();
@@ -1265,7 +1292,7 @@ fn main()
                         if ui.button(format!("{} Undo", emojis.undo_redo.undo)).clicked()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
                         {
-                            scene.undo_redo.undo(&mut scene.flameobjects, &mut scene.flameobject_selected_parent_idx, &current_project_dir, renderer, objects, window);
+                            scene.undo_redo.undo(&mut scene.flameobjects, &mut string_backups, &mut scene.flameobject_selected_parent_idx, &current_project_dir, renderer, objects, window);
                         }
                         if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Y)
@@ -1328,7 +1355,7 @@ fn main()
                                     if !input.key_held(VirtualKeyCode::LShift)
                                     {
                                         //Flameobject::change_choice(&mut scene.flameobjects, i as u16);
-                                        label_backup = flameobject.settings.label.clone();
+                                        string_backups.label = flameobject.settings.label.clone();
                                         scene.flameobject_selected_parent_idx = i as u16;
                                         change_choice = true;
                                     }
@@ -1412,9 +1439,14 @@ fn main()
                         {
                             let flameobject = &mut scene.flameobjects[scene.flameobject_selected_parent_idx as usize];
 
-                            right_panel_flameobject_settings(&mut flameobject.settings, &mut scene.undo_redo,
-                                &mut enable_shortcuts, &mut label_backup, &current_project_dir, &projects, &editor_settings,
-                                ui, renderer, objects, window);
+                            //debug_ctrl_z_pressed1(&mut debug_ctrl_z_pressed, &mut scene, &mut label_backup);
+
+                            // label changes after here!
+                            right_panel_flameobject_settings(&mut flameobject.settings, scene.flameobject_selected_parent_idx, &mut scene.undo_redo,
+                                &mut enable_shortcuts, &mut string_backups, &current_project_dir, &projects, &editor_settings,
+                                &mut widget_functions, input, ui, renderer, objects, window);
+                            
+                            //debug_ctrl_z_pressed1(&mut debug_ctrl_z_pressed, &mut scene, &mut label_backup);
 
                         }
 
@@ -1429,7 +1461,7 @@ fn main()
                             match right_click_menu(&mut mouse_functions, input, ctx)
                             {
                                 Some(object_type_captured) => CreateNewFlameObject::flameobject(&object_type_captured, &mut scene,
-                                    &mut label_backup, &current_project_dir, renderer, objects, window),
+                                    &mut string_backups, &current_project_dir, renderer, objects, window),
                                 None => {},
                             }
                         }
@@ -1471,8 +1503,8 @@ fn main()
                         {
                             Some(ref mut flameobject_settings) => 
                             {
-                                right_panel_flameobject_settings(flameobject_settings, &mut scene.undo_redo, &mut enable_shortcuts, &mut label_backup,
-                                    &current_project_dir, &projects, &editor_settings, ui, renderer, objects, window);
+                                right_panel_flameobject_settings(flameobject_settings, scene.flameobject_selected_parent_idx, &mut scene.undo_redo, &mut enable_shortcuts, &mut string_backups,
+                                    &current_project_dir, &projects, &editor_settings, &mut widget_functions, input, ui, renderer, objects, window);
                             }
                             None => {}
                         }
@@ -1575,7 +1607,7 @@ fn main()
 struct CreateNewFlameObject;
 impl CreateNewFlameObject
 {
-    fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, label_backup: &mut String, project_dir: &str,
+    fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, string_backups: &mut StringBackups, project_dir: &str,
         renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
     {
         let len = scene.flameobjects.len() as u16;
@@ -1587,7 +1619,7 @@ impl CreateNewFlameObject
         scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
         scene.undo_redo.save_action(undo_redo::Action::Create(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.object_type));
         blue_flame_common::object_actions::create_shape(&scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings, project_dir, renderer, objects, window);
-        *label_backup = scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.label.clone();
+        string_backups.label = scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.label.clone();
         /*
         for (i, flameobject) in scene.flameobjects.iter().enumerate()
         {
@@ -1616,6 +1648,11 @@ fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::I
     {
         mouse_functions.is_right_clicked = true;
         mouse_functions.captured_coordinates = input.mouse().unwrap_or_default();
+    }
+    // Fucks off the right click menu
+    if input.key_pressed(VirtualKeyCode::Escape)
+    {
+        mouse_functions.is_right_clicked = false;
     }
     if mouse_functions.is_right_clicked == true
     {
@@ -1865,14 +1902,16 @@ fn shortcut_commands(scene: &mut Scene, flameobjects_selected_parent_idx: &mut u
 }
 */
 // Displays shit like rotation, size, position, label etc
-fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Settings, undo_redo: &mut undo_redo::UndoRedo, enable_shortcuts: &mut bool, label_backup: &mut String,
+fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Settings, flameobject_selected_parent_idx: u16,
+    undo_redo: &mut undo_redo::UndoRedo, enable_shortcuts: &mut bool, string_backups: &mut StringBackups,
     current_project_dir: &str,
-    projects: &Vec<Project>, editor_settings: &EditorSettings,
-    /*Game engine shit*/ ui: &mut Ui, renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
+    projects: &Vec<Project>, editor_settings: &EditorSettings, widget_functions: &mut WidgetFunctions,
+    /*Game engine shit*/ input: &blue_engine::InputHelper, ui: &mut Ui, renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
 {
-
-    // Object name
-    if ui.add(egui::TextEdit::singleline(&mut flameobject_settings.label)).changed()
+    //let mut item_clicked = false;
+    /*
+    fn create_newobject_labelchange(flameobject_settings: &mut flameobject::Settings, enable_shortcuts: &mut bool, label_backup: &mut String,
+        current_project_dir: &str, renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
     {
         *enable_shortcuts = false;
         // Destroys hashmap
@@ -1883,9 +1922,39 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         blue_flame_common::object_actions::create_shape(flameobject_settings, current_project_dir, renderer, objects, window);
 
         *label_backup = flameobject_settings.label.clone();
-        //println!("label_backup {}", label_backup);
+    }
+    */
+    // Object name
+    let response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.label));
+    if input.mouse_pressed(0) || response.lost_focus()
+    {
+        // If label has been modified after clicking off the field do something
+        if flameobject_settings.label != string_backups.label
+        {
+            // Save history to undo_redo()
+            {
+                let mut flameobject_copyover = flameobject_settings.clone();
+                flameobject_copyover.label = string_backups.label.clone();
+                undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover, flameobject_selected_parent_idx)));
+            }
+
+
+
+            *enable_shortcuts = false;
+            // Destroys hashmap
+            blue_flame_common::object_actions::delete_shape(&string_backups.label, objects);
+            
+            // Creates new shape
+            //object_management(flameobject, &mut projects, renderer, objects, window, ui);
+            blue_flame_common::object_actions::create_shape(flameobject_settings, current_project_dir, renderer, objects, window);
+    
+            string_backups.label = flameobject_settings.label.clone();
+        }
+        //has_focus_label = false;
     }
 
+
+    // Blueprint label key
     ui.horizontal(|ui|
     {
         ui.label(format!("Blueprint label key: {}", match flameobject_settings.blueprint_key
@@ -1909,7 +1978,8 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     // Locatin of texture
     ui.label("TextureMode");
     ui.label("Location of Texture");
-    if ui.add(egui::TextEdit::singleline(&mut flameobject_settings.texture.file_location)).changed()
+    let response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.texture.file_location));
+    if response.changed()
     {
         *enable_shortcuts = false;
         blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), objects, renderer);
@@ -1919,6 +1989,18 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         flameobject_settings.texture.file_location = invert_pathtype(&flameobject_settings.texture.file_location, &projects);
     }
 
+    // Save texture change to undo_redo after clicking off text field
+    if input.mouse_pressed(0) || response.lost_focus()
+    {
+        //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings.clone(), flameobject_selected_parent_idx)));
+        // If label has been modified after clicking off the field do something
+        if flameobject_settings.texture.file_location != string_backups.texture
+        {
+            let mut flameobject_copyover = flameobject_settings.clone();
+            flameobject_copyover.texture.file_location = string_backups.texture.clone();
+            undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover, flameobject_selected_parent_idx)));
+        }
+    }
 
     // Radio buttons for texturemodes
     {
@@ -1950,9 +2032,26 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     ui.label("Color");
     ui.horizontal(|ui|
     {
-        if ui.color_edit_button_rgba_unmultiplied(&mut flameobject_settings.color).changed()
+        let response = ui.color_edit_button_rgba_unmultiplied(&mut flameobject_settings.color);
+        if response.clicked()
         {
+            widget_functions.flameobject_old = Some(flameobject_settings.clone());
+        }
+        else if response.changed()
+        {
+            widget_functions.has_changed = true;
             blue_flame_common::object_actions::update_shape::color(flameobject_settings, objects);
+        }
+        // Save changes to undo_redo
+        else if input.mouse_released(0) && !response.changed() && widget_functions.has_changed == true
+        {
+            println!("lost focus color");
+            if let Option::Some(ref value) = widget_functions.flameobject_old
+            {
+                undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)));
+                widget_functions.flameobject_old = Some(flameobject_settings.clone());
+            }
+            widget_functions.has_changed = false;
         }
     });
     ui.separator();
@@ -1968,9 +2067,15 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
             ui.label(format!("{}:", label as char));
 
             // Use Response::changed or whatever to determine if the value has been changed
-            if ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed)).changed()
+            let response = ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed));
+            if response.changed()
             {
                 update_position = true;
+            }
+            //if response.changed() && input.mouse_released(0)
+            if response.drag_released() && !response.gained_focus() || response.changed() && input.mouse_released(0)
+            {
+                println!("save position undoredo");
             }
         }
         // Updates the shape's position if the user has changed its value
