@@ -548,11 +548,16 @@ struct MouseFunctions
     object_mouse_movement   : Option<ObjectMouseMovement>, // grab to move the object etc
 }
 
+// i.e. is it color that has changed, position etc!
+#[derive(Debug)]
+enum WhatChanged{Color, Position, Rotation}
 // Used for widgets such as color as dumbass egui devs can't be fucked to have an event to determine if its closed or not
+#[derive(Debug)]
 struct WidgetFunctions
 {
     is_opened           : bool,
-    has_changed         : bool,
+    //has_changed         : bool,
+    has_changed         : Option<WhatChanged>,
     flameobject_old     : Option<flameobject::Settings>,
 }
 impl WidgetFunctions
@@ -560,7 +565,7 @@ impl WidgetFunctions
     fn clear_everything(&mut self)
     {
         self.is_opened = false;
-        self.has_changed = false;
+        self.has_changed = None;
         self.flameobject_old = None;
     }
 }
@@ -568,6 +573,19 @@ impl WidgetFunctions
 //const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
 {
+    const DEBUG: Debug = Debug
+    {
+        practice        : false,
+        resolution      : true,
+    };
+
+    if DEBUG.practice == true
+    {
+        println!("\n--------------Practice Mode!!!!!--------------\n");
+        practice::main();
+        println!("\n--------------End of practice!!!!!--------------\n");
+        exit(0);
+    }
 
     let emojis = Emojis::init();
     let mut filepaths: FilePaths = FilePaths::init();
@@ -624,27 +642,15 @@ fn main()
     //let mut view_modes = object_settings::radio_options::init(&["Objects", "Scenes"]);
     //let mut view_modes = [true, false];
 
-    let debug = Debug
-    {
-        practice        : false,
-        resolution      : true,
-    };
 
-    if debug.practice == true
-    {
-        println!("\n--------------Practice Mode!!!!!--------------\n");
-        practice::main();
-        println!("\n--------------End of practice!!!!!--------------\n");
-        exit(0);
-    }
     
     let mut alert_window = (false, AlertWindow::init(&emojis));
 
     let mut engine = Engine::new_config(
         WindowDescriptor
         {
-            width               : if debug.resolution == true {1280} else {1920},
-            height              : if debug.resolution == true {720} else {1080},
+            width               : if DEBUG.resolution == true {1280} else {1920},
+            height              : if DEBUG.resolution == true {720} else {1080},
             title               : "Blue Flame",
             decorations         : true,
             resizable           : true,
@@ -657,7 +663,7 @@ fn main()
 
     // flameobjects & scenes
     let mut scene = Scene::init(0);
-    let mut widget_functions = WidgetFunctions{is_opened: false, has_changed: false, flameobject_old: None};
+    let mut widget_functions = WidgetFunctions{is_opened: false, has_changed: None, flameobject_old: None};
     //let mut flameobjects: Vec<Flameobject> = Vec::new();
     //let mut scenes: Vec<Scene> = Vec::new();
     let mut projects: Vec<Project> = Vec::new();
@@ -735,6 +741,7 @@ fn main()
                             load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut string_backups, 
                                 &mut project_config, &mut current_project_dir, &mut editor_modes,
                                 renderer, objects, &window);
+                            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                         }
                         if ui.button(format!("{} Create/import project", emojis.add)).clicked()
                         {
@@ -924,6 +931,7 @@ fn main()
                                     // Load new project
                                     load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut project_config, &mut current_project_dir, &mut editor_modes,
                                         renderer, objects, window);
+                                    widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                                 }
                             });
                         });
@@ -1082,6 +1090,7 @@ fn main()
                                             }
                                             load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut project_config, &mut current_project_dir, &mut editor_modes,
                                                 renderer, objects, window);
+                                            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                                         }
                                         previous_viewmode = editor_modes.main.1.clone();
                                     }
@@ -1095,6 +1104,7 @@ fn main()
                                             }
                                             load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut project_config, &mut current_project_dir, &mut editor_modes,
                                                 renderer, objects, window);
+                                            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                                         }
                                         previous_viewmode = editor_modes.main.1.clone();
                                     }
@@ -2033,25 +2043,31 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     ui.horizontal(|ui|
     {
         let response = ui.color_edit_button_rgba_unmultiplied(&mut flameobject_settings.color);
+        /*
         if response.clicked()
         {
             widget_functions.flameobject_old = Some(flameobject_settings.clone());
         }
-        else if response.changed()
+        */
+        if response.changed()
         {
-            widget_functions.has_changed = true;
+            widget_functions.has_changed = Some(WhatChanged::Color);
             blue_flame_common::object_actions::update_shape::color(flameobject_settings, objects);
         }
         // Save changes to undo_redo
-        else if input.mouse_released(0) && !response.changed() && widget_functions.has_changed == true
+        else if input.mouse_released(0) && !response.changed()
         {
-            println!("lost focus color");
-            if let Option::Some(ref value) = widget_functions.flameobject_old
+            if let Some(WhatChanged::Color) = widget_functions.has_changed
             {
-                undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)));
-                widget_functions.flameobject_old = Some(flameobject_settings.clone());
+                println!("lost focus color");
+                if let Option::Some(ref value) = widget_functions.flameobject_old
+                {
+                    undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)));
+                    widget_functions.flameobject_old = Some(flameobject_settings.clone());
+                }
+                widget_functions.has_changed = None;
             }
-            widget_functions.has_changed = false;
+
         }
     });
     ui.separator();
@@ -2059,30 +2075,75 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     ui.label("Position");
     ui.horizontal(|ui|
     {
+        let mut save_2_undoredo = false;
         // Has user moved the shape or not
         let mut update_position = false;
         //let elements = flameobject.settings.position.elements();
+        //widget_functions.flameobject_old = Some(flameobject_settings.clone());
+
         for (value, label) in flameobject_settings.position.elements()
         {
             ui.label(format!("{}:", label as char));
 
             // Use Response::changed or whatever to determine if the value has been changed
             let response = ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed));
+            
+            // Dragging and typing
             if response.changed()
             {
+                //println!("response.changed()");
+                widget_functions.has_changed = Some(WhatChanged::Position);
                 update_position = true;
             }
-            //if response.changed() && input.mouse_released(0)
-            if response.drag_released() && !response.gained_focus() || response.changed() && input.mouse_released(0)
+
+            // Saving to flameobjects_old
+            // Typing
+            /*
+            if response.gained_focus()
             {
-                println!("save position undoredo");
+                //println!("response.gained_focus()");
+                widget_functions.has_changed = Some(WhatChanged::Position);
+            }
+            */
+            //if response.changed() && input.mouse_released(0) i.e. if it has lost focused/not being changed anymore the value you are done putting in the new value
+            if /*Dragging*/ response.drag_released() && !response.gained_focus() || /*Typing*/ response.changed() && input.mouse_released(0)
+            {
+                save_2_undoredo = true;
+                if let Some(WhatChanged::Position) = widget_functions.has_changed
+                {
+                    //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings, flameobject_selected_parent_idx)));
+                    //println!("save position undoredo");
+                    //save_2_undoredo = true;
+                    widget_functions.has_changed = None;
+                }
+                
             }
         }
+
         // Updates the shape's position if the user has changed its value
         if update_position == true
         {
+            //println!("update_position");
+            //println!("{:?}", widget_functions.has_changed);
             blue_flame_common::object_actions::update_shape::position(flameobject_settings, objects);
+            // Save undoredo
+            if let None = widget_functions.has_changed
+            {
+                //println!("Saving undoredo for position");
+                //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings.clone(), flameobject_selected_parent_idx)));
+            }
         }
+        // Save undo redo
+        if save_2_undoredo == true
+        {
+            if let Option::Some(ref value) = widget_functions.flameobject_old
+            {
+                undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)));
+                widget_functions.flameobject_old = Some(flameobject_settings.clone());
+            }
+            widget_functions.has_changed = None;
+        }
+        
 
         
     });
