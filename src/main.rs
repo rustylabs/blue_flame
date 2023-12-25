@@ -1303,6 +1303,7 @@ fn main()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
                         {
                             scene.undo_redo.undo(&mut scene.flameobjects, &mut string_backups, &mut scene.flameobject_selected_parent_idx, &current_project_dir, renderer, objects, window);
+                            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                         }
                         if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Y)
@@ -2152,6 +2153,9 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     ui.label("Size");
     ui.horizontal(|ui|
     {
+        let mut save_2_undoredo = false;
+        // Has user moved the shape or not
+        let mut update_position = false;
         // Has user moved the shape or not
         let mut update_size = false;
         
@@ -2160,10 +2164,16 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
             ui.label(format!("{}:", label as char));
 
             // Use Response::changed or whatever to determine if the value has been changed
-            if ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed)).changed()
+            let response = ui.add(egui::DragValue::new(value).speed(editor_settings.slider_speed));
+            if response.changed()
             {
                 //println!("Changed!");
+                //widget_functions.has_changed = Some(WhatChanged::Size);
                 update_size = true;
+            }
+            if /*Dragging*/ response.drag_released() && !response.gained_focus() || /*Typing*/ response.changed() && input.mouse_released(0)
+            {
+                save_2_undoredo = true;
             }
             
         }
@@ -2172,6 +2182,16 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         {
             //println!("update_position: {update_position}");
             blue_flame_common::object_actions::update_shape::size(flameobject_settings, objects, window);
+        }
+        // Save undo redo
+        if save_2_undoredo == true
+        {
+            if let Option::Some(ref value) = widget_functions.flameobject_old
+            {
+                undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)));
+                widget_functions.flameobject_old = Some(flameobject_settings.clone());
+            }
+            widget_functions.has_changed = None;
         }
         
     });
