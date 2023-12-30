@@ -446,7 +446,7 @@ fn object_management(flameobject_settings: &mut flameobject::Settings, projects:
 }
 
 // Used for either loading already existing project or a brand new project
-fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Project],  filepaths: &mut FilePaths, string_backups: &mut StringBackups,
+fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Project],  filepaths: &mut FilePaths, string_backups: &mut StringBackups, widget_functions: &mut WidgetFunctions,
     project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes,
     /*Engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window
 )
@@ -536,6 +536,16 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
                 }
             }
         }
+    }
+
+    //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+    if scene.flameobjects.len() > 0
+    {
+        widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+    }
+    else
+    {
+        widget_functions.flameobject_old = None;
     }
 }
 
@@ -738,10 +748,10 @@ fn main()
                         || (input.key_pressed(VirtualKeyCode::Return) || input.key_pressed(VirtualKeyCode::NumpadEnter))
                         {
                             // Load existing project
-                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut string_backups, 
+                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut widget_functions,
                                 &mut project_config, &mut current_project_dir, &mut editor_modes,
                                 renderer, objects, &window);
-                            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                            //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                         }
                         if ui.button(format!("{} Create/import project", emojis.add)).clicked()
                         {
@@ -929,7 +939,7 @@ fn main()
                                     }
 
                                     // Load new project
-                                    load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut project_config, &mut current_project_dir, &mut editor_modes,
+                                    load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut widget_functions, &mut project_config, &mut current_project_dir, &mut editor_modes,
                                         renderer, objects, window);
                                     widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                                 }
@@ -1088,9 +1098,9 @@ fn main()
                                             {
                                                 blue_flame_common::object_actions::delete_shape(&value.label, objects);
                                             }
-                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut project_config, &mut current_project_dir, &mut editor_modes,
+                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut widget_functions, &mut project_config, &mut current_project_dir, &mut editor_modes,
                                                 renderer, objects, window);
-                                            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                                            //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                                         }
                                         previous_viewmode = editor_modes.main.1.clone();
                                     }
@@ -1102,9 +1112,9 @@ fn main()
                                             {
                                                 blue_flame_common::object_actions::delete_shape(&value.label, objects);
                                             }
-                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut project_config, &mut current_project_dir, &mut editor_modes,
+                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut widget_functions, &mut project_config, &mut current_project_dir, &mut editor_modes,
                                                 renderer, objects, window);
-                                            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                                            //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                                         }
                                         previous_viewmode = editor_modes.main.1.clone();
                                     }
