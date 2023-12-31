@@ -7,6 +7,7 @@ use serde::de::value;
 use std::{process::Command, io::Write, f32::consts::E};
 use blue_flame_common::structures::StringBackups;
 use std::process::exit;
+use blue_flame_common::EditorSettings;
 
 
 pub mod object_settings;
@@ -118,26 +119,7 @@ impl FilePaths
     */
 }
 
-struct EditorSettings
-{
-    width               : f32,
-    height              : f32,
-    range               : f32,
-    slider_speed        : f32,
-}
-impl EditorSettings
-{
-    fn init() -> Self
-    {
-        Self
-        {
-            width               : 250f32,
-            height              : 900f32,
-            range               : 900_000_000f32,
-            slider_speed        : 0.01f32,
-        }
-    }
-}
+
 
 struct AlertWindow
 {
@@ -511,6 +493,11 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             //db::scenes::load(scenes, filepaths);
             blue_flame_common::db::scene::load(scene, &Project::selected_dir(&projects),
             &project_config.last_scene_filepath , true, renderer, objects, window);
+
+            // Matching the length size issue for undoredo
+            {
+
+            }
 
             // If this is a new project we just created
             /*
@@ -1313,7 +1300,15 @@ fn main()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
                         {
                             scene.undo_redo.undo(&mut scene.flameobjects, &mut string_backups, &mut scene.flameobject_selected_parent_idx, &current_project_dir, renderer, objects, window);
-                            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                            if scene.flameobject_selected_parent_idx > 0
+                            {
+                                widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                            }
+                            else
+                            {
+                                widget_functions.flameobject_old = None;
+                            }
+                            
                         }
                         if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Y)
@@ -1482,7 +1477,7 @@ fn main()
                             match right_click_menu(&mut mouse_functions, input, ctx)
                             {
                                 Some(object_type_captured) => CreateNewFlameObject::flameobject(&object_type_captured, &mut scene,
-                                    &mut string_backups, &current_project_dir, renderer, objects, window),
+                                    &mut widget_functions, &mut string_backups, &current_project_dir, &editor_settings, renderer, objects, window),
                                 None => {},
                             }
                         }
@@ -1593,7 +1588,7 @@ fn main()
                                     scene.flameobjects.remove(*remove_index);
                                 }
                                 copy_over_undoredo.0 = scene.flameobject_selected_parent_idx;
-                                scene.undo_redo.save_action(undo_redo::Action::Delete(copy_over_undoredo));
+                                scene.undo_redo.save_action(undo_redo::Action::Delete(copy_over_undoredo), &editor_settings);
                                 //Flameobject::recalculate_id(&mut scene.flameobjects);
                                 //flameobjects_selected_parent_idx = (scene.flameobjects.len() - 1) as u16;
 
@@ -1628,17 +1623,17 @@ fn main()
 struct CreateNewFlameObject;
 impl CreateNewFlameObject
 {
-    fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, string_backups: &mut StringBackups, project_dir: &str,
+    fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, widget_functions: &mut WidgetFunctions, string_backups: &mut StringBackups, project_dir: &str, editor_settings: &EditorSettings,
         renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
     {
         let len = scene.flameobjects.len() as u16;
         let id = Flameobject::get_available_id(&mut scene.flameobjects);
-        println!("id: {}", id);
+        //println!("id: {}", id);
 
         scene.flameobjects.push(Flameobject::init(id, Some(*object_type_captured)));
         Flameobject::change_choice(&mut scene.flameobjects, len);
         scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
-        scene.undo_redo.save_action(undo_redo::Action::Create(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.object_type));
+        scene.undo_redo.save_action(undo_redo::Action::Create(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.object_type), editor_settings);
         blue_flame_common::object_actions::create_shape(&scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings, project_dir, renderer, objects, window);
         string_backups.label = scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.label.clone();
         /*
@@ -1651,6 +1646,15 @@ impl CreateNewFlameObject
             }
         }
         */
+
+        if scene.flameobjects.len() > 0
+        {
+            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobjects.len() - 1].settings.clone());
+        }
+        else
+        {
+            widget_functions.flameobject_old = None;
+        }
     }
     fn blueprint(object_type_captured: &ObjectType, flameobject_blueprint: &mut Option<flameobject::Settings>, project_dir: &str,
         renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
@@ -1956,7 +1960,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
             {
                 let mut flameobject_copyover = flameobject_settings.clone();
                 flameobject_copyover.label = string_backups.label.clone();
-                undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover, flameobject_selected_parent_idx)));
+                undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover, flameobject_selected_parent_idx)), editor_settings);
             }
 
 
@@ -2019,7 +2023,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         {
             let mut flameobject_copyover = flameobject_settings.clone();
             flameobject_copyover.texture.file_location = string_backups.texture.clone();
-            undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover, flameobject_selected_parent_idx)));
+            undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover, flameobject_selected_parent_idx)), editor_settings);
         }
     }
 
@@ -2073,7 +2077,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
                 println!("lost focus color");
                 if let Option::Some(ref value) = widget_functions.flameobject_old
                 {
-                    undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)));
+                    undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)), editor_settings);
                     widget_functions.flameobject_old = Some(flameobject_settings.clone());
                 }
                 widget_functions.has_changed = None;
@@ -2102,7 +2106,6 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
             // Dragging and typing
             if response.changed()
             {
-                //println!("response.changed()");
                 widget_functions.has_changed = Some(WhatChanged::Position);
                 update_position = true;
             }
@@ -2149,7 +2152,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         {
             if let Option::Some(ref value) = widget_functions.flameobject_old
             {
-                undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)));
+                undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)), editor_settings);
                 widget_functions.flameobject_old = Some(flameobject_settings.clone());
             }
             widget_functions.has_changed = None;
@@ -2198,7 +2201,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         {
             if let Option::Some(ref value) = widget_functions.flameobject_old
             {
-                undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)));
+                undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_selected_parent_idx)), editor_settings);
                 widget_functions.flameobject_old = Some(flameobject_settings.clone());
             }
             widget_functions.has_changed = None;
