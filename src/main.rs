@@ -1,9 +1,8 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode, MouseButton};
 use blue_engine_egui::{self, egui::{self, Ui, InputState}};
-use blue_flame_common::{filepath_handling, structures::{flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig}, db::scene, emojis::Emojis};
+use blue_flame_common::{filepath_handling, structures::{flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig, WidgetFunctions, WhatChanged}, db::scene, emojis::Emojis};
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
 use blue_flame_common::undo_redo;
-use serde::de::value;
 use std::{process::Command, io::Write, f32::consts::E};
 use blue_flame_common::structures::StringBackups;
 use std::process::exit;
@@ -18,6 +17,52 @@ mod practice;
 use std::path::{Path, PathBuf};
 use dirs;
 
+
+// Generic way to create either flameobject or blueprint
+struct CreateNewFlameObject;
+impl CreateNewFlameObject
+{
+    pub fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, widget_functions: &mut WidgetFunctions, string_backups: &mut StringBackups, project_dir: &str, editor_settings: &EditorSettings,
+        renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
+    {
+        let len = scene.flameobjects.len() as u16;
+        let id = Flameobject::get_available_id(&mut scene.flameobjects);
+        //println!("id: {}", id);
+
+        scene.flameobjects.push(Flameobject::init(id, Some(*object_type_captured)));
+        Flameobject::change_choice(&mut scene.flameobjects, len);
+        scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
+        scene.undo_redo.save_action(undo_redo::Action::Create(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.object_type), editor_settings);
+        blue_flame_common::object_actions::create_shape(&scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings, project_dir, renderer, objects, window);
+        string_backups.label = scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.label.clone();
+        /*
+        for (i, flameobject) in scene.flameobjects.iter().enumerate()
+        {
+            if flameobject.selected == true
+            {
+                scene.flameobject_selected_parent_idx = i as u16;
+                blue_flame_common::object_actions::create_shape(&flameobject.settings, project_dir, renderer, objects, window);
+            }
+        }
+        */
+
+        if scene.flameobjects.len() > 0
+        {
+            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobjects.len() - 1].settings.clone());
+        }
+        else
+        {
+            widget_functions.flameobject_old = None;
+        }
+    }
+    pub fn blueprint(object_type_captured: &ObjectType, flameobject_blueprint: &mut Option<flameobject::Settings>, project_dir: &str,
+        renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
+    {
+        //flameobject_blueprint = Some(Flameobject::init(len, Some(*object_type_captured)));
+        *flameobject_blueprint = Some(flameobject::Settings::init(0, Some(*object_type_captured)));
+        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, renderer, objects, window);
+    }
+}
 
 
 trait VecExtensions
@@ -545,27 +590,7 @@ struct MouseFunctions
     object_mouse_movement   : Option<ObjectMouseMovement>, // grab to move the object etc
 }
 
-// i.e. is it color that has changed, position etc!
-#[derive(Debug)]
-enum WhatChanged{Color, Position, Rotation}
-// Used for widgets such as color as dumbass egui devs can't be fucked to have an event to determine if its closed or not
-#[derive(Debug)]
-struct WidgetFunctions
-{
-    is_opened           : bool,
-    //has_changed         : bool,
-    has_changed         : Option<WhatChanged>,
-    flameobject_old     : Option<flameobject::Settings>,
-}
-impl WidgetFunctions
-{
-    fn clear_everything(&mut self)
-    {
-        self.is_opened = false;
-        self.has_changed = None;
-        self.flameobject_old = None;
-    }
-}
+
 
 //const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
@@ -1313,7 +1338,7 @@ fn main()
                         if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Y)
                         {
-                            scene.undo_redo.redo();
+                            scene.undo_redo.redo(&mut scene.flameobjects, &mut string_backups, &mut scene.flameobject_selected_parent_idx, &mut widget_functions, &current_project_dir, &editor_settings, renderer, objects, window);
                         }
                         if ui.button(format!("{} Clear buf", emojis.trash)).clicked()
                         {
@@ -1619,51 +1644,7 @@ fn main()
 }
 
 
-// Generic way to create either flameobject or blueprint
-struct CreateNewFlameObject;
-impl CreateNewFlameObject
-{
-    fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, widget_functions: &mut WidgetFunctions, string_backups: &mut StringBackups, project_dir: &str, editor_settings: &EditorSettings,
-        renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
-    {
-        let len = scene.flameobjects.len() as u16;
-        let id = Flameobject::get_available_id(&mut scene.flameobjects);
-        //println!("id: {}", id);
 
-        scene.flameobjects.push(Flameobject::init(id, Some(*object_type_captured)));
-        Flameobject::change_choice(&mut scene.flameobjects, len);
-        scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
-        scene.undo_redo.save_action(undo_redo::Action::Create(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.object_type), editor_settings);
-        blue_flame_common::object_actions::create_shape(&scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings, project_dir, renderer, objects, window);
-        string_backups.label = scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.label.clone();
-        /*
-        for (i, flameobject) in scene.flameobjects.iter().enumerate()
-        {
-            if flameobject.selected == true
-            {
-                scene.flameobject_selected_parent_idx = i as u16;
-                blue_flame_common::object_actions::create_shape(&flameobject.settings, project_dir, renderer, objects, window);
-            }
-        }
-        */
-
-        if scene.flameobjects.len() > 0
-        {
-            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobjects.len() - 1].settings.clone());
-        }
-        else
-        {
-            widget_functions.flameobject_old = None;
-        }
-    }
-    fn blueprint(object_type_captured: &ObjectType, flameobject_blueprint: &mut Option<flameobject::Settings>, project_dir: &str,
-        renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
-    {
-        //flameobject_blueprint = Some(Flameobject::init(len, Some(*object_type_captured)));
-        *flameobject_blueprint = Some(flameobject::Settings::init(0, Some(*object_type_captured)));
-        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, renderer, objects, window);
-    }
-}
 
 fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::InputHelper, ctx: &egui::Context) -> Option<ObjectType>
 {
