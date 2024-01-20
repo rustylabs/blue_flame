@@ -2008,12 +2008,26 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     {
         //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings.clone(), flameobject_selected_parent_idx)));
         // If label has been modified after clicking off the field do something
+        // Save history to undo_redo()
+        if flameobject_settings.texture.file_location != string_backups.texture
+        {
+            //println!("Executed");
+            let mut flameobject_copyover = flameobject_settings.clone();
+            flameobject_copyover.texture.file_location = string_backups.texture.clone();
+            undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover.clone(), flameobject_settings.clone(), flameobject_selected_parent_idx)), editor_settings);
+
+            widget_functions.flameobject_old = Some(flameobject_settings.clone());
+
+            string_backups.texture = flameobject_settings.texture.file_location.clone();
+        }
+        /*
         if flameobject_settings.texture.file_location != string_backups.texture
         {
             let mut flameobject_copyover = flameobject_settings.clone();
             flameobject_copyover.texture.file_location = string_backups.texture.clone();
             undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover, flameobject_settings.clone(), flameobject_id)), editor_settings);
         }
+        */
     }
 
     // Radio buttons for texturemodes
