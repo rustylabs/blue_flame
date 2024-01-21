@@ -1332,6 +1332,7 @@ fn main()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
                         {
                             scene.undo_redo.undo(&mut scene.flameobjects, &mut string_backups, &mut scene.flameobject_selected_parent_idx, &current_project_dir, renderer, objects, window);
+                            /*
                             if scene.flameobject_selected_parent_idx > 0
                             {
                                 widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
@@ -1340,6 +1341,7 @@ fn main()
                             {
                                 widget_functions.flameobject_old = None;
                             }
+                            */
                             
                         }
                         if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
@@ -1483,7 +1485,7 @@ fn main()
                     if let ViewModes::Objects = editor_modes.main.1
                     {
 
-                        if scene.flameobjects.len() > 0
+                        if scene.flameobjects.len() > 0 && any_flameobject_selected(&scene.flameobjects)
                         {
                             let flameobject = &mut scene.flameobjects[scene.flameobject_selected_parent_idx as usize];
 
@@ -1600,6 +1602,8 @@ fn main()
                             if ui.button(format!("{} Delete object", emojis.trash)).clicked()
                             || input.key_pressed(VirtualKeyCode::X) && enable_shortcuts == true
                             {
+                                scene.undo_redo.save_action(undo_redo::Action::Delete(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].copy()), &editor_settings);
+
                                 let mut remove_indexes: Vec<usize> = Vec::new();
                                 //let mut copy_over_undoredo: Vec<(flameobject::Flameobject, u16)> = Vec::new();
                                 //let mut copy_over_undoredo: (u16, Vec<(flameobject::Flameobject, u16)>) = (0, Vec::new());
@@ -1619,7 +1623,7 @@ fn main()
                                     scene.flameobjects.remove(*remove_index);
                                 }
                                 //copy_over_undoredo.0 = scene.flameobject_selected_parent_idx;
-                                scene.undo_redo.save_action(undo_redo::Action::Delete(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].copy()), &editor_settings);
+                                
                                 //Flameobject::recalculate_id(&mut scene.flameobjects);
                                 //flameobjects_selected_parent_idx = (scene.flameobjects.len() - 1) as u16;
 
@@ -2341,6 +2345,19 @@ fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects:
 
     return action_button;
 
+}
+
+// Determines if any flameobject is selected and then returns true or false
+fn any_flameobject_selected(flameobjects: &[Flameobject]) -> bool
+{
+    for flameobject in flameobjects.iter()
+    {
+        if flameobject.selected == true
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 fn save_blueprint(flameobject_blueprint: &Option<flameobject::Settings>, folderpath: &str, current_project_dir: &str)
