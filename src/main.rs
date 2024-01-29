@@ -1331,7 +1331,7 @@ fn main()
                         if ui.button(format!("{} Undo", emojis.undo_redo.undo)).clicked()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
                         {
-                            scene.undo_redo.undo(&mut scene.flameobjects, &current_project_dir, renderer, objects, window);
+                            scene.undo_redo.undo(&mut scene.flameobjects, &mut widget_functions, &current_project_dir, renderer, objects, window);
                             /*
                             if scene.flameobject_selected_parent_idx > 0
                             {
@@ -1347,7 +1347,7 @@ fn main()
                         if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Y)
                         {
-                            scene.undo_redo.redo(&mut scene.flameobjects, &current_project_dir, renderer, objects, window);
+                            scene.undo_redo.redo(&mut scene.flameobjects, &mut widget_functions, &current_project_dir, renderer, objects, window);
                         }
                         if ui.button(format!("{} Clear buf", emojis.trash)).clicked()
                         {
