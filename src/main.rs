@@ -9,9 +9,11 @@ use std::process::exit;
 use blue_flame_common::EditorSettings;
 
 
-pub mod object_settings;
-pub mod db;
+mod object_settings;
+mod db;
 mod practice;
+mod editor_modes;
+
 
 // Directory related libraries
 use std::path::{Path, PathBuf};
@@ -619,6 +621,7 @@ fn main()
     let emojis = Emojis::init();
     let mut filepaths: FilePaths = FilePaths::init();
 
+    //editor_modes::main::test();
     
     //let mut widget_opened = false;
 
@@ -746,6 +749,7 @@ fn main()
             // if true load project scene
             if editor_modes.projects.0 == true
             {
+                editor_modes::projects::main_scene(&window_size, ctx);
                 // Shows all your projects and what you want to load upon startup
                 egui::Window::new("Project")
                 .collapsible(false)
@@ -1331,7 +1335,7 @@ fn main()
                         if ui.button(format!("{} Undo", emojis.undo_redo.undo)).clicked()
                         || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
                         {
-                            scene.undo_redo.undo(&mut scene.flameobjects, &mut widget_functions, &current_project_dir, renderer, objects, window);
+                            scene.undo_redo.undo(&mut scene.flameobjects, &mut widget_functions, &mut scene.flameobject_selected_parent_idx, &current_project_dir, renderer, objects, window);
                             /*
                             if scene.flameobject_selected_parent_idx > 0
                             {
