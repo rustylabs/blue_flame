@@ -1,9 +1,8 @@
-use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode, MouseButton};
-use blue_engine_egui::{self, egui::{self, Ui, InputState}};
-use blue_flame_common::{filepath_handling, structures::{flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig, WidgetFunctions, WhatChanged}, db::scene, emojis::Emojis};
+use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode};
+use blue_engine_egui::{self, egui::{self, Ui, Context}};
+use blue_flame_common::{filepath_handling, structures::{flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig, WidgetFunctions, WhatChanged}, emojis::Emojis};
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
 use blue_flame_common::undo_redo;
-use std::{process::Command, io::Write, f32::consts::E};
 use blue_flame_common::structures::StringBackups;
 use std::process::exit;
 use blue_flame_common::EditorSettings;
@@ -12,6 +11,7 @@ use blue_flame_common::EditorSettings;
 mod object_settings;
 mod db;
 mod practice;
+
 mod editor_modes;
 
 
@@ -175,7 +175,7 @@ impl FilePaths
 
 
 
-struct AlertWindow
+pub struct AlertWindow
 {
     label       : String,
     state       : bool,
@@ -264,7 +264,7 @@ impl Project
 
 
 
-struct EditorModes
+pub struct EditorModes
 {
     projects        :   (bool, bool /*"New Project" scene window*/,
                         (bool /*2.0 Create new project with "cargo new" (checkbox)*/, String /*2.1 Label for <project_name>*/),
@@ -484,7 +484,7 @@ fn object_management(flameobject_settings: &mut flameobject::Settings, projects:
 // Used for either loading already existing project or a brand new project
 fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Project],  filepaths: &mut FilePaths, string_backups: &mut StringBackups, widget_functions: &mut WidgetFunctions,
     project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes,
-    /*Engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window
+    /*Engine shit*/ blue_engine_args: &mut BlueEngineArgs, window: &Window
 )
 {
     // If we have already loaded up the project just load the stuff from memory rather than db
@@ -496,7 +496,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             {
                 scene.flameobject_selected_parent_idx = i as u16;
             }
-            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), renderer, objects, window);
+            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), blue_engine_args.renderer, blue_engine_args.objects, window);
         }
         return;
     }
@@ -546,7 +546,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
 
             //db::scenes::load(scenes, filepaths);
             blue_flame_common::db::scene::load(scene, &Project::selected_dir(&projects),
-            &project_config.last_scene_filepath , true, renderer, objects, window);
+            &project_config.last_scene_filepath , true, blue_engine_args.renderer, blue_engine_args.objects, window);
 
             // Matching the length size issue for undoredo
             {
@@ -591,7 +591,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
 }
 
 // Invoked via shift+A
-struct MouseFunctions
+pub struct MouseFunctions
 {
     is_right_clicked        : bool, // Has it been right clicked
     object_type_captured    : Option<ObjectType>,
@@ -600,6 +600,32 @@ struct MouseFunctions
 }
 
 
+
+// Functions like powerobject in powerbuilder but for rust
+pub mod view_modes_argument_passer
+{
+    use super::*;
+    pub struct Projects<'a>
+    {
+        pub scene: &'a mut Scene,
+        //projects: &'static mut Vec<Project>,
+        //filepaths: &'static mut FilePaths,
+    }
+    pub struct Main
+    {
+
+    }
+}
+
+// Will contain stuff from closures in order to reduce arguments passed in as it is pain in the ass, can't unfortunately include window due to argument in update_loop
+pub struct BlueEngineArgs<'a>
+{
+    renderer: &'a mut Renderer,
+    //window: &'a mut Window,
+    objects: &'a mut ObjectStorage,
+    input: &'a blue_engine::InputHelper,
+    ctx: &'a Context,
+}
 
 //const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
@@ -676,7 +702,7 @@ fn main()
 
 
     
-    let mut alert_window = (false, AlertWindow::init(&emojis));
+    let mut alert_window = AlertWindow::init(&emojis);
 
     let mut engine = Engine::new_config(
         WindowDescriptor
@@ -730,7 +756,14 @@ fn main()
     |
     {
 
-        let window_size = WindowSize::init(&window);
+        /*
+        let mut powerobject = view_modes_argument_passer::Projects
+        {
+            scene: &mut scene,
+        };
+        */
+
+        let window_size = WindowSize::init(window);
 
         // Label error checking
         //issues::issue_checks::labels(&mut flameobjects);
@@ -745,914 +778,53 @@ fn main()
         // ui function will provide the context
         egui_plugin.ui(|ctx|
         {
+            let mut blue_engine_args = BlueEngineArgs
+            {
+                renderer,
+                //window: window,
+                objects,
+                input,
+                ctx,
+            };
+
             enable_shortcuts = true;
             // if true load project scene
             if editor_modes.projects.0 == true
             {
-                editor_modes::projects::main_scene(&window_size, ctx);
-                // Shows all your projects and what you want to load upon startup
-                egui::Window::new("Project")
-                .collapsible(false)
-                .fixed_pos(egui::pos2(0f32, 0f32))
-                .fixed_size(egui::vec2(window_size.x, window_size.y))
-                //.open(&mut open_projects)
-                .show(ctx, |ui|
-                {
-                    use blue_flame_common::radio_options::GameTypeDimensions;
 
-                    ui.set_width(ui.available_width());
-                    ui.set_height(ui.available_height());
-
-                    // Load or Create
-                    ui.horizontal(|ui|
-                    {
-                        if ui.button("Load scene").clicked()
-                        //|| ui.input(|i| i.key_pressed(egui::Key::Enter))
-                        || (input.key_pressed(VirtualKeyCode::Return) || input.key_pressed(VirtualKeyCode::NumpadEnter))
-                        {
-                            // Load existing project
-                            load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut widget_functions,
-                                &mut project_config, &mut current_project_dir, &mut editor_modes,
-                                renderer, objects, &window);
-                            //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
-                        }
-                        if ui.button(format!("{} Create/import project", emojis.add)).clicked()
-                        {
-                            projects.push(Project::init());
-                            
-                            let len = (projects.len() - 1) as u16;
-                            //Project::change_choice(&mut projects, len as u8);
-                            projects.change_choice(len);
-                            
-                            editor_modes.projects.1 = true;
-                        }
-                        if ui.button(format!("{} Delete project", emojis.trash)).clicked()
-                        {
-                            editor_modes.projects.3.0 = true;
-                        }
-
-                    });
-
-                    // Show all projects
-                    for i in 0..projects.len()
-                    {
-                        // Gets position of what is true in the game_type:[true, false]
-                        /*
-                        let mut game_type_pos: usize = 0;
-                        
-                        for (j, game_type) in projects[i].game_type.iter().enumerate()
-                        {
-                            if *game_type == true
-                            {
-                                game_type_pos = j;
-                            }
-                        }
-                        */
-
-                        if ui.selectable_label(projects[i].status, format!("{}: {} {}",
-                        projects[i].name,
-                        projects[i].dir,
-                        //GameTypeDimensions::elements(&projects[i].game_type),
-                        //blue_flame_common::mapper::game_type(game_type_pos),
-
-                        tab_spaces((window_size.x/4f32) as u16))).clicked()
-                        {
-                            //Project::change_choice(&mut projects, i as u8);
-                            projects.change_choice(i as u16);
-                        }
-                    }
-
-
-
-                    // Shows "New Project" scene
-                    if editor_modes.projects.1 == true
-                    {
-                        egui::Window::new("New Project")
-                        .fixed_pos(egui::pos2(window_size.x/2f32, window_size.y/2f32))
-                        .pivot(egui::Align2::CENTER_CENTER)
-                        .default_size(egui::vec2(window_size.x/2f32, window_size.y/2f32))
-                        .resizable(true)
-                        //.open(&mut _create_new_project)
-                        .show(ctx, |ui|
-                        {
-
-                            let len = projects.len() - 1;
-
-
-                            ui.label("Project name:");
-                            ui.add(egui::TextEdit::singleline(&mut projects[len].name));
-
-                            ui.separator();
-
-                            ui.label("Project directory:");
-                            ui.add(egui::TextEdit::singleline(&mut projects[len].dir));
-
-                            ui.label("Game type:");
-
-                            // 2D or 3D
-                            for project in projects.iter_mut()
-                            {
-                                //use blue_flame_common::radio_options::GameTypeDimensions;
-                                if project.status == true
-                                {
-                                    //let elements  = GameTypeDimensions::elements();
-                                    ui.horizontal(|ui|
-                                    {
-                                        for (element, label) in GameTypeDimensions::elements()
-                                        {
-                                            ui.radio_value(&mut project.game_type, element, label);
-                                        }
-                                    });
-
-                                    /*
-                                    for i in 0..project.game_type.len()
-                                    {
-                                        if ui.radio(project.game_type[i], blue_flame_common::mapper::game_type(i)).clicked()
-                                        {
-                                            radio_options::change_choice(&mut project.game_type, i as u8);
-                                        }
-                                    }
-                                    */
-                                }
-                            }
-                            ui.checkbox(&mut editor_modes.projects.2.0, "Create new project with command: \"cargo new <project_name> --bin\"");
-                            // Shows label to type out the name of <project_name>
-                            if editor_modes.projects.2.0 == true
-                            {
-                                ui.add(egui::TextEdit::singleline(&mut editor_modes.projects.2.1));
-                            }
-
-                            // Shows extra buttons
-                            ui.horizontal(|ui|
-                            {
-                                if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
-                                {
-                                    editor_modes.projects.1 = false;
-                                    projects.pop();
-                                }
-
-                                if ui.button(format!("{} Create", emojis.add)).clicked()
-                                {
-                                    // Sets the scene and not flameobject to be true
-                                    editor_modes.main.1 = ViewModes::Scenes;
-
-                                    // Determines if to run "cargo new"
-                                    if editor_modes.projects.2.0 == true
-                                    {
-                                        // Runs "cargo new" and adds extra filepaths to appropriate variables
-                                        for project in projects.iter_mut()
-                                        {
-                                            if project.status == true
-                                            {
-
-                                                project.dir.push_str(&format!("/{}", editor_modes.projects.2.1));
-
-                                                Command::new("sh")
-                                                .arg("-c")
-                                                .arg(format!("cargo new \"{}\" --bin", project.dir))
-                                                //.arg("cargo new \"../testing\" --bin")
-                                                .output()
-                                                .unwrap();
-                                            }
-                                        }
-                                    }
-
-                                    // From "copy_over", load into memory, alter some stuff and output it to the project's respective dirs
-                                    for project in projects.iter()
-                                    {
-                                        if project.status == true
-                                        {
-                                            let dir_src = String::from(format!("{}/src", project.dir));
-
-                                            struct CopyOver
-                                            {
-                                                main            : &'static str,
-                                                blue_flame      : &'static [u8],
-                                                cargo           : &'static str,
-                                            }
-                                            let copy_over = CopyOver
-                                            {
-                                                main            : include_str!("../copy_over/main.rs"),
-                                                blue_flame      : include_bytes!("../copy_over/blue_flame.rs"),
-                                                cargo           : include_str!("../copy_over/Cargo.toml"),
-                                            };
-
-                                            // main.rs
-                                            let mut loaded_content = String::from(copy_over.main);
-                                            loaded_content = loaded_content.replace("{project_name}", &project.name);
-                                            //loaded_content = loaded_content.replace("{scene_path}", &project.dir);
-
-                                            let mut output_file = std::fs::File::create(format!("{dir_src}/main.rs")).unwrap();
-                                            output_file.write_all(loaded_content.as_bytes()).unwrap();
-
-                                            // blue_flame.rs
-                                            let loaded_content = copy_over.blue_flame.to_vec();
-                                            let mut output_file = std::fs::File::create(format!("{dir_src}/blue_flame.rs")).unwrap();
-                                            output_file.write_all(&loaded_content).unwrap();
-
-                                            // Cargo.toml
-                                            let mut loaded_content = String::from(copy_over.cargo);
-                                            loaded_content = loaded_content.replace("{project_name}", &editor_modes.projects.2.1);
-                                            loaded_content = loaded_content.replace("{library}", &filepaths.library.to_str().unwrap());
-                                            let mut output_file = std::fs::File::create(format!("{dir_src}/../Cargo.toml")).unwrap();
-                                            output_file.write_all(loaded_content.as_bytes()).unwrap();
-
-                                            break;
-                                        }
-                                    }
-
-                                    // Load new project
-                                    load_project_scene(false, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut widget_functions, &mut project_config, &mut current_project_dir, &mut editor_modes,
-                                        renderer, objects, window);
-                                    widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
-                                }
-                            });
-                        });
-                    }
-
-
-                    // Delete project
-                    if editor_modes.projects.3.0 == true
-                    {
-                        for (i, project) in projects.iter_mut().enumerate()
-                        {
-                            if project.status == true
-                            {
-                                let remove_project_dir = PathBuf::from(format!("{}", project.dir));
-
-                                // Window prompt
-                                egui::Window::new("Conformation!")
-                                .fixed_pos(egui::pos2(window_size.x/2f32, window_size.y/2f32))
-                                .pivot(egui::Align2::CENTER_CENTER)
-                                .default_size(egui::vec2(window_size.x/2f32, window_size.y/2f32))
-                                .resizable(true)
-                                //.open(&mut _create_new_project)
-                                .show(ctx, |ui|
-                                {
-                                    ui.label("Are you sure you want to delete");
-                                    ui.checkbox(&mut editor_modes.projects.3.1, "Delete entire project dir");
-
-                                    ui.horizontal(|ui|
-                                    {
-                                        if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
-                                        {
-                                            editor_modes.projects.3.0 = false;
-                                        }
-                                        if ui.button(format!("{} Yes", emojis.tick)).clicked()
-                                        {
-                                            editor_modes.projects.3.0 = false;
-
-                                            if editor_modes.projects.3.1 == true
-                                            {
-                                                match std::fs::remove_dir_all(remove_project_dir)
-                                                {
-                                                    Ok(_) => {},
-                                                    Err(e) => println!("Can't remove project: {e}"),
-                                                }
-                                            }
-                                            projects.remove(i);
-                                            db::projects::save(&mut projects, &mut filepaths);
-                                        }                           
-                                    });
-
-                                });
-                                break;
-                            }
-                        }
-                    }
-                });
+                editor_modes::projects::main(&mut scene, &mut projects, &mut filepaths, &mut string_backups, &emojis, &mut widget_functions, &mut project_config,
+                    &mut current_project_dir, &mut editor_modes, &window_size, &mut blue_engine_args, window);
+                /*
+                editor_modes::projects::main_scene(&mut powerobject, &mut projects, &mut filepaths, &mut string_backups, &emojis, &mut widget_functions, &mut project_config,
+                    &mut current_project_dir, &mut editor_modes, &window_size, input, ctx, renderer, objects, window);
+                */
             }
             // After passing the projects screen
             else if editor_modes.main.0 == true
             {
-                // One of the settings menu if opened
-                egui::Window::new(AlertWindow::whats_enabled(&alert_window.1))
-                .fixed_pos(egui::pos2(400f32, 50f32))
-                .fixed_size(egui::vec2(100f32, 200f32))
-                .open(&mut alert_window.0)
-                .show(ctx, |ui|
-                {
-                    ui.label("")
-                });
+                //struct AlertWindow{alert_window: }
 
-
-                // Menu bar
-                egui::TopBottomPanel::top("Menu Bar").show(ctx, |ui|
-                {
-                    ui.set_enabled(!alert_window.0);
-
-                    egui::menu::bar(ui, |ui|
-                    {
-                        ui.menu_button("Menu", |ui|
-                        {
-                            for list in alert_window.1.iter_mut()
-                            {
-                                // Individual elements after clicking on "Menu"
-                                if ui.button(&list.label).clicked()
-                                {
-                                    if list.label == "💾 Save"
-                                    {
-                                        blue_flame_common::db::scene::save(&scene, &filepaths.current_scene, &current_project_dir);
-                                        break;
-                                    }
-
-                                    alert_window.0 = true;
-                                    list.state = true;
-                                }
-                                else if alert_window.0 == false
-                                {
-                                    list.state = false;
-                                }
-                            }
-
-                        });
-                        ui.menu_button("About", |ui|
-                        {
-                            //if ui.bu
-                        });
-
-                    });
-                });
-
-                // Left panel
-                egui::SidePanel::left("Objects").show(ctx, |ui|
-                {
-                    /*
-                    if ui.input(|i| i.pointer.button_clicked(egui::PointerButton::Secondary))
-                    {
-                        println!("mouse click!");
-                    }
-                    */
-
-                    // Shortcuts
-
-
-
-                    ui.set_enabled(!alert_window.0);
-
-                    ui.set_width(ui.available_width());
-    
-                    // Shows the current scene we are using
-                    ui.horizontal(|ui|
-                    {
-                        ui.label(format!("Current scene: {}", &scene.label));
-                    });
-
-                    ui.separator();
-
-                    // Tabs for other Objects or Scenes view
-                    ui.horizontal(|ui|
-                    {
-                        ui.label("Current display:");
-
-                        //let elements = ViewModes::elements();
-                        for (element, label) in ViewModes::elements()
-                        {
-                            if ui.selectable_value(&mut editor_modes.main.1, element, label).changed()
-                            {
-                                // Switching between tabs
-                                match editor_modes.main.1
-                                {
-                                    ViewModes::Objects => 
-                                    {
-                                        if previous_viewmode == ViewModes::Blueprints
-                                        {
-                                            if let Option::Some(ref value) = flameobject_blueprint
-                                            {
-                                                blue_flame_common::object_actions::delete_shape(&value.label, objects);
-                                            }
-                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut widget_functions, &mut project_config, &mut current_project_dir, &mut editor_modes,
-                                                renderer, objects, window);
-                                            //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
-                                        }
-                                        previous_viewmode = editor_modes.main.1.clone();
-                                    }
-                                    ViewModes::Scenes => 
-                                    {
-                                        if previous_viewmode == ViewModes::Blueprints
-                                        {
-                                            if let Option::Some(ref value) = flameobject_blueprint
-                                            {
-                                                blue_flame_common::object_actions::delete_shape(&value.label, objects);
-                                            }
-                                            load_project_scene(true, &mut scene, &mut projects, &mut filepaths, &mut string_backups, &mut widget_functions, &mut project_config, &mut current_project_dir, &mut editor_modes,
-                                                renderer, objects, window);
-                                            //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
-                                        }
-                                        previous_viewmode = editor_modes.main.1.clone();
-                                    }
-                                    ViewModes::Blueprints => 
-                                    {
-                                        // Remove all objects from scene then load or create a new object for blueprints variable
-                                        for flameobject in scene.flameobjects.iter()
-                                        {
-                                            blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, objects);
-                                        }
-                                        match flameobject_blueprint
-                                        {
-                                            Some(ref flameobject_settings) =>
-                                            {
-                                                blue_flame_common::object_actions::create_shape(flameobject_settings, &current_project_dir, renderer, objects, window)
-                                            },
-                                            None => {},
-                                        };
-                                        //blue_flame_common::object_actions::create_shape(flameobject, project_dir, renderer, objects, window)
-
-                                        previous_viewmode = editor_modes.main.1.clone();
-                                    }
-                                }
-                            }
-                        }
-                        
-                    });
-            
-                    ui.separator();
-
-                    // Create new _ and save buttons
-                    ui.horizontal(|ui|
-                    {
-                        if let ViewModes::Objects = editor_modes.main.1
-                        {
-                            // Create new flameobject
-                            if ui.button(format!("{} Create object", emojis.add)).clicked()
-                            //|| ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.shift))
-                            //|| input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
-                            && editor_modes.main.2 == false
-                            {
-                                editor_modes.main.2 = true;
-
-                                let len = scene.flameobjects.len() as u16;
-
-                                scene.flameobjects.push(Flameobject::init(len, None));
-                                Flameobject::change_choice(&mut scene.flameobjects, len);
-                                
-                            }
-
-                            // Determines to display "create new object" window
-                            if editor_modes.main.2 == true
-                            {
-                                let mut cancel_creation_object = false; // If user presses cancel then pop from flameobjects
-                                for (i, flameobject) in scene.flameobjects.iter_mut().enumerate()
-                                {
-                                    if flameobject.selected == true
-                                    {
-                                        match new_object_window(&mut flameobject.settings, &mut projects, &emojis, &window_size, ctx, ui, input, renderer, objects, window)
-                                        {
-                                            Some(action) =>
-                                            {
-                                                match action
-                                                {
-                                                    // ⛔ Cancel
-                                                    false => cancel_creation_object = true,
-                                                    // ➕ Create
-                                                    true =>
-                                                    {
-                                                        scene.flameobject_selected_parent_idx = i as u16;
-                                                        blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), renderer, objects, window);
-                                                        editor_modes.main.2 = false;
-                                                        break;
-                                                    }
-                                                }
-                                            },
-                                            None => {}
-                                        }
-                                    }
-                                }
-                                // If user presses cancel then pop from flameobjects
-                                if cancel_creation_object == true
-                                {
-                                    scene.flameobjects.pop();
-                                    editor_modes.main.2 = false;
-                                }
-                            }
-                            if ui.button(format!("{} Save current scene", emojis.save)).clicked()
-                            || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
-                            //|| input.key_pressed(VirtualKeyCode::LControl || VirtualKeyCode::S)
-                            {
-                                if blue_flame_common::db::scene::save(&scene, &filepaths.current_scene, &current_project_dir) == true
-                                {
-                                    db::project_config::save(&mut project_config, &mut filepaths, &current_project_dir);
-                                }
-                            }
-
-                            ui.separator();
-
-                        }
-                        else if let ViewModes::Scenes = editor_modes.main.1
-                        {
-                            // Create new flameobject
-                            if ui.button(format!("{} New scene", emojis.add)).clicked()
-                            {
-                                for flameobject in scene.flameobjects.iter_mut()
-                                {
-                                    blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, objects);
-                                }
-
-                                scene = Scene::init(0);
-                                filepaths.current_scene = String::new();
-                            }
-                            if ui.button(format!("{} Save current scene", emojis.save)).clicked()
-                            || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
-                            //|| input.key_pressed(VirtualKeyCode::LControl || VirtualKeyCode::S)
-                            {
-                                if blue_flame_common::db::scene::save(&scene, &filepaths.current_scene, &current_project_dir) == true
-                                {
-                                    db::project_config::save(&mut project_config, &mut filepaths, &current_project_dir);
-                                }
-                            }
-                        }
-                        else if let ViewModes::Blueprints = editor_modes.main.1
-                        {
-                            if ui.button(format!("{} Create object", emojis.add)).clicked()
-                            {
-                                flameobject_blueprint = Some(blue_flame_common::structures::flameobject::Settings::init(0, None));
-                                editor_modes.main.2 = true;
-                            }
-
-                            if editor_modes.main.2 == true
-                            {
-                                let mut cancel_creation_object = false; // If user presses cancel then pop from flameobjects
-                                match new_object_window(flameobject_blueprint.as_mut().unwrap(), &mut projects, &emojis, &window_size,
-                                ctx, ui, input, renderer, objects, window)
-                                {
-                                    Some(action) =>
-                                    {
-                                        match action
-                                        {
-                                            // ⛔ Cancel
-                                            false => editor_modes.main.2 = false,
-                                            // ➕ Create
-                                            true =>
-                                            {
-                                                blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), &Project::selected_dir(&projects), renderer, objects, window);
-                                                editor_modes.main.2 = false;
-                                            }
-                                        }
-                                    },
-                                    None => {}
-                                }
-                            }
-                            // Top left hand side when in blueprint view mode
-                            if ui.button(format!("{} Save blueprint", emojis.save)).clicked()
-                            || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::S)
-                            {
-                                save_blueprint(&flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir);
-                                match flameobject_blueprint
-                                {
-                                    // WHen user preses save for blueprint object, any regular object inherited from blueprint and its changes will be affected 
-                                    Some(ref flameobject_blueprint) =>
-                                    {
-                                        for flameobject in scene.flameobjects.iter_mut()
-                                        {
-                                            match flameobject.settings.blueprint_key
-                                            {
-                                                Some(ref blueprint_label) =>
-                                                {
-                                                    if blueprint_label.0 == flameobject_blueprint.label && blueprint_label.1 == true
-                                                    {
-                                                        flameobject.settings.texture = flameobject_blueprint.texture.clone();
-                                                        flameobject.settings.color = flameobject_blueprint.color.clone();
-                                                        flameobject.settings.rotation = flameobject_blueprint.rotation.clone();
-                                                        flameobject.settings.size = flameobject_blueprint.size.clone();
-                                                    }
-                                                }
-                                                None => continue,
-                                            }
-                                        }
-                                    },
-                                    None => {},
-                                }
-                                //db::blueprints::save(flameobject_blueprint.as_ref().unwrap(), &filepaths.current_scene, &current_project_dir);
-                            }
-                        }
-
-                    });
-                    ui.separator();
-                    // UndoRedo
-                    ui.label("Undo Redo");
-                    ui.horizontal(|ui|
-                    {
-                        if ui.button(format!("{} Undo", emojis.undo_redo.undo)).clicked()
-                        || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
-                        {
-                            scene.undo_redo.undo(&mut scene.flameobjects, &mut widget_functions, &mut scene.flameobject_selected_parent_idx, &current_project_dir, renderer, objects, window);
-                            /*
-                            if scene.flameobject_selected_parent_idx > 0
-                            {
-                                widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
-                            }
-                            else
-                            {
-                                widget_functions.flameobject_old = None;
-                            }
-                            */
-                            
-                        }
-                        if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
-                        || input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Y)
-                        {
-                            scene.undo_redo.redo(&mut scene.flameobjects, &mut widget_functions, &current_project_dir, renderer, objects, window);
-                        }
-                        if ui.button(format!("{} Clear buf", emojis.trash)).clicked()
-                        {
-                            scene.undo_redo.clear_buffer();
-                        }
-                    });
-
-                    ui.separator();
-
-                    // Temporary solution, will remove it when file explorer can be integrated
-                    // Only created for testing purposes
-                    if let ViewModes::Objects = editor_modes.main.1
-                    {
-                        if ui.button(format!("{} Blueprint in main scene", emojis.load)).clicked()
-                        {
-                            match flameobject_blueprint
-                            {
-                                Some(ref value) => 
-                                {
-                                    let len = scene.flameobjects.len() as u16;
-                                    scene.flameobjects.push(Flameobject::init(len, None));
-                                    scene.flameobjects[len as usize].settings = value.clone();
-                                    scene.flameobjects[len as usize].settings.blueprint_key = Some((String::from(format!("{}", value.label)), true));
-                                    Flameobject::change_choice(&mut scene.flameobjects, len);
-
-                                    scene.flameobject_selected_parent_idx = len;
-                                    blue_flame_common::object_actions::create_shape(&scene.flameobjects[len as usize].settings,
-                                        &Project::selected_dir(&projects), renderer, objects, window);
-                                }
-                                None => println!("None in flameobject_blueprint"),
-                            }
-                        }
-                    }
-
-                    ui.separator();
-
-                    // Displays all flameobjects/scenes button
-                    if let ViewModes::Objects = editor_modes.main.1
-                    {
-                        // Only change chance labels if a single select was performed on labels
-                        let mut change_choice = false;
-
-                        for (i, flameobject) in scene.flameobjects.iter_mut().enumerate()
-                        {
-                            ui.horizontal(|ui|
-                            {
-                                ui.collapsing(format!("id: {}", flameobject.id), |ui|
-                                {
-                                    ui.label("some stuff");
-                                });
-                                if ui.selectable_label(flameobject.selected, &flameobject.settings.label).clicked()
-                                {
-                                    // if we are not attempting to select multiple items
-                                    //if !ui.input(|i| i.modifiers.shift_only())
-                                    if !input.key_held(VirtualKeyCode::LShift)
-                                    {
-                                        //Flameobject::change_choice(&mut scene.flameobjects, i as u16);
-                                        string_backups.label = flameobject.settings.label.clone();
-                                        scene.flameobject_selected_parent_idx = i as u16;
-                                        change_choice = true;
-                                    }
-                                    // Multiple select via shift click keys
-                                    else
-                                    {
-                                        flameobject.selected = !flameobject.selected;
-                                    }
-
-                                    //println!("label_backup: {}", label_backup);
-                                }
-                                ui.checkbox(&mut flameobject.visible, "");
-                                if flameobject.visible == true
-                                {
-                                    ui.label(format!("{}", emojis.eye));
-                                }
-        
-                                // Checks if variable names are correct or not
-                                // Warnings
-                                /*
-                                if flameobjects[i].0.label.1.warning == true
-                                {
-                                    ui.label(issues::output_symbols().0);
-                                }
-                                // Errors
-                                if flameobjects[i].0.label.1.error == true
-                                {
-                                    ui.label(issues::output_symbols().1);
-                                }
-                                */
-        
-                            });
-                        }
-                        if change_choice == true {Flameobject::change_choice(&mut scene.flameobjects, scene.flameobject_selected_parent_idx)}
-                    }
-                    else if let ViewModes::Scenes = editor_modes.main.1
-                    {
-                        ui.label(format!("id: {}", &scene.id));
-                        /*
-                        for i in 0..scenes.len()
-                        {
-                            ui.horizontal(|ui|
-                            {
-                                ui.label(format!("id: {}", &loaded_scene.scene.id));
-                                if ui.selectable_label(loaded_scene.scene.selected, &loaded_scene.scene.label).clicked()
-                                {
-                                    //Scene::change_choice(&mut loaded_scene.scene, i);
-                                    // load scene
-
-                                    blue_flame_common::db::scene::load(&mut loaded_scene.flameobjects, &Project::selected_dir(&projects), &loaded_scene.scene.filepath(), true, renderer, objects, window);
-                                }
-                            });
-                        }
-                        */
-                    }
-
-                    else if let ViewModes::Blueprints = editor_modes.main.1
-                    {
-                        ui.label("Save location of blueprint:");
-                        ui.add(egui::TextEdit::singleline(&mut blueprint_savefolderpath));
-                        if ui.button("Load blueprint").clicked()
-                        {
-                            db::blueprint::load(&mut flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir, renderer, objects, window);
-                        }
-                    }
-
-                }); // Left side
-
-                // Right side
-                egui::SidePanel::right("Object Settings").show(ctx, |ui|
-                {
-
-                    ui.set_enabled(!alert_window.0);
-
-                    ui.set_width(ui.available_width());
-
-                    if let ViewModes::Objects = editor_modes.main.1
-                    {
-
-                        if scene.flameobjects.len() > 0 && any_flameobject_selected(&scene.flameobjects)
-                        {
-                            let flameobject = &mut scene.flameobjects[scene.flameobject_selected_parent_idx as usize];
-
-                            //debug_ctrl_z_pressed1(&mut debug_ctrl_z_pressed, &mut scene, &mut label_backup);
-
-                            // label changes after here!
-                            right_panel_flameobject_settings(&mut flameobject.settings, scene.flameobject_selected_parent_idx, flameobject.id, &mut scene.undo_redo,
-                                &mut enable_shortcuts, &mut string_backups, &current_project_dir, &projects, &editor_settings,
-                                &mut widget_functions, input, ui, renderer, objects, window);
-                            
-                            //debug_ctrl_z_pressed1(&mut debug_ctrl_z_pressed, &mut scene, &mut label_backup);
-
-                        }
-
-                        /*
-                        if enable_shortcuts == true {shortcut_commands(&mut scene.flameobjects, &mut flameobjects_selected_parent_idx, &mut editor_modes, &mut mouse_functions,
-                            &current_project_dir, &window_size,
-                            input, ctx, ui,
-                            renderer, objects, window)}
-                        */
-                        if enable_shortcuts == true
-                        {
-                            match right_click_menu(&mut mouse_functions, input, ctx)
-                            {
-                                Some(object_type_captured) => CreateNewFlameObject::flameobject(&object_type_captured, &mut scene,
-                                    &mut widget_functions, &mut string_backups, &current_project_dir, &editor_settings, renderer, objects, window),
-                                None => {},
-                            }
-                        }
-                    }
-
-                    else if let ViewModes::Scenes = editor_modes.main.1
-                    {
-                        ui.label("Scene name:");
-                        ui.add(egui::TextEdit::singleline(&mut scene.label));
-                        ui.separator();
-
-                        ui.label("Save location:");
-                        ui.add(egui::TextEdit::singleline(&mut filepaths.current_scene));
-                        if ui.button("Invert filepath type").clicked()
-                        {
-                            filepaths.current_scene = invert_pathtype(&filepaths.current_scene, &projects);
-                        }
-                        if ui.button("Load scene").clicked()
-                        {
-                            if blue_flame_common::db::scene::load(&mut scene, &current_project_dir, &filepaths.current_scene, true,
-                                renderer, objects, window) == true
-                            {
-                                project_config.last_scene_filepath = filepaths.current_scene.clone();
-                                db::project_config::save(&mut project_config, &mut filepaths, &current_project_dir);
-                            }
-                        }
-                        ui.separator();
-                        
-                        ui.label("High Power Mode:");
-                        ui.horizontal(|ui|
-                        {
-                            ui.checkbox(&mut scene.settings.high_power_mode, "high_power_mode");
-                        });
-                    }
-                    
-                    else if let ViewModes::Blueprints = editor_modes.main.1
-                    {
-                        match flameobject_blueprint
-                        {
-                            Some(ref mut flameobject_settings) => 
-                            {
-                                right_panel_flameobject_settings(flameobject_settings, scene.flameobject_selected_parent_idx, 0, &mut scene.undo_redo, &mut enable_shortcuts, &mut string_backups,
-                                    &current_project_dir, &projects, &editor_settings, &mut widget_functions, input, ui, renderer, objects, window);
-                            }
-                            None => {}
-                        }
-
-                        /*
-                        if enable_shortcuts == true {shortcut_commands(&mut scene.flameobjects, &mut flameobjects_selected_parent_idx, &mut editor_modes, &mut mouse_functions,
-                            &current_project_dir, &window_size,
-                            input, ctx, ui,
-                            renderer, objects, window)}
-                        */
-                        if enable_shortcuts == true
-                        {
-                            match right_click_menu(&mut mouse_functions, input, ctx)
-                            {
-                                Some(object_type_captured) => CreateNewFlameObject::blueprint(&object_type_captured, &mut flameobject_blueprint, &current_project_dir, renderer, objects, window),
-                                None => {},
-                            }
-                        }
- 
-                    }
-
-                    for _ in 0..2
-                    {
-                        ui.separator();
-                    }
-
-                    // Blue print save related stuff
-                    if let ViewModes::Objects = editor_modes.main.1
-                    {
-                        // single line edit for blue print save location
-                        ui.add(egui::TextEdit::singleline(&mut blueprint_savefolderpath));
-
-                        // blue print save button
-                        if ui.button(format!("{} Save blueprint", emojis.save)).clicked()
-                        {
-                            save_blueprint(&flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir);
-                        }
-                    }
-
-                    // Delete button
-                    ui.horizontal(|ui|
-                    {
-                        if let ViewModes::Objects = editor_modes.main.1
-                        {
-                            if ui.button(format!("{} Delete object", emojis.trash)).clicked()
-                            || input.key_pressed(VirtualKeyCode::X) && enable_shortcuts == true
-                            {
-                                scene.undo_redo.save_action(undo_redo::Action::Delete(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].copy()), &editor_settings);
-
-                                let mut remove_indexes: Vec<usize> = Vec::new();
-                                //let mut copy_over_undoredo: Vec<(flameobject::Flameobject, u16)> = Vec::new();
-                                //let mut copy_over_undoredo: (u16, Vec<(flameobject::Flameobject, u16)>) = (0, Vec::new());
-                                
-                                // Deletes object from game engine and stores the index of vector to remove
-                                for (i, flameobject) in scene.flameobjects.iter().enumerate()
-                                {
-                                    if flameobject.selected == true
-                                    {
-                                        blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, objects);
-                                        remove_indexes.push(i);
-                                    }
-                                }
-                                // Removes any element in flameobjects from vector based on the remove_indexes vector
-                                for remove_index in remove_indexes.iter().rev()
-                                {
-                                    scene.flameobjects.remove(*remove_index);
-                                }
-                                //copy_over_undoredo.0 = scene.flameobject_selected_parent_idx;
-                                
-                                //Flameobject::recalculate_id(&mut scene.flameobjects);
-                                //flameobjects_selected_parent_idx = (scene.flameobjects.len() - 1) as u16;
-
-                                if scene.flameobjects.len() > 0
-                                {
-                                    scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
-                                }
-                                else
-                                {
-                                    scene.flameobject_selected_parent_idx = 0;
-                                }
-                            }
-                        }
-                        else if let ViewModes::Scenes = editor_modes.main.1
-                        {
-                            if ui.button(format!("{} Delete scene", emojis.trash)).clicked()
-                            {
-                            }
-                        }
-                    });
-                    
-
-                }); // Right side
+                editor_modes::main::main::main(
+                    &mut alert_window,
+                    &mut scene,
+                    &mut flameobject_blueprint,
+                    &mut previous_viewmode,
+                    &mut projects,
+                    &mut filepaths,
+                    &mut string_backups,
+                    &emojis,
+                    &mut blueprint_savefolderpath,
+                    &mut enable_shortcuts,
+                    &editor_settings,
+                    &mut widget_functions,
+                    &mut project_config,
+                    &mut current_project_dir,
+                    &mut editor_modes,
+                    &window_size,
+                    &mut mouse_functions,
+                    &mut blue_engine_args, window);
             }
-        }, &window)
+        }, window)
     }).unwrap();
 
 }
@@ -1926,7 +1098,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     undo_redo: &mut undo_redo::UndoRedo, enable_shortcuts: &mut bool, string_backups: &mut StringBackups,
     current_project_dir: &str,
     projects: &Vec<Project>, editor_settings: &EditorSettings, widget_functions: &mut WidgetFunctions,
-    /*Game engine shit*/ input: &blue_engine::InputHelper, ui: &mut Ui, renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
+    /*Game engine shit*/ ui: &mut Ui, blue_engine_args: &mut BlueEngineArgs, window: &Window)
 {
     //let mut item_clicked = false;
     /*
@@ -1946,7 +1118,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     */
     // Object name
     let response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.label));
-    if input.mouse_pressed(0) || response.lost_focus()
+    if blue_engine_args.input.mouse_pressed(0) || response.lost_focus()
     {
         // If label has been modified after clicking off the field do something
         if flameobject_settings.label != string_backups.label
@@ -1964,11 +1136,11 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
 
             *enable_shortcuts = false;
             // Destroys hashmap
-            blue_flame_common::object_actions::delete_shape(&string_backups.label, objects);
+            blue_flame_common::object_actions::delete_shape(&string_backups.label, blue_engine_args.objects);
             
             // Creates new shape
             //object_management(flameobject, &mut projects, renderer, objects, window, ui);
-            blue_flame_common::object_actions::create_shape(flameobject_settings, current_project_dir, renderer, objects, window);
+            blue_flame_common::object_actions::create_shape(flameobject_settings, current_project_dir, blue_engine_args.renderer, blue_engine_args.objects, window);
     
             string_backups.label = flameobject_settings.label.clone();
         }
@@ -2004,7 +1176,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     if response.changed()
     {
         *enable_shortcuts = false;
-        blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), objects, renderer);
+        blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args.objects, blue_engine_args.renderer);
     }
     if ui.button("Invert filepath type").clicked()
     {
@@ -2012,7 +1184,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     }
 
     // Save texture change to undo_redo after clicking off text field
-    if input.mouse_pressed(0) || response.lost_focus()
+    if blue_engine_args.input.mouse_pressed(0) || response.lost_focus()
     {
         //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings.clone(), flameobject_selected_parent_idx)));
         // If label has been modified after clicking off the field do something
@@ -2047,7 +1219,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         {
             if ui.radio_value(&mut flameobject_settings.texture.mode, element, Texture::label(&element)).changed()
             {
-                blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), objects, renderer);
+                blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args.objects, blue_engine_args.renderer);
             }
         }
     }
@@ -2078,10 +1250,10 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         if response.changed()
         {
             widget_functions.has_changed = Some(WhatChanged::Color);
-            blue_flame_common::object_actions::update_shape::color(flameobject_settings, objects);
+            blue_flame_common::object_actions::update_shape::color(flameobject_settings, blue_engine_args.objects);
         }
         // Save changes to undo_redo
-        else if input.mouse_released(0) && !response.changed()
+        else if blue_engine_args.input.mouse_released(0) && !response.changed()
         {
             if let Some(WhatChanged::Color) = widget_functions.has_changed
             {
@@ -2131,7 +1303,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
             }
             */
             //if response.changed() && input.mouse_released(0) i.e. if it has lost focused/not being changed anymore the value you are done putting in the new value
-            if /*Dragging*/ response.drag_released() && !response.gained_focus() || /*Typing*/ response.changed() && input.mouse_released(0)
+            if /*Dragging*/ response.drag_released() && !response.gained_focus() || /*Typing*/ response.changed() && blue_engine_args.input.mouse_released(0)
             {
                 save_2_undoredo = true;
                 if let Some(WhatChanged::Position) = widget_functions.has_changed
@@ -2148,7 +1320,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         // Updates the shape's position if the user has changed its value
         if update_position == true
         {
-            blue_flame_common::object_actions::update_shape::position(flameobject_settings, objects);
+            blue_flame_common::object_actions::update_shape::position(flameobject_settings, blue_engine_args.objects);
         }
         // Save undo redo
         if save_2_undoredo == true
@@ -2187,7 +1359,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
                 //widget_functions.has_changed = Some(WhatChanged::Size);
                 update_size = true;
             }
-            if /*Dragging*/ response.drag_released() && !response.gained_focus() || /*Typing*/ response.changed() && input.mouse_released(0)
+            if /*Dragging*/ response.drag_released() && !response.gained_focus() || /*Typing*/ response.changed() && blue_engine_args.input.mouse_released(0)
             {
                 save_2_undoredo = true;
             }
@@ -2197,7 +1369,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         if update_size == true
         {
             //println!("update_position: {update_position}");
-            blue_flame_common::object_actions::update_shape::size(flameobject_settings, objects, window);
+            blue_flame_common::object_actions::update_shape::size(flameobject_settings, blue_engine_args.objects, window);
         }
         // Save undo redo
         if save_2_undoredo == true
@@ -2248,8 +1420,8 @@ fn tab_spaces(tab_spaces_times: u16) -> String
 }
 
 fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects: &mut [Project], emojis: &Emojis, window_size: &WindowSize,
-    ctx: &egui::Context, ui: &mut Ui, input: &blue_engine::InputHelper,
-    renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window, ) -> Option<bool>
+    ui: &mut Ui,
+    blue_engine_args: &mut BlueEngineArgs, window: &Window) -> Option<bool>
 {
 
     // If the user presses either Create, Cancel or does not do anything
@@ -2259,7 +1431,7 @@ fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects:
     .fixed_pos(egui::pos2(window_size.x/2f32, window_size.y/2f32))
     .fixed_size(egui::vec2(100f32, 200f32))
     //.open(&mut editor_modes.main.2)
-    .show(ctx, |ui|
+    .show(blue_engine_args.ctx, |ui|
     {
         ui.label("Select object type:");
 
@@ -2268,7 +1440,7 @@ fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects:
             ui.selectable_value(&mut flameobject_settings.object_type, value, label);
         }
         // Shortcuts for moving up and down
-        let move_direction: i8 = move_direction_keys(KeyMovement::Vertical, input);
+        let move_direction: i8 = move_direction_keys(KeyMovement::Vertical, blue_engine_args.input);
         if move_direction != 0
         {
             let object_type_len = ObjectType::elements(None).len();
@@ -2289,11 +1461,11 @@ fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects:
         // Shows object type radio buttons i.e. Square, Triangle, Line
         ui.horizontal(|ui|
         {
-            object_management(flameobject_settings, projects, renderer, objects, window, ui);
+            object_management(flameobject_settings, projects, blue_engine_args.renderer, blue_engine_args.objects, window, ui);
         });
     
         // Shortcuts for changing radio button options i.e. Square, Triangle, Line etc
-        let move_direction: i8 = move_direction_keys(KeyMovement::Horizontal, input);
+        let move_direction: i8 = move_direction_keys(KeyMovement::Horizontal, blue_engine_args.input);
         
         if move_direction != 0
         {
@@ -2334,13 +1506,13 @@ fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects:
         {
             if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
             //|| ui.input(|i| i.key_pressed(egui::Key::Escape))
-            || input.key_pressed(VirtualKeyCode::Escape)
+            || blue_engine_args.input.key_pressed(VirtualKeyCode::Escape)
             {
                 action_button = Some(false);
             }
             if ui.button(format!("{} Create", emojis.add)).clicked()
             //|| ui.input(|i| i.key_pressed(egui::Key::Enter))
-            || input.key_pressed(VirtualKeyCode::Return)
+            || blue_engine_args.input.key_pressed(VirtualKeyCode::Return)
             {
                 action_button = Some(true);
             }
