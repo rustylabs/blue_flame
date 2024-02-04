@@ -1,10 +1,9 @@
-use blue_engine_egui::{self, egui::{self, Ui, InputState, Context}};
+use blue_engine_egui::{self, egui::{self}};
 use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
 use blue_flame_common::emojis::Emojis;
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
-use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, EditorModes, ViewModes, AlertWindow, BlueEngineArgs, EditorSettings,
-    MouseFunctions,
+use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, EditorModes, ViewModes, BlueEngineArgs,
 };
 
 pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, previous_viewmode: &mut ViewModes,
@@ -46,7 +45,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                             {
                                 if let Option::Some(ref value) = flameobject_blueprint
                                 {
-                                    blue_flame_common::object_actions::delete_shape(&value.label, blue_engine_args.objects);
+                                    blue_flame_common::object_actions::delete_shape(&value.label, blue_engine_args);
                                 }
                                 crate::load_project_scene(true, scene, projects, filepaths, string_backups, widget_functions,
                                     project_config, current_project_dir, editor_modes,
@@ -61,7 +60,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                             {
                                 if let Option::Some(ref value) = flameobject_blueprint
                                 {
-                                    blue_flame_common::object_actions::delete_shape(&value.label, blue_engine_args.objects);
+                                    blue_flame_common::object_actions::delete_shape(&value.label, blue_engine_args);
                                 }
                                 crate::load_project_scene(true, scene, projects, filepaths, string_backups, widget_functions, project_config, current_project_dir, editor_modes,
                                     blue_engine_args, window);
@@ -74,13 +73,13 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                             // Remove all objects from scene then load or create a new object for blueprints variable
                             for flameobject in scene.flameobjects.iter()
                             {
-                                blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, blue_engine_args.objects);
+                                blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, blue_engine_args);
                             }
                             match flameobject_blueprint
                             {
                                 Some(ref flameobject_settings) =>
                                 {
-                                    blue_flame_common::object_actions::create_shape(flameobject_settings, &current_project_dir, blue_engine_args.renderer, blue_engine_args.objects, window)
+                                    blue_flame_common::object_actions::create_shape(flameobject_settings, &current_project_dir, blue_engine_args, window)
                                 },
                                 None => {},
                             };
@@ -135,7 +134,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                                         true =>
                                         {
                                             scene.flameobject_selected_parent_idx = i as u16;
-                                            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(projects), blue_engine_args.renderer, blue_engine_args.objects, window);
+                                            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(projects), blue_engine_args, window);
                                             editor_modes.main.2 = false;
                                             break;
                                         }
@@ -173,7 +172,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                 {
                     for flameobject in scene.flameobjects.iter_mut()
                     {
-                        blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, blue_engine_args.objects);
+                        blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, blue_engine_args);
                     }
 
                     *scene = Scene::init(0);
@@ -212,7 +211,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                                 // ➕ Create
                                 true =>
                                 {
-                                    blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), &Project::selected_dir(projects), blue_engine_args.renderer, blue_engine_args.objects, window);
+                                    blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), &Project::selected_dir(projects), blue_engine_args, window);
                                     editor_modes.main.2 = false;
                                 }
                             }
@@ -264,12 +263,12 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
             if ui.button(format!("{} Undo", emojis.undo_redo.undo)).clicked()
             || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::Z)
             {
-                scene.undo_redo.undo(&mut scene.flameobjects, widget_functions, &mut scene.flameobject_selected_parent_idx, &current_project_dir, blue_engine_args.renderer, blue_engine_args.objects, window);
+                scene.undo_redo.undo(&mut scene.flameobjects, widget_functions, &mut scene.flameobject_selected_parent_idx, &current_project_dir, blue_engine_args, window);
             }
             if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
             || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::Y)
             {
-                scene.undo_redo.redo(&mut scene.flameobjects, widget_functions, &current_project_dir, blue_engine_args.renderer, blue_engine_args.objects, window);
+                scene.undo_redo.redo(&mut scene.flameobjects, widget_functions, &current_project_dir, blue_engine_args, window);
             }
             if ui.button(format!("{} Clear buf", emojis.trash)).clicked()
             {
@@ -296,7 +295,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
 
                         scene.flameobject_selected_parent_idx = len;
                         blue_flame_common::object_actions::create_shape(&scene.flameobjects[len as usize].settings,
-                            &Project::selected_dir(&projects), blue_engine_args.renderer, blue_engine_args.objects, window);
+                            &Project::selected_dir(&projects), blue_engine_args, window);
                     }
                     None => println!("None in flameobject_blueprint"),
                 }
@@ -373,7 +372,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
             ui.add(egui::TextEdit::singleline(blueprint_savefolderpath));
             if ui.button("Load blueprint").clicked()
             {
-                crate::db::blueprint::load(flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir, blue_engine_args.renderer, blue_engine_args.objects, window);
+                crate::db::blueprint::load(flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir, blue_engine_args, window);
             }
         }
 

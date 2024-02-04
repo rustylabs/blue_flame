@@ -1,6 +1,7 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode};
 use blue_engine_egui::{self, egui::{self, Ui, Context}};
-use blue_flame_common::{filepath_handling, structures::{flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig, WidgetFunctions, WhatChanged}, emojis::Emojis};
+use blue_flame_common::{filepath_handling, structures::{BlueEngineArgs, flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig, WidgetFunctions, WhatChanged},
+emojis::Emojis};
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
 use blue_flame_common::undo_redo;
 use blue_flame_common::structures::StringBackups;
@@ -25,7 +26,7 @@ struct CreateNewFlameObject;
 impl CreateNewFlameObject
 {
     pub fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, widget_functions: &mut WidgetFunctions, string_backups: &mut StringBackups, project_dir: &str, editor_settings: &EditorSettings,
-        renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
+        blue_engine_args: &mut BlueEngineArgs, window: &Window)
     {
         let len = scene.flameobjects.len() as u16;
         //let id = Flameobject::get_available_id(&mut scene.flameobjects);
@@ -42,7 +43,7 @@ impl CreateNewFlameObject
                     scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.object_type,
                     scene.flameobjects[scene.flameobject_selected_parent_idx as usize].id)),
                     editor_settings);
-        blue_flame_common::object_actions::create_shape(&scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings, project_dir, renderer, objects, window);
+        blue_flame_common::object_actions::create_shape(&scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings, project_dir, blue_engine_args, window);
         string_backups.label = scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.label.clone();
         /*
         for (i, flameobject) in scene.flameobjects.iter().enumerate()
@@ -65,11 +66,11 @@ impl CreateNewFlameObject
         }
     }
     pub fn blueprint(object_type_captured: &ObjectType, flameobject_blueprint: &mut Option<flameobject::Settings>, project_dir: &str,
-        renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
+        blue_engine_args: &mut BlueEngineArgs, window: &Window)
     {
         //flameobject_blueprint = Some(Flameobject::init(len, Some(*object_type_captured)));
         *flameobject_blueprint = Some(flameobject::Settings::init(0, Some(*object_type_captured)));
-        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, renderer, objects, window);
+        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, blue_engine_args, window);
     }
 }
 
@@ -443,9 +444,9 @@ fn invert_pathtype(filepath: &str, projects: &Vec<Project>) -> String
 
 
 // Has radio buttons and creates flameobject
-fn object_management(flameobject_settings: &mut flameobject::Settings, projects: &mut [Project], renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window, ui: &mut Ui)
+fn object_management(flameobject_settings: &mut flameobject::Settings, projects: &mut [Project], blue_engine_args: &mut BlueEngineArgs, ui: &mut Ui, window: &Window)
 {
-    use blue_flame_common::radio_options::object_type::{ObjectType, shape, light};
+    use blue_flame_common::radio_options::object_type::{shape, light};
 
     let mut change_shape = false;
 
@@ -476,7 +477,7 @@ fn object_management(flameobject_settings: &mut flameobject::Settings, projects:
     }
     if change_shape == true
     {
-        blue_flame_common::object_actions::create_shape(&flameobject_settings, &Project::selected_dir(&projects), renderer, objects, window);
+        blue_flame_common::object_actions::create_shape(&flameobject_settings, &Project::selected_dir(&projects), blue_engine_args, window);
     }
     
 }
@@ -496,7 +497,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             {
                 scene.flameobject_selected_parent_idx = i as u16;
             }
-            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), blue_engine_args.renderer, blue_engine_args.objects, window);
+            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), blue_engine_args, window);
         }
         return;
     }
@@ -546,7 +547,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
 
             //db::scenes::load(scenes, filepaths);
             blue_flame_common::db::scene::load(scene, &Project::selected_dir(&projects),
-            &project_config.last_scene_filepath , true, blue_engine_args.renderer, blue_engine_args.objects, window);
+            &project_config.last_scene_filepath , true, blue_engine_args, window);
 
             // Matching the length size issue for undoredo
             {
@@ -617,15 +618,7 @@ pub mod view_modes_argument_passer
     }
 }
 
-// Will contain stuff from closures in order to reduce arguments passed in as it is pain in the ass, can't unfortunately include window due to argument in update_loop
-pub struct BlueEngineArgs<'a>
-{
-    renderer: &'a mut Renderer,
-    //window: &'a mut Window,
-    objects: &'a mut ObjectStorage,
-    input: &'a blue_engine::InputHelper,
-    ctx: &'a Context,
-}
+
 
 //const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
@@ -1136,11 +1129,11 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
 
             *enable_shortcuts = false;
             // Destroys hashmap
-            blue_flame_common::object_actions::delete_shape(&string_backups.label, blue_engine_args.objects);
+            blue_flame_common::object_actions::delete_shape(&string_backups.label, blue_engine_args);
             
             // Creates new shape
             //object_management(flameobject, &mut projects, renderer, objects, window, ui);
-            blue_flame_common::object_actions::create_shape(flameobject_settings, current_project_dir, blue_engine_args.renderer, blue_engine_args.objects, window);
+            blue_flame_common::object_actions::create_shape(flameobject_settings, current_project_dir, blue_engine_args, window);
     
             string_backups.label = flameobject_settings.label.clone();
         }
@@ -1176,7 +1169,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     if response.changed()
     {
         *enable_shortcuts = false;
-        blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args.objects, blue_engine_args.renderer);
+        blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args);
     }
     if ui.button("Invert filepath type").clicked()
     {
@@ -1219,7 +1212,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         {
             if ui.radio_value(&mut flameobject_settings.texture.mode, element, Texture::label(&element)).changed()
             {
-                blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args.objects, blue_engine_args.renderer);
+                blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args);
             }
         }
     }
@@ -1250,7 +1243,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         if response.changed()
         {
             widget_functions.has_changed = Some(WhatChanged::Color);
-            blue_flame_common::object_actions::update_shape::color(flameobject_settings, blue_engine_args.objects);
+            blue_flame_common::object_actions::update_shape::color(flameobject_settings, blue_engine_args);
         }
         // Save changes to undo_redo
         else if blue_engine_args.input.mouse_released(0) && !response.changed()
@@ -1320,7 +1313,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         // Updates the shape's position if the user has changed its value
         if update_position == true
         {
-            blue_flame_common::object_actions::update_shape::position(flameobject_settings, blue_engine_args.objects);
+            blue_flame_common::object_actions::update_shape::position(flameobject_settings, blue_engine_args);
         }
         // Save undo redo
         if save_2_undoredo == true
@@ -1369,7 +1362,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         if update_size == true
         {
             //println!("update_position: {update_position}");
-            blue_flame_common::object_actions::update_shape::size(flameobject_settings, blue_engine_args.objects, window);
+            blue_flame_common::object_actions::update_shape::size(flameobject_settings, blue_engine_args, window);
         }
         // Save undo redo
         if save_2_undoredo == true
@@ -1461,7 +1454,7 @@ fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects:
         // Shows object type radio buttons i.e. Square, Triangle, Line
         ui.horizontal(|ui|
         {
-            object_management(flameobject_settings, projects, blue_engine_args.renderer, blue_engine_args.objects, window, ui);
+            object_management(flameobject_settings, projects, blue_engine_args, ui, window);
         });
     
         // Shortcuts for changing radio button options i.e. Square, Triangle, Line etc

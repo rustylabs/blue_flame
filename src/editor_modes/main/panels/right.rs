@@ -40,7 +40,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>,
                 match crate::right_click_menu(mouse_functions, blue_engine_args.input, blue_engine_args.ctx)
                 {
                     Some(object_type_captured) => crate::CreateNewFlameObject::flameobject(&object_type_captured, scene,
-                        widget_functions, string_backups, &current_project_dir, &editor_settings, blue_engine_args.renderer, blue_engine_args.objects, window),
+                        widget_functions, string_backups, &current_project_dir, &editor_settings, blue_engine_args, window),
                     None => {},
                 }
             }
@@ -60,7 +60,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>,
             if ui.button("Load scene").clicked()
             {
                 if blue_flame_common::db::scene::load(scene, &current_project_dir, &filepaths.current_scene, true,
-                    blue_engine_args.renderer, blue_engine_args.objects, window) == true
+                    blue_engine_args, window) == true
                 {
                     project_config.last_scene_filepath = filepaths.current_scene.clone();
                     crate::db::project_config::save(project_config, filepaths, &current_project_dir);
@@ -97,7 +97,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>,
             {
                 match crate::right_click_menu(mouse_functions, blue_engine_args.input, blue_engine_args.ctx)
                 {
-                    Some(object_type_captured) => crate::CreateNewFlameObject::blueprint(&object_type_captured, flameobject_blueprint, &current_project_dir, blue_engine_args.renderer, blue_engine_args.objects, window),
+                    Some(object_type_captured) => crate::CreateNewFlameObject::blueprint(&object_type_captured, flameobject_blueprint, &current_project_dir, blue_engine_args, window),
                     None => {},
                 }
             }
@@ -141,7 +141,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>,
                     {
                         if flameobject.selected == true
                         {
-                            blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, blue_engine_args.objects);
+                            blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, blue_engine_args);
                             remove_indexes.push(i);
                         }
                     }

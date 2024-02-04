@@ -3,7 +3,7 @@
 pub mod blueprint
 {
     use std::io::Read;
-    use blue_flame_common::structures::flameobject;
+    use blue_flame_common::structures::{flameobject, BlueEngineArgs};
     use blue_engine::{ObjectStorage, Window, Renderer};
     use crate::filepath_handling;
     
@@ -30,7 +30,7 @@ pub mod blueprint
     }
 
     pub fn load(flameobject_blueprint: &mut Option<flameobject::Settings>, filepath: &str, project_dir: &str,
-    /*Game engine shit*/ renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window)
+    /*Game engine shit*/ blue_engine_args: &mut BlueEngineArgs, window: &Window)
     {
         let mut file = match std::fs::File::open(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)))
         {
@@ -55,7 +55,7 @@ pub mod blueprint
         let version = value.0;
         *flameobject_blueprint = Some(value.1);
 
-        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, renderer, objects, window);
+        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, blue_engine_args, window);
 
         //println!("db version blueprints {FILE_NAME}: {}", version);
     }
