@@ -7,7 +7,9 @@ use blue_engine::header::VirtualKeyCode;
 use blue_engine::{Renderer, ObjectSettings, ObjectStorage, Window};
 use blue_flame_common::db::scene;
 use blue_flame_common::emojis::Emojis;
-use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, EditorModes, ViewModes, BlueEngineArgs};
+use blue_flame_common::structures::project_config;
+use crate::editor_mode_variables::Main;
+use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, BlueEngineArgs, GameEditorArgs, EditorMode, editor_mode_variables};
 
 trait VecExtensions
 {
@@ -46,22 +48,34 @@ impl VecExtensions for Vec<Project>
     
 }
 
-pub fn main(/*powerobject: &mut view_modes_argument_passer::Projects*/scene: &mut Scene, projects: &mut Vec<Project>, filepaths: &mut FilePaths, string_backups: &mut StringBackups, emojis: &Emojis,
+/*
+pub fn main(game_editor_args: &mut GameEditorArgs, scene: &mut Scene /*projects: &mut Vec<Project>, filepaths: &mut FilePaths, string_backups: &mut StringBackups*/, emojis: &Emojis,
     widget_functions: &mut WidgetFunctions, project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes,
     window_size: &WindowSize,
     blue_engine_args: &mut BlueEngineArgs, window: &Window /*renderer: &mut Renderer, objects: &mut ObjectStorage, window: &Window*/)
+*/
+pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mut editor_mode_variables::Project,
+    game_editor_args: &mut GameEditorArgs, blue_engine_args: &mut BlueEngineArgs, window: &Window) -> bool // Return to change editor_mode
 {
-
+    let mut change_editor_mode = false;
+    /*
+    let projects = &mut game_editor_args.projects;
+    let filepaths = &mut game_editor_args.filepaths;
+    let string_backups = &mut game_editor_args.string_backups;
+    let window_size = &game_editor_args.window_size;
+    let project_config = &mut game_editor_args.project_config;
+    let widget_functions = &mut game_editor_args.widget_functions;
+    let emojis = &game_editor_args.emojis;
+    */
     //let scene = &mut powerobject.scene;
-
-
     egui::Window::new("Project")
     .collapsible(false)
     .fixed_pos(egui::pos2(0f32, 0f32))
-    .fixed_size(egui::vec2(window_size.x, window_size.y))
+    .fixed_size(egui::vec2(game_editor_args.window_size.x, game_editor_args.window_size.y))
     //.open(&mut open_projects)
     .show(blue_engine_args.ctx, |ui|
     {
+
         use blue_flame_common::radio_options::GameTypeDimensions;
 
         ui.set_width(ui.available_width());
@@ -74,11 +88,10 @@ pub fn main(/*powerobject: &mut view_modes_argument_passer::Projects*/scene: &mu
             || (blue_engine_args.input.key_pressed(VirtualKeyCode::Return) || blue_engine_args.input.key_pressed(VirtualKeyCode::NumpadEnter))
             {
                 // Load existing project
-                crate::load_project_scene(false, scene, projects, filepaths, string_backups, widget_functions,
-                    project_config, current_project_dir, editor_modes,
-                    blue_engine_args, window);
+                crate::load_project_scene(false, scene, projects, game_editor_args, blue_engine_args, window);
+                change_editor_mode = true;
             }
-            if ui.button(format!("{} Create/import project", emojis.add)).clicked()
+            if ui.button(format!("{} Create/import project", game_editor_args.emojis.add)).clicked()
             {
                 projects.push(Project::init());
                 
@@ -86,11 +99,14 @@ pub fn main(/*powerobject: &mut view_modes_argument_passer::Projects*/scene: &mu
                 //Project::change_choice(&mut projects, len as u8);
                 projects.change_choice(len);
                 
-                editor_modes.projects.1 = true;
+                //game_editor_args.editor_modes.projects.1 = true;
+                sub_editor_mode.new_project_window = true;
             }
-            if ui.button(format!("{} Delete project", emojis.trash)).clicked()
+            if ui.button(format!("{} Delete project", game_editor_args.emojis.trash)).clicked()
             {
-                editor_modes.projects.3.0 = true;
+                sub_editor_mode.del_proj_win = true;
+                //game_editor_args.editor_modes.projects.3.0 = true;
+                
             }
         });
 
@@ -116,7 +132,7 @@ pub fn main(/*powerobject: &mut view_modes_argument_passer::Projects*/scene: &mu
             //GameTypeDimensions::elements(&projects[i].game_type),
             //blue_flame_common::mapper::game_type(game_type_pos),
 
-            crate::tab_spaces((window_size.x/4f32) as u16))).clicked()
+            crate::tab_spaces((game_editor_args.window_size.x/4f32) as u16))).clicked()
             {
                 //Project::change_choice(&mut projects, i as u8);
                 projects.change_choice(i as u16);
@@ -124,12 +140,15 @@ pub fn main(/*powerobject: &mut view_modes_argument_passer::Projects*/scene: &mu
         }
 
         // Shows "New Project" scene
-        if editor_modes.projects.1 == true
+        //if game_editor_args.editor_modes.projects.1 == true
+
+
+        if sub_editor_mode.new_project_window == true
         {
             egui::Window::new("New Project")
-            .fixed_pos(egui::pos2(window_size.x/2f32, window_size.y/2f32))
+            .fixed_pos(egui::pos2(game_editor_args.window_size.x/2f32, game_editor_args.window_size.y/2f32))
             .pivot(egui::Align2::CENTER_CENTER)
-            .default_size(egui::vec2(window_size.x/2f32, window_size.y/2f32))
+            .default_size(egui::vec2(game_editor_args.window_size.x/2f32, game_editor_args.window_size.y/2f32))
             .resizable(true)
             //.open(&mut _create_new_project)
             .show(blue_engine_args.ctx, |ui|
@@ -174,28 +193,33 @@ pub fn main(/*powerobject: &mut view_modes_argument_passer::Projects*/scene: &mu
                         */
                     }
                 }
-                ui.checkbox(&mut editor_modes.projects.2.0, "Create new project with command: \"cargo new <project_name> --bin\"");
+                //ui.checkbox(&mut game_editor_args.editor_modes.projects.2.0, "Create new project with command: \"cargo new <project_name> --bin\"");
+                ui.checkbox(&mut sub_editor_mode.create_new_project_with_cargo_new, "Create new project with command: \"cargo new <project_name> --bin\"");
                 // Shows label to type out the name of <project_name>
-                if editor_modes.projects.2.0 == true
+                if sub_editor_mode.create_new_project_with_cargo_new == true
                 {
-                    ui.add(egui::TextEdit::singleline(&mut editor_modes.projects.2.1));
+                    //ui.add(egui::TextEdit::singleline(&mut game_editor_args.editor_modes.projects.2.1));
+                    ui.add(egui::TextEdit::singleline(&mut sub_editor_mode.new_project_label));
                 }
 
                 // Shows extra buttons
                 ui.horizontal(|ui|
                 {
-                    if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
+                    if ui.button(format!("{} Cancel", game_editor_args.emojis.cancel)).clicked()
                     {
-                        editor_modes.projects.1 = false;
+                        //editor_mode.projects.1 = false;
+                        sub_editor_mode.new_project_window = false;
                         projects.pop();
                     }
-                    if ui.button(format!("{} Create", emojis.add)).clicked()
+                    // Create the project
+                    if ui.button(format!("{} Create", game_editor_args.emojis.add)).clicked()
                     {
                         // Sets the scene and not flameobject to be true
-                        editor_modes.main.1 = ViewModes::Scenes;
+                        *game_editor_args.viewmode = ViewModes::Scenes;
 
                         // Determines if to run "cargo new"
-                        if editor_modes.projects.2.0 == true
+                        //if game_editor_args.editor_modes.projects.2.0 == true
+                        if sub_editor_mode.create_new_project_with_cargo_new == true
                         {
                             // cargo new and copy stuff over
                             for project in projects.iter_mut()
@@ -203,7 +227,8 @@ pub fn main(/*powerobject: &mut view_modes_argument_passer::Projects*/scene: &mu
                                 if project.status == true
                                 {
                                     // Runs "cargo new" and adds extra filepaths to appropriate variables
-                                    project.dir.push_str(&format!("/{}", editor_modes.projects.2.1));
+                                    //project.dir.push_str(&format!("/{}", game_editor_args.editor_modes.projects.2.1));
+                                    project.dir.push_str(&format!("/{}", sub_editor_mode.new_project_label));
 
                                     Command::new("sh")
                                     .arg("-c")
@@ -212,30 +237,39 @@ pub fn main(/*powerobject: &mut view_modes_argument_passer::Projects*/scene: &mu
                                     .output()
                                     .unwrap();
 
-                                    copy_files_over_new_project(project, editor_modes, filepaths);
+                                    //copy_files_over_new_project(project, game_editor_args.editor_modes, game_editor_args.filepaths);
+                                    //copy_files_over_new_project(project, game_editor_args.editor_modes, game_editor_args.filepaths);
+                                    copy_files_over_new_project(project, sub_editor_mode, game_editor_args.filepaths);
 
                                     break;
                                 }
                             }
                             // Load new project
-                            crate::load_project_scene(false, scene, projects, filepaths, string_backups, widget_functions, project_config, current_project_dir, editor_modes,
-                                blue_engine_args, window);
-                            widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                            crate::load_project_scene(false, scene, projects, game_editor_args, blue_engine_args, window);
+                            game_editor_args.widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                            change_editor_mode = true;
                         }
+                        //*editor_mode = EditorMode::Main(crate::editor_mode_variables::Main::init());
                     }
                 });
             });
         }
 
         // Delete project
-        if editor_modes.projects.3.0 == true
+        //if game_editor_args.editor_modes.projects.3.0 == true
+        if sub_editor_mode.del_proj_win == true
         {
-            delete_project(projects, editor_modes, filepaths, emojis, window_size, blue_engine_args.ctx);
+            //delete_project(projects, game_editor_args.editor_modes, game_editor_args.filepaths, game_editor_args.emojis, game_editor_args.window_size, blue_engine_args.ctx);
+            delete_project(projects, sub_editor_mode, game_editor_args.filepaths, game_editor_args.emojis, game_editor_args.window_size, blue_engine_args.ctx);
         }
     });
+    return change_editor_mode;
 }
-
+/*
 fn delete_project(projects: &mut Vec<Project>, editor_modes: &mut EditorModes, filepaths: &FilePaths, emojis: &Emojis, window_size: &WindowSize,
+    ctx: &Context)
+*/
+fn delete_project(projects: &mut Vec<Project>, sub_editor_mode: &mut editor_mode_variables::Project, filepaths: &FilePaths, emojis: &Emojis, window_size: &WindowSize,
     ctx: &Context)
 {
     for (i, project) in projects.iter_mut().enumerate()
@@ -253,19 +287,23 @@ fn delete_project(projects: &mut Vec<Project>, editor_modes: &mut EditorModes, f
             .show(ctx, |ui|
             {
                 ui.label("Are you sure you want to delete");
-                ui.checkbox(&mut editor_modes.projects.3.1, "Delete entire project dir");
+                //ui.checkbox(&mut editor_modes.projects.3.1, "Delete entire project dir");
+                ui.checkbox(&mut sub_editor_mode.del_entire_proj_checkbox, "Delete entire project dir");
 
                 ui.horizontal(|ui|
                 {
                     if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
                     {
-                        editor_modes.projects.3.0 = false;
+                        //editor_modes.projects.3.0 = false;
+                        sub_editor_mode.del_proj_win = false;
                     }
                     if ui.button(format!("{} Yes", emojis.tick)).clicked()
                     {
-                        editor_modes.projects.3.0 = false;
+                        //editor_modes.projects.3.0 = false;
+                        sub_editor_mode.del_proj_win = false;
 
-                        if editor_modes.projects.3.1 == true
+                        //if editor_modes.projects.3.1 == true
+                        if sub_editor_mode.del_entire_proj_checkbox == true
                         {
                             match std::fs::remove_dir_all(remove_project_dir)
                             {
@@ -283,7 +321,7 @@ fn delete_project(projects: &mut Vec<Project>, editor_modes: &mut EditorModes, f
     }
 }
 
-fn copy_files_over_new_project(project: &Project, editor_modes: &EditorModes, filepaths: &FilePaths)
+fn copy_files_over_new_project(project: &Project, sub_editor_mode: &crate::editor_mode_variables::Project, filepaths: &FilePaths)
 {
     let dir_src = String::from(format!("{}/src", project.dir));
 
@@ -315,7 +353,8 @@ fn copy_files_over_new_project(project: &Project, editor_modes: &EditorModes, fi
 
     // Cargo.toml
     let mut loaded_content = String::from(copy_over.cargo);
-    loaded_content = loaded_content.replace("{project_name}", &editor_modes.projects.2.1);
+    //loaded_content = loaded_content.replace("{project_name}", &editor_modes.projects.2.1);
+    loaded_content = loaded_content.replace("{project_name}", &sub_editor_mode.new_project_label);
     loaded_content = loaded_content.replace("{library}", &filepaths.library.to_str().unwrap());
     let mut output_file = std::fs::File::create(format!("{dir_src}/../Cargo.toml")).unwrap();
     output_file.write_all(loaded_content.as_bytes()).unwrap();

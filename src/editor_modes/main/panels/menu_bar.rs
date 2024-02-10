@@ -3,7 +3,7 @@ use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
 use blue_flame_common::emojis::Emojis;
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
-use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, EditorModes, ViewModes, AlertWindow, BlueEngineArgs, EditorSettings,
+use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, AlertWindow, BlueEngineArgs, EditorSettings,
     MouseFunctions,
 };
 

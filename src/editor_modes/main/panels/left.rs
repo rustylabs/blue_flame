@@ -3,15 +3,20 @@ use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
 use blue_flame_common::emojis::Emojis;
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
-use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, EditorModes, ViewModes, BlueEngineArgs,
+use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, BlueEngineArgs, GameEditorArgs, Blueprint,
+    editor_mode_variables,
 };
-
-pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, previous_viewmode: &mut ViewModes,
+/*
+pub fn main(scene: &mut Scene, blueprint.flameobject: &mut Option<Settings>, previous_viewmode: &mut ViewModes,
     projects: &mut Vec<Project>, filepaths: &mut FilePaths, string_backups: &mut StringBackups, emojis: &Emojis, blueprint_savefolderpath: &mut String,
    widget_functions: &mut WidgetFunctions, project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes,
    window_size: &WindowSize,
    blue_engine_args: &mut BlueEngineArgs, window: &Window)
+*/
+pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint, sub_editor_mode: &mut editor_mode_variables::Main, game_editor_args: &mut GameEditorArgs, blue_engine_args: &mut BlueEngineArgs, window: &Window)
 {
+
+
     egui::SidePanel::left("Objects").show(blue_engine_args.ctx, |ui|
     {
         //ui.set_enabled(!alert_window.0);
@@ -29,44 +34,42 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
         // Tabs for other Objects or Scenes view
         ui.horizontal(|ui|
         {
+
             ui.label("Current display:");
 
             //let elements = ViewModes::elements();
             for (element, label) in ViewModes::elements()
             {
-                if ui.selectable_value(&mut editor_modes.main.1, element, label).changed()
+                if ui.selectable_value(game_editor_args.viewmode, element, label).changed()
                 {
                     // Switching between tabs
-                    match editor_modes.main.1
+                    match game_editor_args.viewmode
                     {
                         ViewModes::Objects => 
                         {
-                            if *previous_viewmode == ViewModes::Blueprints
+                            if *game_editor_args.previous_viewmode == ViewModes::Blueprints
                             {
-                                if let Option::Some(ref value) = flameobject_blueprint
+                                if let Option::Some(ref value) = blueprint.flameobject
                                 {
                                     blue_flame_common::object_actions::delete_shape(&value.label, blue_engine_args);
                                 }
-                                crate::load_project_scene(true, scene, projects, filepaths, string_backups, widget_functions,
-                                    project_config, current_project_dir, editor_modes,
-                                    blue_engine_args, window);
+                                crate::load_project_scene(true, scene, projects,  game_editor_args, blue_engine_args, window);
                                 //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                             }
-                            *previous_viewmode = editor_modes.main.1.clone();
+                            *game_editor_args.previous_viewmode = game_editor_args.viewmode.clone();
                         }
                         ViewModes::Scenes => 
                         {
-                            if *previous_viewmode == ViewModes::Blueprints
+                            if *game_editor_args.previous_viewmode == ViewModes::Blueprints
                             {
-                                if let Option::Some(ref value) = flameobject_blueprint
+                                if let Option::Some(ref value) = blueprint.flameobject
                                 {
                                     blue_flame_common::object_actions::delete_shape(&value.label, blue_engine_args);
                                 }
-                                crate::load_project_scene(true, scene, projects, filepaths, string_backups, widget_functions, project_config, current_project_dir, editor_modes,
-                                    blue_engine_args, window);
+                                crate::load_project_scene(true, scene, projects, game_editor_args, blue_engine_args, window);
                                 //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                             }
-                            *previous_viewmode = editor_modes.main.1.clone();
+                            *game_editor_args.previous_viewmode = game_editor_args.viewmode.clone();
                         }
                         ViewModes::Blueprints => 
                         {
@@ -75,17 +78,17 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                             {
                                 blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, blue_engine_args);
                             }
-                            match flameobject_blueprint
+                            match blueprint.flameobject
                             {
                                 Some(ref flameobject_settings) =>
                                 {
-                                    blue_flame_common::object_actions::create_shape(flameobject_settings, &current_project_dir, blue_engine_args, window)
+                                    blue_flame_common::object_actions::create_shape(flameobject_settings, &game_editor_args.current_project_dir, blue_engine_args, window)
                                 },
                                 None => {},
                             };
                             //blue_flame_common::object_actions::create_shape(flameobject, project_dir, renderer, objects, window)
 
-                            *previous_viewmode = editor_modes.main.1.clone();
+                            *game_editor_args.previous_viewmode = game_editor_args.viewmode.clone();
                         }
                     }
                 }
@@ -97,15 +100,16 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
 
         ui.horizontal(|ui|
         {
-            if let ViewModes::Objects = editor_modes.main.1
+            if let ViewModes::Objects = game_editor_args.viewmode
             {
                 // Create new flameobject
-                if ui.button(format!("{} Create object", emojis.add)).clicked()
+                if ui.button(format!("{} Create object", game_editor_args.emojis.add)).clicked()
                 //|| ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.shift))
                 //|| input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
-                && editor_modes.main.2 == false
+                //&& sub_editor_mode.create_new_object_window == false
+                && sub_editor_mode.create_new_object_window == false
                 {
-                    editor_modes.main.2 = true;
+                    sub_editor_mode.create_new_object_window = true;
 
                     let len = scene.flameobjects.len() as u16;
 
@@ -115,14 +119,14 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                 }
 
                 // Determines to display "create new object" window
-                if editor_modes.main.2 == true
+                if sub_editor_mode.create_new_object_window == true
                 {
                     let mut cancel_creation_object = false; // If user presses cancel then pop from flameobjects
                     for (i, flameobject) in scene.flameobjects.iter_mut().enumerate()
                     {
                         if flameobject.selected == true
                         {
-                            match crate::new_object_window(&mut flameobject.settings, projects, &emojis, &window_size, ui, blue_engine_args, window)
+                            match crate::new_object_window(&mut flameobject.settings, projects, &game_editor_args.emojis, &game_editor_args.window_size, ui, blue_engine_args, window)
                             {
                                 Some(action) =>
                                 {
@@ -135,7 +139,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                                         {
                                             scene.flameobject_selected_parent_idx = i as u16;
                                             blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(projects), blue_engine_args, window);
-                                            editor_modes.main.2 = false;
+                                            sub_editor_mode.create_new_object_window = false;
                                             break;
                                         }
                                     }
@@ -148,27 +152,27 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                     if cancel_creation_object == true
                     {
                         scene.flameobjects.pop();
-                        editor_modes.main.2 = false;
+                        sub_editor_mode.create_new_object_window = false;
                     }
                 }
 
-                if ui.button(format!("{} Save current scene", emojis.save)).clicked()
+                if ui.button(format!("{} Save current scene", game_editor_args.emojis.save)).clicked()
                 || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::S)
                 //|| input.key_pressed(VirtualKeyCode::LControl || VirtualKeyCode::S)
                 {
-                    if blue_flame_common::db::scene::save(scene, &filepaths.current_scene, &current_project_dir) == true
+                    if blue_flame_common::db::scene::save(scene, &game_editor_args.filepaths.current_scene, &game_editor_args.current_project_dir) == true
                     {
-                        crate::db::project_config::save(project_config, filepaths, &current_project_dir);
+                        crate::db::project_config::save(game_editor_args.project_config, game_editor_args.filepaths, &game_editor_args.current_project_dir);
                     }
                 }
 
                 ui.separator();
             }
 
-            else if let ViewModes::Scenes = editor_modes.main.1
+            else if let ViewModes::Scenes = game_editor_args.viewmode
             {
                 // Create new flameobject
-                if ui.button(format!("{} New scene", emojis.add)).clicked()
+                if ui.button(format!("{} New scene", game_editor_args.emojis.add)).clicked()
                 {
                     for flameobject in scene.flameobjects.iter_mut()
                     {
@@ -176,30 +180,30 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                     }
 
                     *scene = Scene::init(0);
-                    filepaths.current_scene = String::new();
+                    game_editor_args.filepaths.current_scene = String::new();
                 }
 
-                if ui.button(format!("{} Save current scene", emojis.save)).clicked()
+                if ui.button(format!("{} Save current scene", game_editor_args.emojis.save)).clicked()
                 || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::S)
                 //|| input.key_pressed(VirtualKeyCode::LControl || VirtualKeyCode::S)
                 {
-                    if blue_flame_common::db::scene::save(scene, &filepaths.current_scene, &current_project_dir) == true
+                    if blue_flame_common::db::scene::save(scene, &game_editor_args.filepaths.current_scene, &game_editor_args.current_project_dir) == true
                     {
-                        crate::db::project_config::save(project_config, filepaths, &current_project_dir);
+                        crate::db::project_config::save(game_editor_args.project_config, game_editor_args.filepaths, &game_editor_args.current_project_dir);
                     }
                 }
             }
-            else if let ViewModes::Blueprints = editor_modes.main.1
+            else if let ViewModes::Blueprints = game_editor_args.viewmode
             {
-                if ui.button(format!("{} Create object", emojis.add)).clicked()
+                if ui.button(format!("{} Create object", game_editor_args.emojis.add)).clicked()
                 {
-                    *flameobject_blueprint = Some(blue_flame_common::structures::flameobject::Settings::init(0, None));
-                    editor_modes.main.2 = true;
+                    blueprint.flameobject = Some(blue_flame_common::structures::flameobject::Settings::init(0, None));
+                    sub_editor_mode.create_new_object_window = true;
                 }
-                if editor_modes.main.2 == true
+                if sub_editor_mode.create_new_object_window == true
                 {
                     let mut cancel_creation_object = false; // If user presses cancel then pop from flameobjects
-                    match crate::new_object_window(flameobject_blueprint.as_mut().unwrap(), projects, &emojis, &window_size,
+                    match crate::new_object_window(blueprint.flameobject.as_mut().unwrap(), projects, game_editor_args.emojis, game_editor_args.window_size,
                     ui, blue_engine_args, window)
                     {
                         Some(action) =>
@@ -207,12 +211,12 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                             match action
                             {
                                 // ⛔ Cancel
-                                false => editor_modes.main.2 = false,
+                                false => sub_editor_mode.create_new_object_window = false,
                                 // ➕ Create
                                 true =>
                                 {
-                                    blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), &Project::selected_dir(projects), blue_engine_args, window);
-                                    editor_modes.main.2 = false;
+                                    blue_flame_common::object_actions::create_shape(blueprint.flameobject.as_ref().unwrap(), &Project::selected_dir(projects), blue_engine_args, window);
+                                    sub_editor_mode.create_new_object_window = false;
                                 }
                             }
                         },
@@ -220,14 +224,14 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                     }
                 }
                 // Top left hand side when in blueprint view mode
-                if ui.button(format!("{} Save blueprint", emojis.save)).clicked()
+                if ui.button(format!("{} Save blueprint", game_editor_args.emojis.save)).clicked()
                 || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::S)
                 {
-                    //crate::save_blueprint(&flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir);
-                    match flameobject_blueprint
+                    //crate::save_blueprint(&blueprint.flameobject, &blueprint_savefolderpath, &current_project_dir);
+                    match blueprint.flameobject
                     {
                         // WHen user preses save for blueprint object, any regular object inherited from blueprint and its changes will be affected 
-                        Some(ref flameobject_blueprint) =>
+                        Some(ref blueprint_flameobject) =>
                         {
                             for flameobject in scene.flameobjects.iter_mut()
                             {
@@ -235,12 +239,12 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                                 {
                                     Some(ref blueprint_label) =>
                                     {
-                                        if blueprint_label.0 == flameobject_blueprint.label && blueprint_label.1 == true
+                                        if blueprint_label.0 == blueprint_flameobject.label && blueprint_label.1 == true
                                         {
-                                            flameobject.settings.texture = flameobject_blueprint.texture.clone();
-                                            flameobject.settings.color = flameobject_blueprint.color.clone();
-                                            flameobject.settings.rotation = flameobject_blueprint.rotation.clone();
-                                            flameobject.settings.size = flameobject_blueprint.size.clone();
+                                            flameobject.settings.texture = blueprint_flameobject.texture.clone();
+                                            flameobject.settings.color = blueprint_flameobject.color.clone();
+                                            flameobject.settings.rotation = blueprint_flameobject.rotation.clone();
+                                            flameobject.settings.size = blueprint_flameobject.size.clone();
                                         }
                                     }
                                     None => continue,
@@ -249,7 +253,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                         },
                         None => {},
                     }
-                    //db::blueprints::save(flameobject_blueprint.as_ref().unwrap(), &filepaths.current_scene, &current_project_dir);
+                    //db::blueprints::save(blueprint.flameobject.as_ref().unwrap(), &filepaths.current_scene, &current_project_dir);
                 }
             }
         });
@@ -260,17 +264,18 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
 
         ui.horizontal(|ui|
         {
-            if ui.button(format!("{} Undo", emojis.undo_redo.undo)).clicked()
+            if ui.button(format!("{} Undo", game_editor_args.emojis.undo_redo.undo)).clicked()
             || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::Z)
             {
-                scene.undo_redo.undo(&mut scene.flameobjects, widget_functions, &mut scene.flameobject_selected_parent_idx, &current_project_dir, blue_engine_args, window);
+                scene.undo_redo.undo(&mut scene.flameobjects, &mut game_editor_args.widget_functions, &mut scene.flameobject_selected_parent_idx,
+                    game_editor_args.current_project_dir, blue_engine_args, window);
             }
-            if ui.button(format!("{} Redo", emojis.undo_redo.redo)).clicked()
+            if ui.button(format!("{} Redo", game_editor_args.emojis.undo_redo.redo)).clicked()
             || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::Y)
             {
-                scene.undo_redo.redo(&mut scene.flameobjects, widget_functions, &current_project_dir, blue_engine_args, window);
+                scene.undo_redo.redo(&mut scene.flameobjects, &mut game_editor_args.widget_functions, &game_editor_args.current_project_dir, blue_engine_args, window);
             }
-            if ui.button(format!("{} Clear buf", emojis.trash)).clicked()
+            if ui.button(format!("{} Clear buf", game_editor_args.emojis.trash)).clicked()
             {
                 scene.undo_redo.clear_buffer();
             }
@@ -279,11 +284,11 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
 
         // Temporary solution, will remove it when file explorer can be integrated
         // Only created for testing purposes
-        if let ViewModes::Objects = editor_modes.main.1
+        if let ViewModes::Objects = game_editor_args.viewmode
         {
-            if ui.button(format!("{} Blueprint in main scene", emojis.load)).clicked()
+            if ui.button(format!("{} Blueprint in main scene", game_editor_args.emojis.load)).clicked()
             {
-                match flameobject_blueprint
+                match blueprint.flameobject
                 {
                     Some(ref value) => 
                     {
@@ -297,7 +302,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                         blue_flame_common::object_actions::create_shape(&scene.flameobjects[len as usize].settings,
                             &Project::selected_dir(&projects), blue_engine_args, window);
                     }
-                    None => println!("None in flameobject_blueprint"),
+                    None => println!("None in blueprint.flameobject"),
                 }
             }
         }
@@ -305,7 +310,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
         ui.separator();
 
         // Displays all flameobjects/scenes button
-        if let ViewModes::Objects = editor_modes.main.1
+        if let ViewModes::Objects = game_editor_args.viewmode
         {
             // Only change chance labels if a single select was performed on labels
             let mut change_choice = false;
@@ -325,7 +330,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                         if !blue_engine_args.input.key_held(VirtualKeyCode::LShift)
                         {
                             //Flameobject::change_choice(&mut scene.flameobjects, i as u16);
-                            string_backups.label = flameobject.settings.label.clone();
+                            game_editor_args.string_backups.label = flameobject.settings.label.clone();
                             scene.flameobject_selected_parent_idx = i as u16;
                             change_choice = true;
                         }
@@ -340,7 +345,7 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
                     ui.checkbox(&mut flameobject.visible, "");
                     if flameobject.visible == true
                     {
-                        ui.label(format!("{}", emojis.eye));
+                        ui.label(format!("{}", game_editor_args.emojis.eye));
                     }
 
                     // Checks if variable names are correct or not
@@ -361,18 +366,18 @@ pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>, pre
             }
             if change_choice == true {Flameobject::change_choice(&mut scene.flameobjects, scene.flameobject_selected_parent_idx)}
         }
-        else if let ViewModes::Scenes = editor_modes.main.1
+        else if let ViewModes::Scenes = game_editor_args.viewmode
         {
             ui.label(format!("id: {}", &scene.id));
         }
 
-        else if let ViewModes::Blueprints = editor_modes.main.1
+        else if let ViewModes::Blueprints = game_editor_args.viewmode
         {
             ui.label("Save location of blueprint:");
-            ui.add(egui::TextEdit::singleline(blueprint_savefolderpath));
+            ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
             if ui.button("Load blueprint").clicked()
             {
-                crate::db::blueprint::load(flameobject_blueprint, &blueprint_savefolderpath, &current_project_dir, blue_engine_args, window);
+                crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir, blue_engine_args, window);
             }
         }
 

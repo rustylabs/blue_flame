@@ -1,10 +1,12 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode};
 use blue_engine_egui::{self, egui::{self, Ui, Context}};
-use blue_flame_common::{filepath_handling, structures::{BlueEngineArgs, flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig, WidgetFunctions, WhatChanged},
-emojis::Emojis};
+use blue_flame_common::{filepath_handling, structures::{BlueEngineArgs, GameEditorArgs, Project,
+    FilePaths, MouseFunctions, WindowSize,
+    flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig, WidgetFunctions, WhatChanged}, emojis::Emojis};
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
 use blue_flame_common::undo_redo;
 use blue_flame_common::structures::StringBackups;
+use editor_mode_variables::EditorMode;
 use std::process::exit;
 use blue_flame_common::EditorSettings;
 
@@ -113,66 +115,7 @@ impl VecExtensions for Vec<Project>
 }
 
 
-// Defines where all the file paths are
-pub struct FilePaths
-{
-    projects        : PathBuf, // ~/.config/blue_flame/blue_flame_common
-    project_config  : &'static str, // blue_flame/project.conf
-    current_scene   : String,
-    library         : PathBuf,
-}
-impl FilePaths
-{
-    fn init() -> Self
-    {
-        // Creating dirs
-        // ~/.config.blue_flame
-        let mut projects: PathBuf =  match dirs::home_dir()
-        {
-            Some(v)         => v,
-            None                     => {println!("Unable to obtain home dir"); PathBuf::new()}
-        };
-        projects.push(".config");
-        projects.push("blue_flame");
 
-        println!("config_dir: {:?}", projects);
-        match std::fs::create_dir(&projects)
-        {
-            Ok(_)       => println!("Config dir created succesfully in {}", projects.display()),
-            Err(e)      => println!("Unable to create config dir due to {e}"),
-        }
-
-        let mut library: PathBuf =  match dirs::home_dir()
-        {
-            Some(v)         => v,
-            None                     => {println!("Unable to obtain home dir"); PathBuf::new()}
-        };
-        
-        library.push(".local/share/blue_flame/blue_flame_common");
-        println!("library: {:?}", library);
-
-        let project_config: &'static str = "blue_flame/project.conf";
-
-        Self
-        {
-            projects,
-            project_config,
-            current_scene: String::new(),
-            library,
-        }
-    }
-    // Creates the folder for the project
-    /*
-    fn create_project_config(&self)
-    {
-        match std::fs::create_dir(format!("{}", self.scenes.display()))
-        {
-            Ok(_)       => println!("Config dir for project created succesfully in {}", self.scenes.display()),
-            Err(e)      => println!("Unable to create config dir for project due to: {e}"),
-        }
-    }
-    */
-}
 
 
 
@@ -211,90 +154,14 @@ impl AlertWindow
 
 
 // Stores all the projects you are working on
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct Project
-{
-    name        : String,
-    dir         : String,
-    game_type   : blue_flame_common::radio_options::GameTypeDimensions,
-    status      : bool,
-}
-impl Project
-{
-    fn init() -> Self
-    {
-        Self
-        {
-            name        : String::new(),
-            dir         : String::new(),
-            game_type   : blue_flame_common::radio_options::GameTypeDimensions::D2,
-            status      : false,
-        }
-    }
-    pub fn change_choice(list: &mut [Self], choice_true: u8)
-    {
-        for (i, item) in list.iter_mut().enumerate()
-        {
-            if i as u8 == choice_true
-            {
-                item.status = true;
-            }
-            else
-            {
-                item.status = false;
-            }
-        }
-    }
-    pub fn selected_dir(list: &[Self]) -> String
-    {
-        let mut selected_dir = String::new();
 
-        for item in list.iter()
-        {
-            if item.status == true
-            {
-                selected_dir.push_str(&format!("{}", item.dir));
-                break;
-            }
-        }
-        return selected_dir;
-    }
-}
 
 // For flameobjects
 
 
 
-pub struct EditorModes
-{
-    projects        :   (bool, bool /*"New Project" scene window*/,
-                        (bool /*2.0 Create new project with "cargo new" (checkbox)*/, String /*2.1 Label for <project_name>*/),
-                        (bool /*3 Window for delete project*/, bool /*Delete entire project dir (checkbox)*/),
-                        ),
-    //main            : (bool, [bool;2]),
-    main            : (bool, ViewModes, bool /*Create new object window*/),
-}
-    // Declaring variables/structures
-pub struct WindowSize
-{
-    x           : f32,
-    y           : f32,
-}
-impl WindowSize
-{
-    fn init(window: &Window) -> Self
-    {
-        Self
-        {
-            x       : window.inner_size().width as f32,
-            y       : window.inner_size().height as f32,
-        }
-    }
-    fn return_tuple(&self) -> (f32, f32)
-    {
-        return (self.x, self.y);
-    }
-}
+
+
 
 mod issues
 {
@@ -483,10 +350,7 @@ fn object_management(flameobject_settings: &mut flameobject::Settings, projects:
 }
 
 // Used for either loading already existing project or a brand new project
-fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Project],  filepaths: &mut FilePaths, string_backups: &mut StringBackups, widget_functions: &mut WidgetFunctions,
-    project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes,
-    /*Engine shit*/ blue_engine_args: &mut BlueEngineArgs, window: &Window
-)
+fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Project], game_editor_args: &mut GameEditorArgs, blue_engine_args: &mut BlueEngineArgs, window: &Window)
 {
     // If we have already loaded up the project just load the stuff from memory rather than db
     if is_loaded == true
@@ -497,7 +361,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             {
                 scene.flameobject_selected_parent_idx = i as u16;
             }
-            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(&projects), blue_engine_args, window);
+            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(projects), blue_engine_args, window);
         }
         return;
     }
@@ -510,7 +374,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
         if i == projects_len
         {
             project.status = true;
-            *current_project_dir = project.dir.clone();
+            *game_editor_args.current_project_dir = project.dir.clone();
         }
         else
         {
@@ -518,7 +382,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
         }
     }
 
-    db::projects::save(projects, filepaths);
+    db::projects::save(projects, game_editor_args.filepaths);
 
 
 
@@ -539,15 +403,17 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             //filepaths.create_project_config(); // Creates blue_flame dir in project dir
 
             // Changing editor mode
-            editor_modes.projects.0 = false;
-            editor_modes.projects.1 = false;
-            editor_modes.main.0 = true;
+            /*
+            game_editor_args.editor_modes.projects.0 = false;
+            game_editor_args.editor_modes.projects.1 = false;
+            game_editor_args.editor_modes.main.0 = true;
+            */
 
-            db::project_config::load(project_config, filepaths, current_project_dir);
+            db::project_config::load(game_editor_args.project_config, game_editor_args.filepaths, game_editor_args.current_project_dir);
 
             //db::scenes::load(scenes, filepaths);
             blue_flame_common::db::scene::load(scene, &Project::selected_dir(&projects),
-            &project_config.last_scene_filepath , true, blue_engine_args, window);
+            &game_editor_args.project_config.last_scene_filepath , true, blue_engine_args, window);
 
             // Matching the length size issue for undoredo
             {
@@ -572,7 +438,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             {
                 if flameobject.selected == true
                 {
-                    string_backups.label = flameobject.settings.label.clone();
+                    game_editor_args.string_backups.label = flameobject.settings.label.clone();
                     //println!("label_backup: {}", label_backup);
                     break;
                 }
@@ -583,46 +449,72 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
     //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
     if scene.flameobjects.len() > 0
     {
-        widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+        game_editor_args.widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
     }
     else
     {
-        widget_functions.flameobject_old = None;
+        game_editor_args.widget_functions.flameobject_old = None;
     }
 }
 
-// Invoked via shift+A
-pub struct MouseFunctions
+
+// For example show a popup window to create new project etc
+pub mod editor_mode_variables
 {
-    is_right_clicked        : bool, // Has it been right clicked
-    object_type_captured    : Option<ObjectType>,
-    captured_coordinates    : (f32, f32), // Captures the coordinates at any given time, can be even used with difference between object and mouse
-    object_mouse_movement   : Option<ObjectMouseMovement>, // grab to move the object etc
-}
-
-
-
-// Functions like powerobject in powerbuilder but for rust
-pub mod view_modes_argument_passer
-{
-    use super::*;
-    pub struct Projects<'a>
+    //use super::*;
+    pub enum EditorMode{Project(Project), Main(Main)}
+    pub struct Project
     {
-        pub scene: &'a mut Scene,
-        //projects: &'static mut Vec<Project>,
-        //filepaths: &'static mut FilePaths,
+        pub new_project_window: bool,
+        pub new_project_label: String,
+        pub create_new_project_with_cargo_new: bool,
+        pub del_proj_win: bool,
+        pub del_entire_proj_checkbox: bool,
+    }
+    impl Project
+    {
+        pub fn init() -> Self
+        {
+            Self
+            {
+                new_project_window: false,
+                new_project_label: String::new(),
+                create_new_project_with_cargo_new: true,
+                del_proj_win: false,
+                del_entire_proj_checkbox: false,
+            }
+        }
     }
     pub struct Main
     {
-
+        pub create_new_object_window: bool,
+    }
+    impl Main
+    {
+        pub fn init() -> Self
+        {
+            Self
+            {
+                create_new_object_window: false,
+            }
+        }
     }
 }
 
+// Flameobject blueprint stuff
+pub struct Blueprint
+{
+    flameobject: Option<flameobject::Settings>,
+    save_file_path: String,
+}
 
 
 //const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
 {
+
+    //use editor_mode_variables::EditorMode;
+
     const DEBUG: Debug = Debug
     {
         practice        : false,
@@ -645,7 +537,7 @@ fn main()
     //let mut widget_opened = false;
 
 
-    let mut blueprint_savefolderpath = String::new();
+    //let mut blueprint_savefolderpath = String::new();
 
     // So that I don't have to keep finding out what is the current project dir
     let mut current_project_dir = String::new();
@@ -663,7 +555,12 @@ fn main()
     };
 
     // Used for flameobject's blueprints
-    let mut flameobject_blueprint: Option<flameobject::Settings> = None;
+    let mut blueprint = Blueprint
+    {
+        flameobject: None,
+        save_file_path: String::new(),
+    };
+    //let mut flameobject_blueprint: Option<flameobject::Settings> = None;
 
     // Creates lib dir
     //init_lib(&filepaths.library);
@@ -673,19 +570,23 @@ fn main()
     let mut string_backups = StringBackups{label: String::new(), texture: String::new()};
 
     // Show load screen or main game screen?
+    /*
     let mut editor_modes = EditorModes
     {
         projects: (true, false /*Create new project*/,
             (true /*Create new project with "cargo new"*/, String::new() /*Dir name <project_name>*/),
             (false /*Window for delete project*/, true /*Delete entire project dir*/),
         ),
-        main: (false, ViewModes::Objects,
-            false /*Create new object window*/
-        ),
+        //main: (false, ViewModes::Objects, false /*Create new object window*/),
+        main: (false, false /*Create new object window*/),
     };
+    */
+    let mut viewmode = ViewModes::Objects;
+    let mut previous_viewmode = viewmode.clone();
+    //let mut previous_viewmode = editor_modes.main.1.clone();
 
-    let mut previous_viewmode = editor_modes.main.1.clone();
-
+    // i.e. Are we in projects or main scene mode?
+    let mut editor_mode = EditorMode::Project(editor_mode_variables::Project::init());
 
 
     let editor_settings = EditorSettings::init();
@@ -781,22 +682,62 @@ fn main()
             };
 
             enable_shortcuts = true;
-            // if true load project scene
-            if editor_modes.projects.0 == true
+
+            let mut game_editor_args = GameEditorArgs
+            {
+                filepaths: &mut filepaths,
+                string_backups: &mut string_backups,
+                emojis: &emojis,
+                widget_functions: &mut widget_functions,
+                project_config: &mut project_config,
+                current_project_dir: &mut current_project_dir,
+                //editor_modes: &mut editor_modes,
+                window_size: &window_size,
+                viewmode: &mut viewmode,
+                previous_viewmode: &mut previous_viewmode,
+                mouse_functions: &mut mouse_functions,
+                enable_shortcuts: &mut enable_shortcuts,
+            };
+
+            
+            // Load project scene
+            //if game_editor_args.editor_modes.projects.0 == true
+            if let EditorMode::Project(ref mut sub_editor_mode) = editor_mode
             {
 
+                if editor_modes::projects::main(&mut scene, &mut projects, sub_editor_mode, &mut game_editor_args, &mut blue_engine_args, window) == true
+                {
+                    editor_mode = EditorMode::Main(editor_mode_variables::Main::init());
+                }
+                /*
                 editor_modes::projects::main(&mut scene, &mut projects, &mut filepaths, &mut string_backups, &emojis, &mut widget_functions, &mut project_config,
                     &mut current_project_dir, &mut editor_modes, &window_size, &mut blue_engine_args, window);
+                */
                 /*
                 editor_modes::projects::main_scene(&mut powerobject, &mut projects, &mut filepaths, &mut string_backups, &emojis, &mut widget_functions, &mut project_config,
                     &mut current_project_dir, &mut editor_modes, &window_size, input, ctx, renderer, objects, window);
                 */
             }
-            // After passing the projects screen
-            else if editor_modes.main.0 == true
+            // After passing the projects screen, load the main scene
+            //else if editor_modes.main.0 == true
+            else if let EditorMode::Main(ref mut sub_editor_mode) = editor_mode
             {
                 //struct AlertWindow{alert_window: }
-
+                if editor_modes::main::main::main(
+                    &mut scene,
+                    &mut projects,
+                    &mut blueprint,
+                    sub_editor_mode,
+                    &editor_settings,
+                    &mut game_editor_args,
+                    &mut alert_window,
+                    &mut blue_engine_args,
+                    window)
+                == true
+                {
+                    editor_mode = EditorMode::Project(editor_mode_variables::Project::init());
+                }
+                /*
                 editor_modes::main::main::main(
                     &mut alert_window,
                     &mut scene,
@@ -815,7 +756,10 @@ fn main()
                     &mut editor_modes,
                     &window_size,
                     &mut mouse_functions,
-                    &mut blue_engine_args, window);
+                    &mut blue_engine_args,
+                    window
+                );
+                */
             }
         }, window)
     }).unwrap();
@@ -1087,11 +1031,25 @@ fn shortcut_commands(scene: &mut Scene, flameobjects_selected_parent_idx: &mut u
 }
 */
 // Displays shit like rotation, size, position, label etc
+/*
 fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Settings, flameobject_selected_parent_idx: u16, flameobject_id: u16,
     undo_redo: &mut undo_redo::UndoRedo, enable_shortcuts: &mut bool, string_backups: &mut StringBackups,
     current_project_dir: &str,
     projects: &Vec<Project>, editor_settings: &EditorSettings, widget_functions: &mut WidgetFunctions,
     /*Game engine shit*/ ui: &mut Ui, blue_engine_args: &mut BlueEngineArgs, window: &Window)
+*/
+fn right_panel_flameobject_settings(
+    flameobject_settings: &mut flameobject::Settings,
+    flameobject_selected_parent_idx: u16,
+    flameobject_id: u16,
+    projects: &Vec<Project>,
+    undo_redo: &mut undo_redo::UndoRedo,
+    editor_settings: &EditorSettings,
+    game_editor_args: &mut GameEditorArgs,
+    blue_engine_args: &mut BlueEngineArgs,
+    ui: &mut Ui,
+    window: &Window,
+)
 {
     //let mut item_clicked = false;
     /*
@@ -1114,28 +1072,28 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     if blue_engine_args.input.mouse_pressed(0) || response.lost_focus()
     {
         // If label has been modified after clicking off the field do something
-        if flameobject_settings.label != string_backups.label
+        if flameobject_settings.label != game_editor_args.string_backups.label
         {
             // Save history to undo_redo()
             {
                 let mut flameobject_copyover = flameobject_settings.clone();
-                flameobject_copyover.label = string_backups.label.clone();
+                flameobject_copyover.label = game_editor_args.string_backups.label.clone();
                 undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover.clone(), flameobject_settings.clone(), flameobject_selected_parent_idx)), editor_settings);
 
-                widget_functions.flameobject_old = Some(flameobject_settings.clone());
+                game_editor_args.widget_functions.flameobject_old = Some(flameobject_settings.clone());
             }
 
 
 
-            *enable_shortcuts = false;
+            *game_editor_args.enable_shortcuts = false;
             // Destroys hashmap
-            blue_flame_common::object_actions::delete_shape(&string_backups.label, blue_engine_args);
+            blue_flame_common::object_actions::delete_shape(&game_editor_args.string_backups.label, blue_engine_args);
             
             // Creates new shape
             //object_management(flameobject, &mut projects, renderer, objects, window, ui);
-            blue_flame_common::object_actions::create_shape(flameobject_settings, current_project_dir, blue_engine_args, window);
+            blue_flame_common::object_actions::create_shape(flameobject_settings, game_editor_args.current_project_dir, blue_engine_args, window);
     
-            string_backups.label = flameobject_settings.label.clone();
+            game_editor_args.string_backups.label = flameobject_settings.label.clone();
         }
         //has_focus_label = false;
     }
@@ -1168,7 +1126,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     let response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.texture.file_location));
     if response.changed()
     {
-        *enable_shortcuts = false;
+        *game_editor_args.enable_shortcuts = false;
         blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args);
     }
     if ui.button("Invert filepath type").clicked()
@@ -1182,16 +1140,16 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings.clone(), flameobject_selected_parent_idx)));
         // If label has been modified after clicking off the field do something
         // Save history to undo_redo()
-        if flameobject_settings.texture.file_location != string_backups.texture
+        if flameobject_settings.texture.file_location != game_editor_args.string_backups.texture
         {
             //println!("Executed");
             let mut flameobject_copyover = flameobject_settings.clone();
-            flameobject_copyover.texture.file_location = string_backups.texture.clone();
+            flameobject_copyover.texture.file_location = game_editor_args.string_backups.texture.clone();
             undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover.clone(), flameobject_settings.clone(), flameobject_selected_parent_idx)), editor_settings);
 
-            widget_functions.flameobject_old = Some(flameobject_settings.clone());
+            game_editor_args.widget_functions.flameobject_old = Some(flameobject_settings.clone());
 
-            string_backups.texture = flameobject_settings.texture.file_location.clone();
+            game_editor_args.string_backups.texture = flameobject_settings.texture.file_location.clone();
         }
         /*
         if flameobject_settings.texture.file_location != string_backups.texture
@@ -1242,21 +1200,21 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         */
         if response.changed()
         {
-            widget_functions.has_changed = Some(WhatChanged::Color);
+            game_editor_args.widget_functions.has_changed = Some(WhatChanged::Color);
             blue_flame_common::object_actions::update_shape::color(flameobject_settings, blue_engine_args);
         }
         // Save changes to undo_redo
         else if blue_engine_args.input.mouse_released(0) && !response.changed()
         {
-            if let Some(WhatChanged::Color) = widget_functions.has_changed
+            if let Some(WhatChanged::Color) = game_editor_args.widget_functions.has_changed
             {
                 println!("lost focus color");
-                if let Option::Some(ref value) = widget_functions.flameobject_old
+                if let Option::Some(ref value) = game_editor_args.widget_functions.flameobject_old
                 {
                     undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_settings.clone(), flameobject_id)), editor_settings);
-                    widget_functions.flameobject_old = Some(flameobject_settings.clone());
+                    game_editor_args.widget_functions.flameobject_old = Some(flameobject_settings.clone());
                 }
-                widget_functions.has_changed = None;
+                game_editor_args.widget_functions.has_changed = None;
             }
 
         }
@@ -1282,7 +1240,7 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
             // Dragging and typing
             if response.changed()
             {
-                widget_functions.has_changed = Some(WhatChanged::Position);
+                game_editor_args.widget_functions.has_changed = Some(WhatChanged::Position);
                 update_position = true;
             }
 
@@ -1299,12 +1257,12 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
             if /*Dragging*/ response.drag_released() && !response.gained_focus() || /*Typing*/ response.changed() && blue_engine_args.input.mouse_released(0)
             {
                 save_2_undoredo = true;
-                if let Some(WhatChanged::Position) = widget_functions.has_changed
+                if let Some(WhatChanged::Position) = game_editor_args.widget_functions.has_changed
                 {
                     //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings, flameobject_selected_parent_idx)));
                     //println!("save position undoredo");
                     //save_2_undoredo = true;
-                    widget_functions.has_changed = None;
+                    game_editor_args.widget_functions.has_changed = None;
                 }
                 
             }
@@ -1318,12 +1276,12 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         // Save undo redo
         if save_2_undoredo == true
         {
-            if let Option::Some(ref value) = widget_functions.flameobject_old
+            if let Option::Some(ref value) = game_editor_args.widget_functions.flameobject_old
             {
                 undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_settings.clone(), flameobject_id)), editor_settings);
-                widget_functions.flameobject_old = Some(flameobject_settings.clone());
+                game_editor_args.widget_functions.flameobject_old = Some(flameobject_settings.clone());
             }
-            widget_functions.has_changed = None;
+            game_editor_args.widget_functions.has_changed = None;
         }
         
 
@@ -1367,12 +1325,12 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
         // Save undo redo
         if save_2_undoredo == true
         {
-            if let Option::Some(ref value) = widget_functions.flameobject_old
+            if let Option::Some(ref value) = game_editor_args.widget_functions.flameobject_old
             {
                 undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_settings.clone(), flameobject_id)), editor_settings);
-                widget_functions.flameobject_old = Some(flameobject_settings.clone());
+                game_editor_args.widget_functions.flameobject_old = Some(flameobject_settings.clone());
             }
-            widget_functions.has_changed = None;
+            game_editor_args.widget_functions.has_changed = None;
         }
         
     });

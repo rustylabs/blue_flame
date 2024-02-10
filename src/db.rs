@@ -1,5 +1,7 @@
 // Manages all projects and points to scenes
 // Blue prints for a particular object's settings such as texture, color etc, essecially saving the flameboject's settings structure
+
+use blue_flame_common::structures::BlueEngineArgs;
 pub mod blueprint
 {
     use std::io::Read;
@@ -171,9 +173,10 @@ pub mod project_config
     use blue_flame_common::structures::project_config::ProjectConfig;
     use blue_flame_common::filepath_handling::*;
 
+
     const VERSION: f32 = 0.1;
 
-    pub fn save(project_config: &mut ProjectConfig, filepaths: &mut crate::FilePaths, project_dir: &str)
+    pub fn save(project_config: &mut ProjectConfig, filepaths: &mut crate::FilePaths, project_dir: &str,)
     {
         // filepaths.project_config: blue_flame/project.conf
         // filepaths.current_scene: this is the current scene filepath
