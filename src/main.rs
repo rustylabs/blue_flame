@@ -481,7 +481,7 @@ pub mod editor_mode_variables
                 new_project_label: String::new(),
                 create_new_project_with_cargo_new: true,
                 del_proj_win: false,
-                del_entire_proj_checkbox: false,
+                del_entire_proj_checkbox: true,
             }
         }
     }
@@ -615,7 +615,7 @@ fn main()
 
     // flameobjects & scenes
     let mut scene = Scene::init(0);
-    let mut widget_functions = WidgetFunctions{is_opened: false, has_changed: None, flameobject_old: None};
+    let mut widget_functions = WidgetFunctions{has_changed: None, flameobject_old: None};
     //let mut flameobjects: Vec<Flameobject> = Vec::new();
     //let mut scenes: Vec<Scene> = Vec::new();
     let mut projects: Vec<Project> = Vec::new();
@@ -772,12 +772,14 @@ fn main()
 fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::InputHelper, ctx: &egui::Context) -> Option<ObjectType>
 {
     let mut create_object: Option<ObjectType> = None;
+    
     // shift + A: Right click menu
     if input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
     {
         mouse_functions.is_right_clicked = true;
         mouse_functions.captured_coordinates = input.mouse().unwrap_or_default();
     }
+
     // Fucks off the right click menu
     if input.key_pressed(VirtualKeyCode::Escape)
     {

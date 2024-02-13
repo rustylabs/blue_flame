@@ -51,6 +51,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 //debug_ctrl_z_pressed1(&mut debug_ctrl_z_pressed, &mut scene, &mut label_backup);
 
             }
+            /*
             if *game_editor_args.enable_shortcuts == true
             {
                 match crate::right_click_menu(game_editor_args.mouse_functions, blue_engine_args.input, blue_engine_args.ctx)
@@ -60,6 +61,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                     None => {},
                 }
             }
+            */
         }
         else if let ViewModes::Scenes = game_editor_args.viewmode
         {

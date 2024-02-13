@@ -30,5 +30,21 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
     panels::left::main(scene, projects, blueprint, sub_editor_mode, game_editor_args, blue_engine_args, window);
     panels::right::main(scene, projects, blueprint, editor_settings, game_editor_args, blue_engine_args, window);
 
+
+
+    if let ViewModes::Objects = game_editor_args.viewmode
+    {
+        if *game_editor_args.enable_shortcuts == true
+        {
+            match crate::right_click_menu(game_editor_args.mouse_functions, blue_engine_args.input, blue_engine_args.ctx)
+            {
+                Some(object_type_captured) => crate::CreateNewFlameObject::flameobject(&object_type_captured, scene,
+                    &mut game_editor_args.widget_functions, game_editor_args.string_backups, &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window),
+                None => {},
+            }
+        }
+    }
+
+
     return change_editor_mode;
 }

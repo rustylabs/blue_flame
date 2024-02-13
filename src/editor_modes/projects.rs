@@ -10,7 +10,7 @@ use blue_flame_common::emojis::Emojis;
 use blue_flame_common::structures::project_config;
 use crate::editor_mode_variables::Main;
 use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, BlueEngineArgs, GameEditorArgs, EditorMode, editor_mode_variables};
-
+use rfd::FileDialog;
 trait VecExtensions
 {
     fn return_selected_dir(&self) -> Option<&String>;
@@ -163,7 +163,26 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                 ui.separator();
 
                 ui.label("Project directory:");
-                ui.add(egui::TextEdit::singleline(&mut projects[len].dir));
+                ui.horizontal(|ui|
+                {
+                    ui.add(egui::TextEdit::singleline(&mut projects[len].dir));
+                    if ui.button(format!("{}", game_editor_args.emojis.file)).clicked()
+                    {
+                        let home_dir = match dirs::home_dir()
+                        {
+                            Some(value) => value.display().to_string(),
+                            None => "/".to_string(),
+                        };
+                        let folder_path = FileDialog::new().set_directory(home_dir).pick_folder();
+
+                        match folder_path
+                        {
+                            Some(value) => projects[len].dir = value.display().to_string(),
+                            None => {},
+                        }
+                    }
+                });
+                
 
                 ui.label("Game type:");
 
@@ -202,7 +221,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                     ui.add(egui::TextEdit::singleline(&mut sub_editor_mode.new_project_label));
                 }
 
-                // Shows extra buttons
+                // Shows Cancel and Create buttons
                 ui.horizontal(|ui|
                 {
                     if ui.button(format!("{} Cancel", game_editor_args.emojis.cancel)).clicked()
@@ -246,7 +265,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                             }
                             // Load new project
                             crate::load_project_scene(false, scene, projects, game_editor_args, blue_engine_args, window);
-                            game_editor_args.widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                            //game_editor_args.widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                            game_editor_args.widget_functions.flameobject_old = None;
                             change_editor_mode = true;
                         }
                         //*editor_mode = EditorMode::Main(crate::editor_mode_variables::Main::init());

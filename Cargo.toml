@@ -13,6 +13,8 @@ blue_engine = {version = "0.5.0", default-features = false}
 #blue_engine_egui = "0.4.4"
 blue_engine_egui = "0.5.0"
 
+# Prompts for file explorer
+rfd = "0.13.0"
 
 # Db shit
 postcard = {verison = "1.0.4", features = ["use-std"]}
