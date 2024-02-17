@@ -1,7 +1,7 @@
 use blue_engine_egui::{self, egui::{self}};
 use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
-use blue_flame_common::emojis::Emojis;
+use blue_flame_common::{emojis::Emojis, radio_options::FilePickerMode};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, BlueEngineArgs, GameEditorArgs, Blueprint,
     editor_mode_variables,
@@ -373,8 +373,10 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 
         else if let ViewModes::Blueprints = game_editor_args.viewmode
         {
-            ui.label("Save location of blueprint:");
-            ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
+            ui.label("Load blueprint into scene:");
+            //ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
+            crate::directory_singleline(&mut blueprint.save_file_path, Some(game_editor_args.current_project_dir),
+                FilePickerMode::OpenFile, true, ui, game_editor_args.emojis);
             if ui.button("Load blueprint").clicked()
             {
                 crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir, blue_engine_args, window);

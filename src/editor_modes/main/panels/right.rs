@@ -71,16 +71,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 
             ui.label("Save location:");
             //ui.add(egui::TextEdit::singleline(&mut game_editor_args.filepaths.current_scene));
-            if crate::directory_singleline(&mut game_editor_args.filepaths.current_scene,
-                Some(game_editor_args.current_project_dir), FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.scene), true, ui, game_editor_args.emojis).1 == true
-            {
-                /*
-                if game_editor_args.filepaths.current_scene.contains(&format!("{}", FILE_EXTENSION_NAMES.scene)) == false
-                {
-                    game_editor_args.filepaths.current_scene.push_str(&format!("{}", FILE_EXTENSION_NAMES.scene));
-                }
-                */
-            }
+            crate::directory_singleline(&mut game_editor_args.filepaths.current_scene,
+                Some(game_editor_args.current_project_dir), FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.scene), true, ui, game_editor_args.emojis);
             if ui.button("Invert filepath type").clicked()
             {
                 game_editor_args.filepaths.current_scene = crate::invert_pathtype(&game_editor_args.filepaths.current_scene, &game_editor_args.current_project_dir);
@@ -143,16 +135,18 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             // single line edit for blue print save location
             //ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
             ui.label("Save current shape as a blueprint");
-            if crate::directory_singleline(&mut blueprint.save_file_path, Some(game_editor_args.current_project_dir),
-            FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.blueprint), true, ui, game_editor_args.emojis).1 == true
-            {
-
-            }
+            crate::directory_singleline(&mut blueprint.save_file_path, Some(game_editor_args.current_project_dir),
+            FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.blueprint), true, ui, game_editor_args.emojis);
 
             // blue print save button
             if ui.button(format!("{} Save blueprint", game_editor_args.emojis.save)).clicked()
             {
-                crate::save_blueprint(&blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir);
+                if scene.flameobjects.len() > 0
+                {
+                    blueprint.flameobject = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                }
+                //crate::save_blueprint(&blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir);
+                crate::db::blueprint::save(&blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir);
             }
         }
 

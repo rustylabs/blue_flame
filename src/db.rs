@@ -20,7 +20,8 @@ pub mod blueprint
             Some(value) =>
             {
                 let data = postcard::to_stdvec(&(VERSION, value)).unwrap();
-                match std::fs::write(format!("{}/{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir), value.label), &data)
+                //match std::fs::write(format!("{}/{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir), value.label), &data)
+                match std::fs::write(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)), &data)
                 {
                     Ok(_)               => {println!("blueprints saved!")},
                     Err(e)       => {println!("blueprints save error: {e}")},
