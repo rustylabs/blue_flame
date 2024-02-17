@@ -8,9 +8,11 @@ use blue_engine::{Renderer, ObjectSettings, ObjectStorage, Window};
 use blue_flame_common::db::scene;
 use blue_flame_common::emojis::Emojis;
 use blue_flame_common::structures::project_config;
+use serde::de::value;
 use crate::editor_mode_variables::Main;
 use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, BlueEngineArgs, GameEditorArgs, EditorMode, editor_mode_variables};
 use rfd::FileDialog;
+use blue_flame_common::radio_options::FilePickerMode;
 trait VecExtensions
 {
     fn return_selected_dir(&self) -> Option<&String>;
@@ -93,8 +95,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
             }
             if ui.button(format!("{} Create/import project", game_editor_args.emojis.add)).clicked()
             {
+
                 projects.push(Project::init());
-                
                 let len = (projects.len() - 1) as u16;
                 //Project::change_choice(&mut projects, len as u8);
                 projects.change_choice(len);
@@ -139,10 +141,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
             }
         }
 
-        // Shows "New Project" scene
+        // Shows "New Project" window after user presses "create/import project" button
         //if game_editor_args.editor_modes.projects.1 == true
-
-
         if sub_editor_mode.new_project_window == true
         {
             egui::Window::new("New Project")
@@ -153,16 +153,31 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
             //.open(&mut _create_new_project)
             .show(blue_engine_args.ctx, |ui|
             {
-                
+
                 let len = projects.len() - 1;
 
 
                 ui.label("Project name:");
                 ui.add(egui::TextEdit::singleline(&mut projects[len].name));
-
                 ui.separator();
-
                 ui.label("Project directory:");
+
+                // Sets new project (after pressing create button) to true
+                //projects[len].status = true;
+                match sub_editor_mode.selected_project_before_new
+                {
+                    Some(ref value) =>
+                    {
+                        let mut path = PathBuf::from(value);
+                        path.pop();
+                        crate::directory_singleline(&mut projects[len].dir, Some(&path.display().to_string()), FilePickerMode::OpenFolder, false, ui, game_editor_args.emojis);
+                    }
+                    None =>
+                    {
+                        crate::directory_singleline(&mut projects[len].dir, None, FilePickerMode::OpenFolder, false, ui, game_editor_args.emojis);
+                    }
+                }
+                /*
                 ui.horizontal(|ui|
                 {
                     ui.add(egui::TextEdit::singleline(&mut projects[len].dir));
@@ -182,6 +197,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                         }
                     }
                 });
+                */
                 
 
                 ui.label("Game type:");
@@ -245,6 +261,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                             {
                                 if project.status == true
                                 {
+                                    
                                     // Runs "cargo new" and adds extra filepaths to appropriate variables
                                     //project.dir.push_str(&format!("/{}", game_editor_args.editor_modes.projects.2.1));
                                     project.dir.push_str(&format!("/{}", sub_editor_mode.new_project_label));

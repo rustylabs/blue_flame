@@ -1,5 +1,5 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode};
-use blue_engine_egui::{self, egui::{self, Ui, Context}};
+use blue_engine_egui::{self, egui::{self, Context, Response, Ui}};
 use blue_flame_common::{filepath_handling, structures::{BlueEngineArgs, GameEditorArgs, Project,
     FilePaths, MouseFunctions, WindowSize,
     flameobject::{Flameobject, self}, scene::Scene, project_config::ProjectConfig, WidgetFunctions, WhatChanged}, emojis::Emojis};
@@ -7,9 +7,12 @@ use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, Objec
 use blue_flame_common::undo_redo;
 use blue_flame_common::structures::StringBackups;
 use editor_mode_variables::EditorMode;
+use rfd::FileDialog;
+use serde::de::value;
 use std::process::exit;
 use blue_flame_common::EditorSettings;
-
+use blue_flame_common::radio_options;
+use blue_flame_common::FileExtensionNames;
 
 mod object_settings;
 mod db;
@@ -286,10 +289,23 @@ fn move_direction_keys(key_movement: KeyMovement, input: &blue_engine::InputHelp
     return move_direction;
 }
 // Converts from fullpath to relativepath and vice versa
-fn invert_pathtype(filepath: &str, projects: &Vec<Project>) -> String
+//fn invert_pathtype(filepath: &str, projects: &Vec<Project>) -> String
+fn invert_pathtype(filepath: &str, current_project_dir: &str) -> String
 {
     let mut newpath = String::new();
     //let mut filepath = String::from(format!("{filepath}"));
+
+    // Convert from relativepath to fullpath
+    if Path::is_relative(&PathBuf::from(format!("{filepath}"))) == true
+    {
+        newpath = blue_flame_common::filepath_handling::relativepath_to_fullpath(filepath, &current_project_dir);
+    }
+    // Convert from fullpath to relativepath
+    else if Path::is_relative(&PathBuf::from(format!("{filepath}"))) == false
+    {
+        newpath = blue_flame_common::filepath_handling::fullpath_to_relativepath(filepath, &current_project_dir);
+    }
+    /*
     for project in projects.iter()
     {
         if project.status == true
@@ -306,6 +322,7 @@ fn invert_pathtype(filepath: &str, projects: &Vec<Project>) -> String
             }
         }
     }
+    */
     return newpath.to_string();
 }
 
@@ -467,6 +484,7 @@ pub mod editor_mode_variables
     {
         pub new_project_window: bool,
         pub new_project_label: String,
+        pub selected_project_before_new: Option<String>,
         pub create_new_project_with_cargo_new: bool,
         pub del_proj_win: bool,
         pub del_entire_proj_checkbox: bool,
@@ -479,6 +497,7 @@ pub mod editor_mode_variables
             {
                 new_project_window: false,
                 new_project_label: String::new(),
+                selected_project_before_new: None,
                 create_new_project_with_cargo_new: true,
                 del_proj_win: false,
                 del_entire_proj_checkbox: true,
@@ -508,6 +527,11 @@ pub struct Blueprint
     save_file_path: String,
 }
 
+pub const FILE_EXTENSION_NAMES: FileExtensionNames = FileExtensionNames
+{
+    scene: ".bsce",
+    blueprint: ".bprint",
+};
 
 //const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
@@ -636,6 +660,21 @@ fn main()
 
     // We add the gui as plugin, which runs once before everything else to fetch events, and once during render times for rendering and other stuff
     engine.plugins.push(Box::new(gui_context));
+
+    // init selected_project_before_new
+    if let EditorMode::Project(ref mut sub_editor_mode) = editor_mode
+    {
+        for project in projects.iter_mut()
+        {
+            if project.status == true
+            {
+                sub_editor_mode.selected_project_before_new = Some(project.dir.clone());
+                //project.status = false;
+                break;
+            }
+        }
+    }
+
 
 
     println!("----------Start of update_loop----------");
@@ -767,12 +806,86 @@ fn main()
 }
 
 
+// Single line edit for directories and contains addtional buttons such as file explorer
+fn directory_singleline(filepath_singleline: &mut String, starting_dir: Option<&str>, file_picker_mode: radio_options::FilePickerMode, make_relative: bool, ui: &mut Ui, emojis: &Emojis) -> (Response, bool)
+{
+    use radio_options::FilePickerMode;
+    // bool return is to determine if file dir has been selected
+    let mut selected_file = false;
 
+    let mut response: Option<Response> = None;
+    ui.horizontal(|ui|
+    {
+        response = Some(ui.add(egui::TextEdit::singleline(filepath_singleline)));
+        if ui.button(format!("{}", emojis.file)).clicked()
+        {
+            let starting_dir = match starting_dir
+            {
+                Some(value) => value.to_string(),
+                None =>
+                {
+                    match dirs::home_dir()
+                    {
+                        Some(value) => value.display().to_string(),
+                        None => "/".to_string(),
+                    }
+                }
+            };
+            let mut path_picked: Option<PathBuf> = None;
+
+            match file_picker_mode
+            {
+                FilePickerMode::OpenFolder => path_picked = FileDialog::new().set_directory(&starting_dir).pick_folder(),
+                FilePickerMode::OpenFile => path_picked = FileDialog::new().set_directory(&starting_dir).pick_file(),
+                FilePickerMode::SaveFile(_) => path_picked = FileDialog::new().set_directory(&starting_dir).save_file(),
+            }
+            /*
+            if is_file == true
+            {
+                path_picked = FileDialog::new().set_directory(&starting_dir).pick_file();
+            }
+            else
+            {
+                path_picked = FileDialog::new().set_directory(&starting_dir).pick_folder();
+            }
+            */
+            match path_picked
+            {
+                //invert_pathtype(&flameobject_settings.texture.file_location, &projects);
+                //Some(value) => *filepath_singleline = value.display().to_string(),
+                Some(value) =>
+                {
+                    selected_file = true;
+                    if make_relative == true
+                    {
+                        *filepath_singleline = invert_pathtype(&value.display().to_string(), &starting_dir);
+                    }
+                    else
+                    {
+                        *filepath_singleline = value.display().to_string();
+                    }
+
+                    // Add file extension if we are saving file
+                    if let FilePickerMode::SaveFile(file_extension) = file_picker_mode
+                    {
+                        if filepath_singleline.contains(&format!("{}", file_extension)) == false
+                        {
+                            filepath_singleline.push_str(&format!("{}", file_extension));
+                        }
+                    }
+                },
+                None => {},
+            }
+
+        }
+    });
+    return (response.unwrap(), selected_file);
+}
 
 fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::InputHelper, ctx: &egui::Context) -> Option<ObjectType>
 {
     let mut create_object: Option<ObjectType> = None;
-    
+
     // shift + A: Right click menu
     if input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
     {
@@ -1125,19 +1238,21 @@ fn right_panel_flameobject_settings(
     // Locatin of texture
     ui.label("TextureMode");
     ui.label("Location of Texture");
-    let response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.texture.file_location));
-    if response.changed()
+    //let response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.texture.file_location));
+    let response = directory_singleline(&mut flameobject_settings.texture.file_location,
+        Some(game_editor_args.current_project_dir), radio_options::FilePickerMode::OpenFile, true, ui, game_editor_args.emojis);
+    if response.0.changed() || response.1 
     {
         *game_editor_args.enable_shortcuts = false;
         blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args);
     }
     if ui.button("Invert filepath type").clicked()
     {
-        flameobject_settings.texture.file_location = invert_pathtype(&flameobject_settings.texture.file_location, &projects);
+        flameobject_settings.texture.file_location = invert_pathtype(&flameobject_settings.texture.file_location, &game_editor_args.current_project_dir);
     }
 
     // Save texture change to undo_redo after clicking off text field
-    if blue_engine_args.input.mouse_pressed(0) || response.lost_focus()
+    if blue_engine_args.input.mouse_pressed(0) || response.0.lost_focus()
     {
         //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings.clone(), flameobject_selected_parent_idx)));
         // If label has been modified after clicking off the field do something

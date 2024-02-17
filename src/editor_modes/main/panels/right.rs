@@ -3,9 +3,9 @@ use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
 use blue_flame_common::emojis::Emojis;
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
-use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, AlertWindow, BlueEngineArgs, EditorSettings,
-    MouseFunctions, GameEditorArgs, Blueprint,
+use crate::{AlertWindow, BlueEngineArgs, Blueprint, EditorSettings, FilePaths, GameEditorArgs, MouseFunctions, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES,
 };
+use blue_flame_common::radio_options::FilePickerMode;
 /*
 pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>,
     projects: &mut Vec<Project>, filepaths: &mut FilePaths, string_backups: &mut StringBackups, emojis: &Emojis, blueprint_savefolderpath: &mut String,
@@ -70,10 +70,20 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             ui.separator();
 
             ui.label("Save location:");
-            ui.add(egui::TextEdit::singleline(&mut game_editor_args.filepaths.current_scene));
+            //ui.add(egui::TextEdit::singleline(&mut game_editor_args.filepaths.current_scene));
+            if crate::directory_singleline(&mut game_editor_args.filepaths.current_scene,
+                Some(game_editor_args.current_project_dir), FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.scene), true, ui, game_editor_args.emojis).1 == true
+            {
+                /*
+                if game_editor_args.filepaths.current_scene.contains(&format!("{}", FILE_EXTENSION_NAMES.scene)) == false
+                {
+                    game_editor_args.filepaths.current_scene.push_str(&format!("{}", FILE_EXTENSION_NAMES.scene));
+                }
+                */
+            }
             if ui.button("Invert filepath type").clicked()
             {
-                game_editor_args.filepaths.current_scene = crate::invert_pathtype(&game_editor_args.filepaths.current_scene, &projects);
+                game_editor_args.filepaths.current_scene = crate::invert_pathtype(&game_editor_args.filepaths.current_scene, &game_editor_args.current_project_dir);
             }
             if ui.button("Load scene").clicked()
             {
@@ -131,7 +141,13 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         if let ViewModes::Objects = game_editor_args.viewmode
         {
             // single line edit for blue print save location
-            ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
+            //ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
+            ui.label("Save current shape as a blueprint");
+            if crate::directory_singleline(&mut blueprint.save_file_path, Some(game_editor_args.current_project_dir),
+            FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.blueprint), true, ui, game_editor_args.emojis).1 == true
+            {
+
+            }
 
             // blue print save button
             if ui.button(format!("{} Save blueprint", game_editor_args.emojis.save)).clicked()
