@@ -1,10 +1,11 @@
-use blue_engine_egui::{self, egui::{self}};
+use std::fs;
+
+use blue_engine_egui::{self, egui::{self, Ui}};
 use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
-use blue_flame_common::{emojis::Emojis, radio_options::FilePickerMode};
+use blue_flame_common::{emojis::Emojis, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::FileExplorerContent};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
-use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, BlueEngineArgs, GameEditorArgs, Blueprint,
-    editor_mode_variables,
+use crate::{editor_mode_variables, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize
 };
 /*
 pub fn main(scene: &mut Scene, blueprint.flameobject: &mut Option<Settings>, previous_viewmode: &mut ViewModes,
@@ -13,10 +14,9 @@ pub fn main(scene: &mut Scene, blueprint.flameobject: &mut Option<Settings>, pre
    window_size: &WindowSize,
    blue_engine_args: &mut BlueEngineArgs, window: &Window)
 */
-pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint, sub_editor_mode: &mut editor_mode_variables::Main, game_editor_args: &mut GameEditorArgs, blue_engine_args: &mut BlueEngineArgs, window: &Window)
+pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint, sub_editor_mode: &mut editor_mode_variables::Main, game_editor_args: &mut GameEditorArgs,
+    blue_engine_args: &mut BlueEngineArgs, window: &Window)
 {
-
-
     egui::SidePanel::left("Objects").show(blue_engine_args.ctx, |ui|
     {
         //ui.set_enabled(!alert_window.0);
@@ -383,5 +383,118 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             }
         }
 
+
+
+        // File explorer seperator
+        if game_editor_args.file_explorer_contents.0 == false
+        {
+            FileExplorerWidget::retrieve_and_push_dirs(ui, game_editor_args);
+        }
+        FileExplorerWidget::display(ui, game_editor_args);
+        //file_explorer_widget(ui, game_editor_args);
+
     });
+}
+
+struct FileExplorerWidget;
+impl FileExplorerWidget
+{
+    // Retrives all the dirs and pushes it to variable
+    fn retrieve_and_push_dirs(ui: &mut Ui, game_editor_args: &mut GameEditorArgs)
+    {
+        let mut file_explorer_contents = &mut game_editor_args.file_explorer_contents;
+        let current_project_dir: &str = &game_editor_args.current_project_dir;
+
+        let paths = fs::read_dir(format!("{}", &current_project_dir)).unwrap();
+        //game_editor_args.file_explorer_contents.contents_retrieved = Some(Vec::new());
+        file_explorer_contents.1 = Some(Vec::new());
+
+        for path in paths
+        {
+            if let Some(ref mut value) = file_explorer_contents.1
+            {
+                value.push(FileExplorerContent
+                {
+                    subdir_level: (0, None),
+                    is_collapsed: true,
+                    selected: false,
+                    actual_content: path.unwrap(),
+                });
+            }
+        }
+
+        file_explorer_contents.0 = true;
+    }
+    fn retrieve_child(ui: &mut Ui, game_editor_args: &mut GameEditorArgs)
+    {
+
+    }
+    fn display(ui: &mut Ui, game_editor_args: &mut GameEditorArgs)
+    {
+        let current_project_dir: &str = &game_editor_args.current_project_dir;
+        let emojis = game_editor_args.emojis;
+        let file_explorer_contents = &mut game_editor_args.file_explorer_contents.1;
+
+        for _ in 0..2
+        {
+            ui.separator();
+        }
+        ui.label("File Explorer");
+
+        // Displays dirs and files
+        if let Some(contents) = file_explorer_contents
+        {
+            let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
+            for (i, content) in contents.iter_mut().enumerate()
+            {
+                // Collapsable for dir
+                if content.actual_content.path().is_dir()
+                {
+                    ui.horizontal(|ui|
+                    {
+                        if ui.button(format!("{}", emojis.arrows.right)).clicked()
+                        {
+                            println!("Clicked arrow");
+                        }
+                        if ui.selectable_label(content.selected, format!("{} {}",
+                            emojis.file_icons.folder,
+                            fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
+                        )).clicked()
+                        {
+                            idx_make_selected = Some(i);        
+                        }
+                    });
+    
+                }
+                // Show regular for files
+                else if content.actual_content.path().is_file()
+                {
+                    if ui.selectable_label(content.selected, format!("{} {}",
+                        emojis.file_icons.file,
+                        fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
+                    )).clicked()
+                    {
+                        idx_make_selected = Some(i);
+                    }
+                }
+            }
+            if let Some(value) = idx_make_selected
+            {
+                for (i, content) in contents.iter_mut().enumerate()
+                {
+                    // Make true if we found the button that we want to select to be true
+                    if i == value
+                    {
+                        content.selected = true;
+                    }
+                    // Make all other buttons false
+                    else
+                    {
+                        content.selected = false;    
+                    }
+                }
+            }
+        }
+
+    }
 }
