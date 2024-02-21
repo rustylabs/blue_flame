@@ -6,6 +6,7 @@ use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Setti
 use crate::{AlertWindow, BlueEngineArgs, Blueprint, EditorSettings, FilePaths, GameEditorArgs, MouseFunctions, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES,
 };
 use blue_flame_common::radio_options::FilePickerMode;
+use crate::editor_modes::main::main::load_scene_by_file;
 /*
 pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>,
     projects: &mut Vec<Project>, filepaths: &mut FilePaths, string_backups: &mut StringBackups, emojis: &Emojis, blueprint_savefolderpath: &mut String,
@@ -79,12 +80,15 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             }
             if ui.button("Load scene").clicked()
             {
+                load_scene_by_file(scene, game_editor_args.current_project_dir, game_editor_args.filepaths, game_editor_args.project_config, blue_engine_args, window);
+                /*
                 if blue_flame_common::db::scene::load(scene, &game_editor_args.current_project_dir, &game_editor_args.filepaths.current_scene, true,
                     blue_engine_args, window) == true
                 {
                     game_editor_args.project_config.last_scene_filepath = game_editor_args.filepaths.current_scene.clone();
                     crate::db::project_config::save(game_editor_args.project_config, game_editor_args.filepaths, &game_editor_args.current_project_dir);
                 }
+                */
             }
             ui.separator();
             

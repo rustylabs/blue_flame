@@ -5,7 +5,7 @@ use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
 use blue_flame_common::{emojis::Emojis, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::FileExplorerContent};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
-use crate::{editor_mode_variables, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
+use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
 };
 /*
 pub fn main(scene: &mut Scene, blueprint.flameobject: &mut Option<Settings>, previous_viewmode: &mut ViewModes,
@@ -390,7 +390,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         {
             FileExplorerWidget::retrieve_and_push_dirs(ui, game_editor_args);
         }
-        FileExplorerWidget::display(ui, game_editor_args);
+        FileExplorerWidget::display(scene, game_editor_args, blue_engine_args, ui, window);
         //file_explorer_widget(ui, game_editor_args);
 
     });
@@ -429,8 +429,9 @@ impl FileExplorerWidget
     {
 
     }
-    fn display(ui: &mut Ui, game_editor_args: &mut GameEditorArgs)
+    fn display(scene: &mut Scene, game_editor_args: &mut GameEditorArgs, blue_engine_args: &mut BlueEngineArgs, ui: &mut Ui, window: &Window)
     {
+
         let current_project_dir: &str = &game_editor_args.current_project_dir;
         let emojis = game_editor_args.emojis;
         let file_explorer_contents = &mut game_editor_args.file_explorer_contents.1;
@@ -493,9 +494,12 @@ impl FileExplorerWidget
                     if is_doubleclicked == true
                     {
                         let selected_file = content.actual_content.file_name().to_string_lossy().to_string();
+
+                        // Load scene
                         if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
                         {
-                            
+                            game_editor_args.filepaths.current_scene = selected_file;
+                            load_scene_by_file(scene, current_project_dir, game_editor_args.filepaths, game_editor_args.project_config, blue_engine_args, window);
                         }
                     }
                 }
