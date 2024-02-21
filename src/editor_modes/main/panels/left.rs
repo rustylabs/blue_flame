@@ -5,7 +5,7 @@ use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
 use blue_flame_common::{emojis::Emojis, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::FileExplorerContent};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
-use crate::{editor_mode_variables, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize
+use crate::{editor_mode_variables, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
 };
 /*
 pub fn main(scene: &mut Scene, blueprint.flameobject: &mut Option<Settings>, previous_viewmode: &mut ViewModes,
@@ -447,7 +447,7 @@ impl FileExplorerWidget
             let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
             for (i, content) in contents.iter_mut().enumerate()
             {
-                // Collapsable for dir
+                // For dirs
                 if content.actual_content.path().is_dir()
                 {
                     ui.horizontal(|ui|
@@ -456,28 +456,51 @@ impl FileExplorerWidget
                         {
                             println!("Clicked arrow");
                         }
-                        if ui.selectable_label(content.selected, format!("{} {}",
+                        let response = ui.selectable_label(content.selected, format!("{} {}",
                             emojis.file_icons.folder,
                             fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
-                        )).clicked()
+                        ));
+                        if response.clicked()
                         {
                             idx_make_selected = Some(i);        
+                        }
+                        if response.double_clicked()
+                        {
+                            println!("folder double clicked!");
                         }
                     });
     
                 }
-                // Show regular for files
+                // For files
                 else if content.actual_content.path().is_file()
                 {
-                    if ui.selectable_label(content.selected, format!("{} {}",
+                    let mut is_doubleclicked = false;
+                    let response = ui.selectable_label(content.selected, format!("{} {}",
                         emojis.file_icons.file,
                         fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
-                    )).clicked()
+                    ));
+                    if response.clicked()
                     {
                         idx_make_selected = Some(i);
                     }
+                    if response.double_clicked()
+                    {
+                        is_doubleclicked = true;
+                        println!("file double clicked!");
+                    }
+
+                    // Open file if double clicked
+                    if is_doubleclicked == true
+                    {
+                        let selected_file = content.actual_content.file_name().to_string_lossy().to_string();
+                        if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
+                        {
+                            
+                        }
+                    }
                 }
             }
+            // if file/folder is selected, change all selected to be false but the one you selected
             if let Some(value) = idx_make_selected
             {
                 for (i, content) in contents.iter_mut().enumerate()
