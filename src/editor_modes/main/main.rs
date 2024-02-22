@@ -1,7 +1,7 @@
 use blue_engine_egui::{self, egui::{self, Ui, InputState, Context}};
 use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
-use blue_flame_common::emojis::Emojis;
+use blue_flame_common::{emojis::Emojis, structures::flameobject};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, AlertWindow, BlueEngineArgs, EditorSettings,
     MouseFunctions, Blueprint, GameEditorArgs, editor_mode_variables
@@ -50,13 +50,23 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 }
 
 // Used when choosing different scenes
-pub fn load_scene_by_file(scene: &mut Scene, current_project_dir: &str, filepaths: &mut FilePaths, project_config: &mut ProjectConfig,
-     blue_engine_args: &mut BlueEngineArgs, window: &Window)
+pub fn load_scene_by_file(scene: &mut Scene, current_project_dir: &str, filepaths: &mut FilePaths, string_backups_label: &mut String,
+    project_config: &mut ProjectConfig,
+    blue_engine_args: &mut BlueEngineArgs, window: &Window)
 {
     if blue_flame_common::db::scene::load(scene, current_project_dir, &filepaths.current_scene, true,
         blue_engine_args, window) == true
     {
         project_config.last_scene_filepath = filepaths.current_scene.clone();
         crate::db::project_config::save(project_config, filepaths, &current_project_dir);
+
+        // Assign string backups variable with the current selected flameobject
+        for flameobject in scene.flameobjects.iter()
+        {
+            if flameobject.selected == true
+            {
+                *string_backups_label = flameobject.settings.label.clone();
+            }
+        }
     }
 }

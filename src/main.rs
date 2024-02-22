@@ -1198,8 +1198,6 @@ fn right_panel_flameobject_settings(
                 game_editor_args.widget_functions.flameobject_old = Some(flameobject_settings.clone());
             }
 
-
-
             *game_editor_args.enable_shortcuts = false;
             // Destroys hashmap
             blue_flame_common::object_actions::delete_shape(&game_editor_args.string_backups.label, blue_engine_args);

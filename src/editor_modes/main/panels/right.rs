@@ -80,7 +80,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             }
             if ui.button("Load scene").clicked()
             {
-                load_scene_by_file(scene, game_editor_args.current_project_dir, game_editor_args.filepaths, game_editor_args.project_config, blue_engine_args, window);
+                load_scene_by_file(scene, game_editor_args.current_project_dir, game_editor_args.filepaths, &mut game_editor_args.string_backups.label,
+                    game_editor_args.project_config, blue_engine_args, window);
                 /*
                 if blue_flame_common::db::scene::load(scene, &game_editor_args.current_project_dir, &game_editor_args.filepaths.current_scene, true,
                     blue_engine_args, window) == true

@@ -499,7 +499,8 @@ impl FileExplorerWidget
                         if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
                         {
                             game_editor_args.filepaths.current_scene = selected_file;
-                            load_scene_by_file(scene, current_project_dir, game_editor_args.filepaths, game_editor_args.project_config, blue_engine_args, window);
+                            load_scene_by_file(scene, current_project_dir, game_editor_args.filepaths, &mut game_editor_args.string_backups.label, 
+                                game_editor_args.project_config, blue_engine_args, window);
                         }
                     }
                 }
