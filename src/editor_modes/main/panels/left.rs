@@ -387,7 +387,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 FilePickerMode::OpenFile, true, ui, game_editor_args.emojis);
             if ui.button("Load blueprint").clicked()
             {
-                crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir, blue_engine_args, window);
+                crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir, true,
+                    blue_engine_args, window);
             }
         }
 
@@ -517,7 +518,8 @@ impl FileExplorerWidget
                         {
                             blueprint.save_file_path = selected_file;
 
-                            crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir, blue_engine_args, window);
+                            crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir,
+                                false, blue_engine_args, window);
 
                             crate::CreateNewFlameObject::flameobject(None,
                             scene, game_editor_args.widget_functions, game_editor_args.string_backups,

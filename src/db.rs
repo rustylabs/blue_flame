@@ -32,7 +32,7 @@ pub mod blueprint
 
     }
 
-    pub fn load(flameobject_blueprint: &mut Option<flameobject::Settings>, filepath: &str, project_dir: &str,
+    pub fn load(flameobject_blueprint: &mut Option<flameobject::Settings>, filepath: &str, project_dir: &str, loadshape_2_scene: bool,
     /*Game engine shit*/ blue_engine_args: &mut BlueEngineArgs, window: &Window)
     {
         let mut file = match std::fs::File::open(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)))
@@ -58,7 +58,10 @@ pub mod blueprint
         let version = value.0;
         *flameobject_blueprint = Some(value.1);
 
-        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, blue_engine_args, window);
+        if loadshape_2_scene == true
+        {
+            blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, blue_engine_args, window);
+        }
 
         //println!("db version blueprints {FILE_NAME}: {}", version);
     }
