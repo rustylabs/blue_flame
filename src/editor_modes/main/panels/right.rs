@@ -144,7 +144,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.blueprint), true, ui, game_editor_args.emojis);
 
             // blue print save button
-            if ui.button(format!("{} Save blueprint", game_editor_args.emojis.save)).clicked()
+            if ui.button(format!("{} Save current object as blueprint", game_editor_args.emojis.save)).clicked()
             {
                 if scene.flameobjects.len() > 0
                 {

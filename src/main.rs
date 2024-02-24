@@ -1,6 +1,6 @@
 use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode};
 use blue_engine_egui::{self, egui::{self, Context, Response, Ui}};
-use blue_flame_common::{emojis::Emojis, filepath_handling, structures::{flameobject::{self, Flameobject}, project_config::ProjectConfig, scene::Scene, BlueEngineArgs, FileExplorerContent, FilePaths, GameEditorArgs, MouseFunctions, Project, WhatChanged, WidgetFunctions, WindowSize}};
+use blue_flame_common::{db::scene, emojis::Emojis, filepath_handling, structures::{flameobject::{self, Flameobject}, project_config::ProjectConfig, scene::Scene, BlueEngineArgs, FileExplorerContent, FilePaths, GameEditorArgs, MouseFunctions, Project, WhatChanged, WidgetFunctions, WindowSize}};
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
 use blue_flame_common::undo_redo;
 use blue_flame_common::structures::StringBackups;
@@ -28,8 +28,8 @@ use dirs;
 struct CreateNewFlameObject;
 impl CreateNewFlameObject
 {
-    pub fn flameobject(object_type_captured: &ObjectType, scene: &mut Scene, widget_functions: &mut WidgetFunctions, string_backups: &mut StringBackups, project_dir: &str, editor_settings: &EditorSettings,
-        blue_engine_args: &mut BlueEngineArgs, window: &Window)
+    pub fn flameobject(object_type_captured: Option<&ObjectType>, scene: &mut Scene, widget_functions: &mut WidgetFunctions, string_backups: &mut StringBackups, project_dir: &str,
+        editor_settings: &EditorSettings, blue_engine_args: &mut BlueEngineArgs, window: &Window, blueprint: Option<&flameobject::Settings>)
     {
         let len = scene.flameobjects.len() as u16;
         //let id = Flameobject::get_available_id(&mut scene.flameobjects);
@@ -37,7 +37,53 @@ impl CreateNewFlameObject
         scene.flameobject_highest_id += 1;
         //println!("id: {}", id);
 
-        scene.flameobjects.push(Flameobject::init(id, Some(*object_type_captured)));
+        match blueprint
+        {
+            // Is blueprint
+            Some(value) =>
+            {
+                scene.flameobjects.push(Flameobject::init(id, None));
+                scene.flameobjects[len as usize].settings = value.clone();
+                scene.flameobjects[len as usize].settings.blueprint_key = Some((String::from(format!("{}", value.label)), true));
+            }
+            // If new object then do regular
+            None => scene.flameobjects.push(Flameobject::init(id, Some(*object_type_captured.unwrap()))),
+        }
+
+        // Check if label is the same then change label name
+        loop
+        {
+            let flameobject_label = scene.flameobjects[len as usize].settings.label.clone();
+            let mut change_label = false;
+            for (i, flameobject) in scene.flameobjects.iter_mut().enumerate()
+            {
+                // Skip to compare the last object we just created
+                if i == len as usize
+                {
+                    continue;
+                }
+
+                // Change label
+                if flameobject.settings.label == flameobject_label
+                {
+                    change_label = true;
+                    //flameobject.settings.label.push_str("1");
+                    break;
+                }
+            }
+
+            // Change label
+            if change_label == true
+            {
+                scene.flameobjects[len as usize].settings.label.push_str("1");
+            }
+            // Nothing to change break out of loop
+            else
+            {
+                break;
+            }
+        }
+        
         Flameobject::change_choice(&mut scene.flameobjects, len);
         scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
         scene.undo_redo.save_action(
@@ -68,6 +114,7 @@ impl CreateNewFlameObject
             widget_functions.flameobject_old = None;
         }
     }
+    // This is to create the blueprint in the blueprint tab, not in the objects view tab
     pub fn blueprint(object_type_captured: &ObjectType, flameobject_blueprint: &mut Option<flameobject::Settings>, project_dir: &str,
         blue_engine_args: &mut BlueEngineArgs, window: &Window)
     {
@@ -1183,12 +1230,16 @@ fn right_panel_flameobject_settings(
     }
     */
     // Object name
-    let response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.label));
-    if blue_engine_args.input.mouse_pressed(0) || response.lost_focus()
+    let objectname_response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.label));
+    //if blue_engine_args.input.mouse_pressed(0) || response.lost_focus()
+    if objectname_response.lost_focus()
     {
+        //println!("response.lost_focus(): {}", objectname_response.lost_focus());
         // If label has been modified after clicking off the field do something
         if flameobject_settings.label != game_editor_args.string_backups.label
         {
+            //println!("response.lost_focus(): {}", response.lost_focus());
+            //println!("flameobject_settings.label: {}, game_editor_args.string_backups.label: {}", flameobject_settings.label, game_editor_args.string_backups.label);
             // Save history to undo_redo()
             {
                 let mut flameobject_copyover = flameobject_settings.clone();

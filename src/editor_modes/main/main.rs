@@ -27,7 +27,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
     let change_editor_mode = false;
 
     panels::menu_bar::main(alert_window, blue_engine_args, scene, game_editor_args.filepaths, game_editor_args.current_project_dir);
-    panels::left::main(scene, projects, blueprint, sub_editor_mode, game_editor_args, blue_engine_args, window);
+    panels::left::main(scene, projects, blueprint, sub_editor_mode, game_editor_args, editor_settings, blue_engine_args, window);
     panels::right::main(scene, projects, blueprint, editor_settings, game_editor_args, blue_engine_args, window);
 
 
@@ -38,8 +38,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         {
             match crate::right_click_menu(game_editor_args.mouse_functions, blue_engine_args.input, blue_engine_args.ctx)
             {
-                Some(object_type_captured) => crate::CreateNewFlameObject::flameobject(&object_type_captured, scene,
-                    &mut game_editor_args.widget_functions, game_editor_args.string_backups, &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window),
+                Some(object_type_captured) => crate::CreateNewFlameObject::flameobject(Some(&object_type_captured), scene,
+                    &mut game_editor_args.widget_functions, game_editor_args.string_backups, &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, None),
                 None => {},
             }
         }

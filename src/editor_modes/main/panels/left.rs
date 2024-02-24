@@ -3,7 +3,7 @@ use std::fs;
 use blue_engine_egui::{self, egui::{self, Ui}};
 use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
-use blue_flame_common::{emojis::Emojis, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::FileExplorerContent};
+use blue_flame_common::{emojis::Emojis, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::FileExplorerContent, EditorSettings};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
 };
@@ -15,6 +15,7 @@ pub fn main(scene: &mut Scene, blueprint.flameobject: &mut Option<Settings>, pre
    blue_engine_args: &mut BlueEngineArgs, window: &Window)
 */
 pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint, sub_editor_mode: &mut editor_mode_variables::Main, game_editor_args: &mut GameEditorArgs,
+    editor_settings: &EditorSettings,
     blue_engine_args: &mut BlueEngineArgs, window: &Window)
 {
     egui::SidePanel::left("Objects").show(blue_engine_args.ctx, |ui|
@@ -223,14 +224,16 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                         None => {}
                     }
                 }
+                // WHen user preses save for blueprint object, any regular object inherited from blueprint and its changes will be affected
+                // and also saves blueprint to its current assigned dir
                 // Top left hand side when in blueprint view mode
                 if ui.button(format!("{} Save blueprint", game_editor_args.emojis.save)).clicked()
                 || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::S)
                 {
-                    //crate::save_blueprint(&blueprint.flameobject, &blueprint_savefolderpath, &current_project_dir);
+                    crate::db::blueprint::save(&blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir);
                     match blueprint.flameobject
                     {
-                        // WHen user preses save for blueprint object, any regular object inherited from blueprint and its changes will be affected 
+                        // Any regular object inherited from blueprint and its changes will be affected
                         Some(ref blueprint_flameobject) =>
                         {
                             for flameobject in scene.flameobjects.iter_mut()
@@ -290,8 +293,9 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             {
                 match blueprint.flameobject
                 {
-                    Some(ref value) => 
+                    Some(ref value) =>
                     {
+                        /*
                         let len = scene.flameobjects.len() as u16;
                         scene.flameobjects.push(Flameobject::init(len, None));
                         scene.flameobjects[len as usize].settings = value.clone();
@@ -301,6 +305,10 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                         scene.flameobject_selected_parent_idx = len;
                         blue_flame_common::object_actions::create_shape(&scene.flameobjects[len as usize].settings,
                             &Project::selected_dir(&projects), blue_engine_args, window);
+                        */
+                        crate::CreateNewFlameObject::flameobject(None,
+                            scene, game_editor_args.widget_functions, game_editor_args.string_backups,
+                            &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, Some(value))
                     }
                     None => println!("None in blueprint.flameobject"),
                 }
@@ -390,7 +398,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         {
             FileExplorerWidget::retrieve_and_push_dirs(ui, game_editor_args);
         }
-        FileExplorerWidget::display(scene, game_editor_args, blue_engine_args, ui, window);
+        FileExplorerWidget::display(scene, blueprint, editor_settings, game_editor_args, blue_engine_args, ui, window);
         //file_explorer_widget(ui, game_editor_args);
 
     });
@@ -429,12 +437,14 @@ impl FileExplorerWidget
     {
 
     }
-    fn display(scene: &mut Scene, game_editor_args: &mut GameEditorArgs, blue_engine_args: &mut BlueEngineArgs, ui: &mut Ui, window: &Window)
+    fn display(scene: &mut Scene, blueprint: &mut Blueprint, editor_settings: &EditorSettings,
+        game_editor_args: &mut GameEditorArgs, blue_engine_args: &mut BlueEngineArgs, ui: &mut Ui, window: &Window)
     {
 
         let current_project_dir: &str = &game_editor_args.current_project_dir;
         let emojis = game_editor_args.emojis;
         let file_explorer_contents = &mut game_editor_args.file_explorer_contents.1;
+
 
         for _ in 0..2
         {
@@ -495,12 +505,23 @@ impl FileExplorerWidget
                     {
                         let selected_file = content.actual_content.file_name().to_string_lossy().to_string();
 
-                        // Load scene
+                        // Scene
                         if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
                         {
                             game_editor_args.filepaths.current_scene = selected_file;
                             load_scene_by_file(scene, current_project_dir, game_editor_args.filepaths, &mut game_editor_args.string_backups.label, 
                                 game_editor_args.project_config, blue_engine_args, window);
+                        }
+                        // Blueprint
+                        else if selected_file.ends_with(FILE_EXTENSION_NAMES.blueprint)
+                        {
+                            blueprint.save_file_path = selected_file;
+
+                            crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir, blue_engine_args, window);
+
+                            crate::CreateNewFlameObject::flameobject(None,
+                            scene, game_editor_args.widget_functions, game_editor_args.string_backups,
+                            &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, blueprint.flameobject.as_ref())
                         }
                     }
                 }
