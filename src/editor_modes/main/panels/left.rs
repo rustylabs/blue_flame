@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use blue_engine_egui::{self, egui::{self, Ui}};
 use blue_engine::header::VirtualKeyCode;
@@ -397,7 +397,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         // File explorer seperator
         if game_editor_args.file_explorer_contents.0 == false
         {
-            FileExplorerWidget::retrieve_and_push_dirs(ui, game_editor_args);
+            FileExplorerWidget::retrieve_and_push_dirs(game_editor_args);
         }
         FileExplorerWidget::display(scene, blueprint, editor_settings, game_editor_args, blue_engine_args, ui, window);
         //file_explorer_widget(ui, game_editor_args);
@@ -409,7 +409,7 @@ struct FileExplorerWidget;
 impl FileExplorerWidget
 {
     // Retrives all the dirs and pushes it to variable
-    fn retrieve_and_push_dirs(ui: &mut Ui, game_editor_args: &mut GameEditorArgs)
+    fn retrieve_and_push_dirs(game_editor_args: &mut GameEditorArgs)
     {
         let mut file_explorer_contents = &mut game_editor_args.file_explorer_contents;
         let current_project_dir: &str = &game_editor_args.current_project_dir;
@@ -434,8 +434,25 @@ impl FileExplorerWidget
 
         file_explorer_contents.0 = true;
     }
-    fn retrieve_child(ui: &mut Ui, game_editor_args: &mut GameEditorArgs)
+    fn retrieve_child_and_push_dirs(
+        file_explorer_contents: &mut Vec<FileExplorerContent>,
+        subdir_path: (&str /*Path*/, u16 /*Level number*/, &str /*Parent's name*/),
+        parent_idx: usize, /*Used to determine where to insert in the vector*/
+    )
     {
+        let paths = fs::read_dir(format!("{}", subdir_path.0)).unwrap();
+
+        for path in paths
+        {
+            file_explorer_contents.insert(parent_idx + 1, FileExplorerContent
+            {
+                subdir_level: (subdir_path.1 + 1, Some(subdir_path.2.to_string())),
+                is_collapsed: true,
+                selected: false,
+                actual_content: path.unwrap(),
+            });
+        }
+
 
     }
     fn display(scene: &mut Scene, blueprint: &mut Blueprint, editor_settings: &EditorSettings,
@@ -457,6 +474,14 @@ impl FileExplorerWidget
         if let Some(contents) = file_explorer_contents
         {
             let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
+            let mut retrieve_child: Option<RetrieveChild> = None; // Used to trigger to uncollapse a folder
+
+            struct RetrieveChild
+            {
+                subdir_path: (String /*Path*/, u16 /*Level number*/, String /*Parent's name*/),
+                parent_idx: usize, /*Used to determine where to insert in the vector*/
+            }
+
             for (i, content) in contents.iter_mut().enumerate()
             {
                 // For dirs
@@ -467,6 +492,12 @@ impl FileExplorerWidget
                         if ui.button(format!("{}", emojis.arrows.right)).clicked()
                         {
                             println!("Clicked arrow");
+                            retrieve_child = Some(RetrieveChild{subdir_path: (
+                                format!("{}", content.actual_content.path().display()),
+                                content.subdir_level.0,
+                                content.actual_content.file_name().to_str().unwrap().to_string()
+                                ),
+                                parent_idx: i})
                         }
                         let response = ui.selectable_label(content.selected, format!("{} {}",
                             emojis.file_icons.folder,
@@ -479,9 +510,14 @@ impl FileExplorerWidget
                         if response.double_clicked()
                         {
                             println!("folder double clicked!");
+                            retrieve_child = Some(RetrieveChild{subdir_path: (
+                                format!("{}", content.actual_content.path().display()),
+                                content.subdir_level.0,
+                                content.actual_content.file_name().to_str().unwrap().to_string()
+                                ),
+                                parent_idx: i})
                         }
                     });
-    
                 }
                 // For files
                 else if content.actual_content.path().is_file()
@@ -528,6 +564,18 @@ impl FileExplorerWidget
                     }
                 }
             }
+
+            // Push subdir and its contents into vector
+            if let Some(value) = retrieve_child
+            {
+                FileExplorerWidget::retrieve_child_and_push_dirs(
+                    contents,
+                    (&value.subdir_path.0, value.subdir_path.1, &value.subdir_path.2),
+                    value.parent_idx,
+                );
+            }
+
+
             // if file/folder is selected, change all selected to be false but the one you selected
             if let Some(value) = idx_make_selected
             {
