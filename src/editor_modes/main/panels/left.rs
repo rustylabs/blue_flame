@@ -397,7 +397,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         // File explorer seperator
         if game_editor_args.file_explorer_contents.0 == false
         {
-            FileExplorerWidget::retrieve_and_push_dirs(game_editor_args);
+            FileExplorerWidget::init(game_editor_args);
         }
         FileExplorerWidget::display(scene, blueprint, editor_settings, game_editor_args, blue_engine_args, ui, window);
         //file_explorer_widget(ui, game_editor_args);
@@ -408,8 +408,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 struct FileExplorerWidget;
 impl FileExplorerWidget
 {
-    // Retrives all the dirs and pushes it to variable
-    fn retrieve_and_push_dirs(game_editor_args: &mut GameEditorArgs)
+    // Retrives all the dirs at parent level for the first time and pushes it to variable
+    fn init(game_editor_args: &mut GameEditorArgs)
     {
         let mut file_explorer_contents = &mut game_editor_args.file_explorer_contents;
         let current_project_dir: &str = &game_editor_args.current_project_dir;
@@ -422,24 +422,46 @@ impl FileExplorerWidget
         {
             if let Some(ref mut value) = file_explorer_contents.1
             {
+                //Self::retrieve_and_push_dirs(path.unwrap().file_name().to_str().unwrap(), value, 0)
                 value.push(FileExplorerContent
                 {
-                    subdir_level: (0, None),
+                    subdir_level: 0,
                     is_collapsed: true,
                     selected: false,
                     actual_content: path.unwrap(),
+                    childrens_content: None,
                 });
             }
         }
 
         file_explorer_contents.0 = true;
     }
-    fn retrieve_child_and_push_dirs(
+    // Retrieves the specified directory's contents and pushes it to vector
+    fn retrieve_and_push_dirs(
+        path: &str,
+        file_explorer_contents: &mut Vec<FileExplorerContent>,
+        subdir_level: u16,
+        /*
         file_explorer_contents: &mut Vec<FileExplorerContent>,
         subdir_path: (&str /*Path*/, u16 /*Level number*/, &str /*Parent's name*/),
         parent_idx: usize, /*Used to determine where to insert in the vector*/
+        */
     )
     {
+        let paths = fs::read_dir(format!("{}", path)).unwrap();
+        for path in paths
+        {
+            file_explorer_contents.push(FileExplorerContent
+            {
+                subdir_level,
+                is_collapsed: true,
+                selected: false,
+                actual_content: path.unwrap(),
+                childrens_content: None,
+            });
+        }
+
+        /*
         let paths = fs::read_dir(format!("{}", subdir_path.0)).unwrap();
 
         for path in paths
@@ -452,7 +474,7 @@ impl FileExplorerWidget
                 actual_content: path.unwrap(),
             });
         }
-
+        */
 
     }
     fn display(scene: &mut Scene, blueprint: &mut Blueprint, editor_settings: &EditorSettings,
@@ -463,135 +485,254 @@ impl FileExplorerWidget
         let emojis = game_editor_args.emojis;
         let file_explorer_contents = &mut game_editor_args.file_explorer_contents.1;
 
-
         for _ in 0..2
         {
             ui.separator();
         }
         ui.label("File Explorer");
 
-        // Displays dirs and files
-        if let Some(contents) = file_explorer_contents
+        let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
+
+        actually_display(scene, blueprint, emojis, file_explorer_contents,
+            editor_settings, game_editor_args.filepaths,
+            game_editor_args.project_config, current_project_dir, game_editor_args.string_backups, game_editor_args.widget_functions, blue_engine_args, ui, window);
+
+        fn actually_display(
+            scene: &mut Scene,
+            blueprint: &mut Blueprint,
+            emojis: &Emojis,
+            file_explorer_contents: &mut Option<Vec<FileExplorerContent>>,
+            editor_settings: &EditorSettings,
+            filepaths: &mut FilePaths,
+            project_config: &mut ProjectConfig,
+            current_project_dir: &str,
+            string_backups: &mut StringBackups,
+            widget_functions: &mut WidgetFunctions,
+            //game_editor_args: &mut GameEditorArgs,
+            blue_engine_args: &mut BlueEngineArgs,
+            ui: &mut Ui,
+            window: &Window,
+        )
         {
-            let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
-            let mut retrieve_child: Option<RetrieveChild> = None; // Used to trigger to uncollapse a folder
-
-            struct RetrieveChild
+            if let Some(contents) = file_explorer_contents
             {
-                subdir_path: (String /*Path*/, u16 /*Level number*/, String /*Parent's name*/),
-                parent_idx: usize, /*Used to determine where to insert in the vector*/
-            }
+                //let emojis = game_editor_args.emojis;
+                //let current_project_dir: &str = &game_editor_args.current_project_dir;
 
-            for (i, content) in contents.iter_mut().enumerate()
-            {
-                // For dirs
-                if content.actual_content.path().is_dir()
+                let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
+
+                for (i, content) in contents.iter_mut().enumerate()
                 {
-                    ui.horizontal(|ui|
+                    // Folders
+                    if content.actual_content.path().is_dir()
                     {
-                        if ui.button(format!("{}", emojis.arrows.right)).clicked()
+                        ui.horizontal(|ui|
                         {
-                            println!("Clicked arrow");
-                            retrieve_child = Some(RetrieveChild{subdir_path: (
-                                format!("{}", content.actual_content.path().display()),
-                                content.subdir_level.0,
-                                content.actual_content.file_name().to_str().unwrap().to_string()
-                                ),
-                                parent_idx: i})
-                        }
+                            if ui.button(format!("{}", emojis.arrows.right)).clicked()
+                            {
+                                content.is_collapsed = false;
+                                content.childrens_content = Some(Vec::new());
+                                push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
+                            }
+                            let response = ui.selectable_label(content.selected, format!("{} {}",
+                                emojis.file_icons.folder,
+                                content.actual_content.file_name().to_str().unwrap(),
+                                //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
+                            ));
+                            if response.clicked()
+                            {
+                                idx_make_selected = Some(i);
+                            }
+                            if response.double_clicked()
+                            {
+                                content.is_collapsed = false;
+                                content.childrens_content = Some(Vec::new());
+                                push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
+                            }
+                        });
+                    }
+                    // Files
+                    else if content.actual_content.path().is_file()
+                    {
+                        let mut is_doubleclicked = false;
                         let response = ui.selectable_label(content.selected, format!("{} {}",
-                            emojis.file_icons.folder,
-                            fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
+                            emojis.file_icons.file,
+                            content.actual_content.file_name().to_str().unwrap(),
+                            //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
                         ));
                         if response.clicked()
                         {
-                            idx_make_selected = Some(i);        
+                            idx_make_selected = Some(i);
                         }
                         if response.double_clicked()
                         {
-                            println!("folder double clicked!");
-                            retrieve_child = Some(RetrieveChild{subdir_path: (
-                                format!("{}", content.actual_content.path().display()),
-                                content.subdir_level.0,
-                                content.actual_content.file_name().to_str().unwrap().to_string()
-                                ),
-                                parent_idx: i})
+                            is_doubleclicked = true;
+                            println!("file double clicked!");
                         }
-                    });
-                }
-                // For files
-                else if content.actual_content.path().is_file()
-                {
-                    let mut is_doubleclicked = false;
-                    let response = ui.selectable_label(content.selected, format!("{} {}",
-                        emojis.file_icons.file,
-                        fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
-                    ));
-                    if response.clicked()
-                    {
-                        idx_make_selected = Some(i);
-                    }
-                    if response.double_clicked()
-                    {
-                        is_doubleclicked = true;
-                        println!("file double clicked!");
-                    }
 
-                    // Open file if double clicked
-                    if is_doubleclicked == true
-                    {
-                        let selected_file = content.actual_content.file_name().to_string_lossy().to_string();
-
-                        // Scene
-                        if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
+                        // Open file if double clicked
+                        if is_doubleclicked == true
                         {
-                            game_editor_args.filepaths.current_scene = selected_file;
-                            load_scene_by_file(scene, current_project_dir, game_editor_args.filepaths, &mut game_editor_args.string_backups.label, 
-                                game_editor_args.project_config, blue_engine_args, window);
-                        }
-                        // Blueprint
-                        else if selected_file.ends_with(FILE_EXTENSION_NAMES.blueprint)
-                        {
-                            blueprint.save_file_path = selected_file;
+                            let selected_file = content.actual_content.file_name().to_string_lossy().to_string();
 
-                            crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir,
-                                false, blue_engine_args, window);
+                            // Scene
+                            if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
+                            {
+                                filepaths.current_scene = selected_file;
+                                load_scene_by_file(scene, current_project_dir, filepaths, &mut string_backups.label, 
+                                    project_config, blue_engine_args, window);
+                            }
+                            // Blueprint
+                            else if selected_file.ends_with(FILE_EXTENSION_NAMES.blueprint)
+                            {
+                                blueprint.save_file_path = selected_file;
 
-                            crate::CreateNewFlameObject::flameobject(None,
-                            scene, game_editor_args.widget_functions, game_editor_args.string_backups,
-                            &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, blueprint.flameobject.as_ref())
+                                crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, current_project_dir,
+                                    false, blue_engine_args, window);
+
+                                crate::CreateNewFlameObject::flameobject(None,
+                                scene, widget_functions, string_backups,
+                                current_project_dir, &editor_settings, blue_engine_args, window, blueprint.flameobject.as_ref())
+                            }
                         }
+                    }
+                    // Display subdirectories by calling itself
+                    if content.is_collapsed == false
+                    {
+                        actually_display(scene, blueprint, emojis, &mut content.childrens_content,
+                            editor_settings, filepaths,
+                            project_config, current_project_dir, string_backups, widget_functions, blue_engine_args, ui, window);
                     }
                 }
             }
+        }
 
-            // Push subdir and its contents into vector
-            if let Some(value) = retrieve_child
+        // Actually displays the entire file explorer contents
+        /*
+        let mut actually_display = ||
+        {
+            // Displays dirs and files
+            if let Some(contents) = file_explorer_contents
             {
-                FileExplorerWidget::retrieve_child_and_push_dirs(
-                    contents,
-                    (&value.subdir_path.0, value.subdir_path.1, &value.subdir_path.2),
-                    value.parent_idx,
-                );
-            }
+                //let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
 
-
-            // if file/folder is selected, change all selected to be false but the one you selected
-            if let Some(value) = idx_make_selected
-            {
                 for (i, content) in contents.iter_mut().enumerate()
                 {
-                    // Make true if we found the button that we want to select to be true
-                    if i == value
+                    // Folders
+                    if content.actual_content.path().is_dir()
                     {
-                        content.selected = true;
+                        ui.horizontal(|ui|
+                        {
+                            if ui.button(format!("{}", emojis.arrows.right)).clicked()
+                            {
+                                println!("Clicked arrow");
+                                content.childrens_content = Some(Vec::new());
+                                push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
+                            }
+                            let response = ui.selectable_label(content.selected, format!("{} {}",
+                                emojis.file_icons.folder,
+                                content.actual_content.file_name().to_str().unwrap(),
+                                //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
+                            ));
+                            if response.clicked()
+                            {
+                                idx_make_selected = Some(i);
+                            }
+                            if response.double_clicked()
+                            {
+                                println!("folder double clicked!");
+                                content.childrens_content = Some(Vec::new());
+                                push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
+                            }
+                        });
                     }
-                    // Make all other buttons false
-                    else
+                    // Files
+                    else if content.actual_content.path().is_file()
                     {
-                        content.selected = false;    
+                        let mut is_doubleclicked = false;
+                        let response = ui.selectable_label(content.selected, format!("{} {}",
+                            emojis.file_icons.file,
+                            content.actual_content.file_name().to_str().unwrap(),
+                            //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
+                        ));
+                        if response.clicked()
+                        {
+                            idx_make_selected = Some(i);
+                        }
+                        if response.double_clicked()
+                        {
+                            is_doubleclicked = true;
+                            println!("file double clicked!");
+                        }
+
+                        // Open file if double clicked
+                        if is_doubleclicked == true
+                        {
+                            let selected_file = content.actual_content.file_name().to_string_lossy().to_string();
+
+                            // Scene
+                            if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
+                            {
+                                game_editor_args.filepaths.current_scene = selected_file;
+                                load_scene_by_file(scene, current_project_dir, game_editor_args.filepaths, &mut game_editor_args.string_backups.label, 
+                                    game_editor_args.project_config, blue_engine_args, window);
+                            }
+                            // Blueprint
+                            else if selected_file.ends_with(FILE_EXTENSION_NAMES.blueprint)
+                            {
+                                blueprint.save_file_path = selected_file;
+
+                                crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir,
+                                    false, blue_engine_args, window);
+
+                                crate::CreateNewFlameObject::flameobject(None,
+                                scene, game_editor_args.widget_functions, game_editor_args.string_backups,
+                                &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, blueprint.flameobject.as_ref())
+                            }
+                        }
                     }
                 }
+
+
+                // if file/folder is selected, change all selected to be false but the one you selected
+                if let Some(value) = idx_make_selected
+                {
+                    for (i, content) in contents.iter_mut().enumerate()
+                    {
+                        // Make true if we found the button that we want to select to be true
+                        if i == value
+                        {
+                            content.selected = true;
+                        }
+                        // Make all other buttons false
+                        else
+                        {
+                            content.selected = false;    
+                        }
+                    }
+                }
+            }
+        };
+        */
+
+        fn push_subdir(path: &str, file_explorer_contents: &mut Option<Vec<FileExplorerContent>>, subdir_level: u16)
+        {
+            let paths = fs::read_dir(format!("{}", path)).unwrap();
+
+            for path in paths
+            {
+                if let Some(file_explorer_contents) = file_explorer_contents
+                {
+                    file_explorer_contents.push(FileExplorerContent
+                    {
+                        subdir_level: subdir_level + 1,
+                        is_collapsed: true,
+                        selected: false,
+                        actual_content: path.unwrap(),
+                        childrens_content: None,
+                    });
+                }
+
             }
         }
 
