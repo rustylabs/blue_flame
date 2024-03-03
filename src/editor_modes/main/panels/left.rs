@@ -494,9 +494,13 @@ impl FileExplorerWidget
 
         //let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
 
-        actually_display(scene, blueprint, emojis, file_explorer_contents,
-            editor_settings, game_editor_args.filepaths,
-            game_editor_args.project_config, current_project_dir, game_editor_args.string_backups, game_editor_args.widget_functions, blue_engine_args, ui, window);
+        egui::ScrollArea::vertical().show(ui, |ui|
+        {
+            actually_display(scene, blueprint, emojis, file_explorer_contents,
+                editor_settings, game_editor_args.filepaths,
+                game_editor_args.project_config, current_project_dir, game_editor_args.string_backups, game_editor_args.widget_functions, blue_engine_args, ui, window);
+        });
+
 
         fn actually_display(
             scene: &mut Scene,
@@ -509,7 +513,6 @@ impl FileExplorerWidget
             current_project_dir: &str,
             string_backups: &mut StringBackups,
             widget_functions: &mut WidgetFunctions,
-            //game_editor_args: &mut GameEditorArgs,
             blue_engine_args: &mut BlueEngineArgs,
             ui: &mut Ui,
             window: &Window,
@@ -521,7 +524,6 @@ impl FileExplorerWidget
                 //let current_project_dir: &str = &game_editor_args.current_project_dir;
 
                 let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
-
                 for (i, content) in contents.iter_mut().enumerate()
                 {
                     ui.horizontal(|ui|
