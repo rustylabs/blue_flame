@@ -529,10 +529,12 @@ impl FileExplorerWidget
                         // For subdirs, pad based on the subdir_level
                         for _ in 0..content.subdir_level
                         {
+                            //ui.label("|");
                             // Times subdir_level by how many times?
                             for _ in 0..2
                             {
                                 ui.label(" ");
+                                //ui.label("_");
                             }
                         }
 
@@ -553,8 +555,11 @@ impl FileExplorerWidget
                             if ui.button(format!("{}", arrow)).clicked()
                             {
                                 content.is_collapsed = !content.is_collapsed;
-                                content.childrens_content = Some(Vec::new());
-                                push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
+                                if let None = content.childrens_content
+                                {
+                                    content.childrens_content = Some(Vec::new());
+                                    push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
+                                }
                             }
                             let response = ui.selectable_label(content.selected, format!("{} {}",
                                 emojis.file_icons.folder,
@@ -568,8 +573,12 @@ impl FileExplorerWidget
                             if response.double_clicked()
                             {
                                 content.is_collapsed = !content.is_collapsed;
-                                content.childrens_content = Some(Vec::new());
-                                push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
+                                if let None = content.childrens_content
+                                {
+                                    content.childrens_content = Some(Vec::new());
+                                    push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
+                                }
+
                             }
 
                         }
@@ -629,114 +638,6 @@ impl FileExplorerWidget
                 }
             }
         }
-
-        // Actually displays the entire file explorer contents
-        /*
-        let mut actually_display = ||
-        {
-            // Displays dirs and files
-            if let Some(contents) = file_explorer_contents
-            {
-                //let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
-
-                for (i, content) in contents.iter_mut().enumerate()
-                {
-                    // Folders
-                    if content.actual_content.path().is_dir()
-                    {
-                        ui.horizontal(|ui|
-                        {
-                            if ui.button(format!("{}", emojis.arrows.right)).clicked()
-                            {
-                                println!("Clicked arrow");
-                                content.childrens_content = Some(Vec::new());
-                                push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
-                            }
-                            let response = ui.selectable_label(content.selected, format!("{} {}",
-                                emojis.file_icons.folder,
-                                content.actual_content.file_name().to_str().unwrap(),
-                                //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
-                            ));
-                            if response.clicked()
-                            {
-                                idx_make_selected = Some(i);
-                            }
-                            if response.double_clicked()
-                            {
-                                println!("folder double clicked!");
-                                content.childrens_content = Some(Vec::new());
-                                push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
-                            }
-                        });
-                    }
-                    // Files
-                    else if content.actual_content.path().is_file()
-                    {
-                        let mut is_doubleclicked = false;
-                        let response = ui.selectable_label(content.selected, format!("{} {}",
-                            emojis.file_icons.file,
-                            content.actual_content.file_name().to_str().unwrap(),
-                            //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
-                        ));
-                        if response.clicked()
-                        {
-                            idx_make_selected = Some(i);
-                        }
-                        if response.double_clicked()
-                        {
-                            is_doubleclicked = true;
-                            println!("file double clicked!");
-                        }
-
-                        // Open file if double clicked
-                        if is_doubleclicked == true
-                        {
-                            let selected_file = content.actual_content.file_name().to_string_lossy().to_string();
-
-                            // Scene
-                            if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
-                            {
-                                game_editor_args.filepaths.current_scene = selected_file;
-                                load_scene_by_file(scene, current_project_dir, game_editor_args.filepaths, &mut game_editor_args.string_backups.label, 
-                                    game_editor_args.project_config, blue_engine_args, window);
-                            }
-                            // Blueprint
-                            else if selected_file.ends_with(FILE_EXTENSION_NAMES.blueprint)
-                            {
-                                blueprint.save_file_path = selected_file;
-
-                                crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir,
-                                    false, blue_engine_args, window);
-
-                                crate::CreateNewFlameObject::flameobject(None,
-                                scene, game_editor_args.widget_functions, game_editor_args.string_backups,
-                                &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, blueprint.flameobject.as_ref())
-                            }
-                        }
-                    }
-                }
-
-
-                // if file/folder is selected, change all selected to be false but the one you selected
-                if let Some(value) = idx_make_selected
-                {
-                    for (i, content) in contents.iter_mut().enumerate()
-                    {
-                        // Make true if we found the button that we want to select to be true
-                        if i == value
-                        {
-                            content.selected = true;
-                        }
-                        // Make all other buttons false
-                        else
-                        {
-                            content.selected = false;    
-                        }
-                    }
-                }
-            }
-        };
-        */
 
         fn push_subdir(path: &str, file_explorer_contents: &mut Option<Vec<FileExplorerContent>>, subdir_level: u16)
         {
