@@ -7,6 +7,7 @@ use blue_flame_common::{emojis::Emojis, filepath_handling::fullpath_to_relativep
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
 };
+use crate::egui::Vec2;
 /*
 pub fn main(scene: &mut Scene, blueprint.flameobject: &mut Option<Settings>, previous_viewmode: &mut ViewModes,
     projects: &mut Vec<Project>, filepaths: &mut FilePaths, string_backups: &mut StringBackups, emojis: &Emojis, blueprint_savefolderpath: &mut String,
@@ -491,7 +492,7 @@ impl FileExplorerWidget
         }
         ui.label("File Explorer");
 
-        let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
+        //let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
 
         actually_display(scene, blueprint, emojis, file_explorer_contents,
             editor_settings, game_editor_args.filepaths,
@@ -523,14 +524,35 @@ impl FileExplorerWidget
 
                 for (i, content) in contents.iter_mut().enumerate()
                 {
-                    // Folders
-                    if content.actual_content.path().is_dir()
+                    ui.horizontal(|ui|
                     {
-                        ui.horizontal(|ui|
+                        // For subdirs, pad based on the subdir_level
+                        for _ in 0..content.subdir_level
                         {
-                            if ui.button(format!("{}", emojis.arrows.right)).clicked()
+                            // Times subdir_level by how many times?
+                            for _ in 0..2
                             {
-                                content.is_collapsed = false;
+                                ui.label(" ");
+                            }
+                        }
+
+                        // Folder
+                        if content.actual_content.path().is_dir()
+                        {
+                            let arrow = 
+                            {
+                                if content.is_collapsed == false
+                                {
+                                    emojis.arrows.down
+                                }
+                                else
+                                {
+                                    emojis.arrows.right
+                                }
+                            };
+                            if ui.button(format!("{}", arrow)).clicked()
+                            {
+                                content.is_collapsed = !content.is_collapsed;
                                 content.childrens_content = Some(Vec::new());
                                 push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
                             }
@@ -545,57 +567,58 @@ impl FileExplorerWidget
                             }
                             if response.double_clicked()
                             {
-                                content.is_collapsed = false;
+                                content.is_collapsed = !content.is_collapsed;
                                 content.childrens_content = Some(Vec::new());
                                 push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
                             }
-                        });
-                    }
-                    // Files
-                    else if content.actual_content.path().is_file()
-                    {
-                        let mut is_doubleclicked = false;
-                        let response = ui.selectable_label(content.selected, format!("{} {}",
-                            emojis.file_icons.file,
-                            content.actual_content.file_name().to_str().unwrap(),
-                            //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
-                        ));
-                        if response.clicked()
-                        {
-                            idx_make_selected = Some(i);
-                        }
-                        if response.double_clicked()
-                        {
-                            is_doubleclicked = true;
-                            println!("file double clicked!");
-                        }
 
-                        // Open file if double clicked
-                        if is_doubleclicked == true
+                        }
+                        // File
+                        else if content.actual_content.path().is_file()
                         {
-                            let selected_file = content.actual_content.file_name().to_string_lossy().to_string();
-
-                            // Scene
-                            if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
+                            let mut is_doubleclicked = false;
+                            let response = ui.selectable_label(content.selected, format!("{} {}",
+                                emojis.file_icons.file,
+                                content.actual_content.file_name().to_str().unwrap(),
+                                //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
+                            ));
+                            if response.clicked()
                             {
-                                filepaths.current_scene = selected_file;
-                                load_scene_by_file(scene, current_project_dir, filepaths, &mut string_backups.label, 
-                                    project_config, blue_engine_args, window);
+                                idx_make_selected = Some(i);
                             }
-                            // Blueprint
-                            else if selected_file.ends_with(FILE_EXTENSION_NAMES.blueprint)
+                            if response.double_clicked()
                             {
-                                blueprint.save_file_path = selected_file;
-
-                                crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, current_project_dir,
-                                    false, blue_engine_args, window);
-
-                                crate::CreateNewFlameObject::flameobject(None,
-                                scene, widget_functions, string_backups,
-                                current_project_dir, &editor_settings, blue_engine_args, window, blueprint.flameobject.as_ref())
+                                is_doubleclicked = true;
+                            }
+    
+                            // Open file if double clicked
+                            if is_doubleclicked == true
+                            {
+                                let selected_file = content.actual_content.file_name().to_string_lossy().to_string();
+    
+                                // Scene
+                                if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
+                                {
+                                    filepaths.current_scene = selected_file;
+                                    load_scene_by_file(scene, current_project_dir, filepaths, &mut string_backups.label, 
+                                        project_config, blue_engine_args, window);
+                                }
+                                // Blueprint
+                                else if selected_file.ends_with(FILE_EXTENSION_NAMES.blueprint)
+                                {
+                                    blueprint.save_file_path = selected_file;
+    
+                                    crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, current_project_dir,
+                                        false, blue_engine_args, window);
+    
+                                    crate::CreateNewFlameObject::flameobject(None,
+                                    scene, widget_functions, string_backups,
+                                    current_project_dir, &editor_settings, blue_engine_args, window, blueprint.flameobject.as_ref())
+                                }
                             }
                         }
-                    }
+                    });
+
                     // Display subdirectories by calling itself
                     if content.is_collapsed == false
                     {
@@ -735,6 +758,7 @@ impl FileExplorerWidget
 
             }
         }
+
 
     }
 }
