@@ -493,14 +493,63 @@ impl FileExplorerWidget
         ui.label("File Explorer");
 
         //let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
+        // Used to determine which file will be selected
+        struct ChangeSelection
+        {
+            file_clicked: bool, // Used to determine if we need to change what file is selected
+            coordinates: Vec<u16>, // Stores the coordinates of which file was selected
+        }
+        let mut change_selection = ChangeSelection{file_clicked: false, coordinates: Vec::new()};
+
 
         egui::ScrollArea::vertical().show(ui, |ui|
         {
             actually_display(scene, blueprint, emojis, file_explorer_contents,
                 editor_settings, game_editor_args.filepaths,
-                game_editor_args.project_config, current_project_dir, game_editor_args.string_backups, game_editor_args.widget_functions, blue_engine_args, ui, window);
+                game_editor_args.project_config, &mut change_selection, current_project_dir, game_editor_args.string_backups, game_editor_args.widget_functions, blue_engine_args, ui, window);
         });
 
+        if change_selection.file_clicked == true
+        {
+            let coordinate_element = change_selection.coordinates[0];
+            //println!("file coordinates: {:?}", change_selection.coordinates);
+            deselect_all_content(file_explorer_contents);
+            if let Some(ref mut file_explorer_contents) = file_explorer_contents
+            {
+                select_file(&mut file_explorer_contents[coordinate_element as usize], &change_selection.coordinates);
+            }
+            //select_file(file_explorer_contents.as_ref().unwrap(), &change_selection.coordinates);
+        }
+
+        fn deselect_all_content(file_explorer_contents: &mut Option<Vec<FileExplorerContent>>,)
+        {
+            if let Some(contents) = file_explorer_contents
+            {
+                for content in contents.iter_mut()
+                {
+                    content.selected = false;
+                    deselect_all_content(&mut content.childrens_content);
+                }
+            }
+        }
+        fn select_file(file_explorer_contents: &mut FileExplorerContent, coordinates: &[u16])
+        {
+            let current_subdir_level = file_explorer_contents.subdir_level as usize;
+            // The subdir level will be used as the coordinate's array idx
+            if current_subdir_level < coordinates.len() - 1
+            {
+                if let Some(ref mut file_explorer_contents) = file_explorer_contents.childrens_content
+                {
+                    select_file(&mut file_explorer_contents[coordinates[current_subdir_level+1] as usize], coordinates);
+                }
+            }
+            // On last cordinate
+            else
+            {
+                file_explorer_contents.selected = true;
+            }
+
+        }
 
         fn actually_display(
             scene: &mut Scene,
@@ -510,6 +559,7 @@ impl FileExplorerWidget
             editor_settings: &EditorSettings,
             filepaths: &mut FilePaths,
             project_config: &mut ProjectConfig,
+            change_selection: &mut ChangeSelection,
             current_project_dir: &str,
             string_backups: &mut StringBackups,
             widget_functions: &mut WidgetFunctions,
@@ -524,8 +574,21 @@ impl FileExplorerWidget
                 //let current_project_dir: &str = &game_editor_args.current_project_dir;
 
                 let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
+
+                if change_selection.file_clicked == false
+                {
+                    change_selection.coordinates.push(0);
+                }
+
+                let change_selection_len = change_selection.coordinates.len() - 1;
                 for (i, content) in contents.iter_mut().enumerate()
                 {
+                    if change_selection.file_clicked == false
+                    {
+                        change_selection.coordinates[change_selection_len] = i as u16;
+                    }
+                    
+
                     ui.horizontal(|ui|
                     {
                         // For subdirs, pad based on the subdir_level
@@ -571,6 +634,7 @@ impl FileExplorerWidget
                             if response.clicked()
                             {
                                 idx_make_selected = Some(i);
+                                change_selection.file_clicked = true;
                             }
                             if response.double_clicked()
                             {
@@ -596,6 +660,7 @@ impl FileExplorerWidget
                             if response.clicked()
                             {
                                 idx_make_selected = Some(i);
+                                change_selection.file_clicked = true;
                             }
                             if response.double_clicked()
                             {
@@ -635,8 +700,12 @@ impl FileExplorerWidget
                     {
                         actually_display(scene, blueprint, emojis, &mut content.childrens_content,
                             editor_settings, filepaths,
-                            project_config, current_project_dir, string_backups, widget_functions, blue_engine_args, ui, window);
+                            project_config, change_selection, current_project_dir, string_backups, widget_functions, blue_engine_args, ui, window);
                     }
+                }
+                if change_selection.file_clicked == false
+                {
+                    change_selection.coordinates.pop();
                 }
             }
         }
