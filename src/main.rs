@@ -1200,6 +1200,29 @@ fn right_panel_flameobject_settings(flameobject_settings: &mut flameobject::Sett
     projects: &Vec<Project>, editor_settings: &EditorSettings, widget_functions: &mut WidgetFunctions,
     /*Game engine shit*/ ui: &mut Ui, blue_engine_args: &mut BlueEngineArgs, window: &Window)
 */
+
+// Saves texture and saves to undo_redo
+fn change_texture(
+    flameobject_settings: &flameobject::Settings,
+    string_backups: &mut StringBackups,
+    widget_functions: &mut WidgetFunctions,
+    //game_editor_args: &mut GameEditorArgs,
+    undo_redo: &mut undo_redo::UndoRedo,
+    flameobject_id: u16,
+    editor_settings: &EditorSettings,
+)
+{
+
+    let mut flameobject_settings_copyover = flameobject_settings.clone();
+    flameobject_settings_copyover.texture.file_location = string_backups.texture.clone();
+    //println!("flameobject_selected_parent_idx: {}", flameobject_selected_parent_idx);
+    undo_redo.save_action(undo_redo::Action::Update((flameobject_settings_copyover.clone(), flameobject_settings.clone(), flameobject_id)), editor_settings);
+
+    widget_functions.flameobject_old = Some(flameobject_settings.clone());
+
+    string_backups.texture = flameobject_settings.texture.file_location.clone();
+}
+
 fn right_panel_flameobject_settings(
     flameobject_settings: &mut flameobject::Settings,
     flameobject_selected_parent_idx: u16,
@@ -1290,7 +1313,7 @@ fn right_panel_flameobject_settings(
     //let response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.texture.file_location));
     let response = directory_singleline(&mut flameobject_settings.texture.file_location,
         Some(game_editor_args.current_project_dir), radio_options::FilePickerMode::OpenFile, true, ui, game_editor_args.emojis);
-    if response.0.changed() || response.1 
+    if response.0.changed() || response.1 == true
     {
         *game_editor_args.enable_shortcuts = false;
         blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args);
@@ -1301,21 +1324,15 @@ fn right_panel_flameobject_settings(
     }
 
     // Save texture change to undo_redo after clicking off text field
-    if blue_engine_args.input.mouse_pressed(0) || response.0.lost_focus()
+    //if blue_engine_args.input.mouse_pressed(0) || response.0.lost_focus()
+    if response.0.lost_focus() || response.1 == true
     {
         //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings.clone(), flameobject_selected_parent_idx)));
         // If label has been modified after clicking off the field do something
         // Save history to undo_redo()
         if flameobject_settings.texture.file_location != game_editor_args.string_backups.texture
         {
-            //println!("Executed");
-            let mut flameobject_copyover = flameobject_settings.clone();
-            flameobject_copyover.texture.file_location = game_editor_args.string_backups.texture.clone();
-            undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover.clone(), flameobject_settings.clone(), flameobject_selected_parent_idx)), editor_settings);
-
-            game_editor_args.widget_functions.flameobject_old = Some(flameobject_settings.clone());
-
-            game_editor_args.string_backups.texture = flameobject_settings.texture.file_location.clone();
+            change_texture(flameobject_settings, game_editor_args.string_backups, game_editor_args.widget_functions, undo_redo, flameobject_id, editor_settings)
         }
         /*
         if flameobject_settings.texture.file_location != string_backups.texture

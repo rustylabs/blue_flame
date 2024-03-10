@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use blue_engine_egui::{self, egui::{self, Ui}};
 use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
-use blue_flame_common::{emojis::Emojis, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::FileExplorerContent, EditorSettings};
+use blue_flame_common::{emojis::Emojis, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::FileExplorerContent, undo_redo, EditorSettings};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
 };
@@ -502,6 +502,7 @@ impl FileExplorerWidget
         let mut change_selection = ChangeSelection{file_clicked: false, coordinates: Vec::new()};
 
 
+
         egui::ScrollArea::vertical().show(ui, |ui|
         {
             actually_display(scene, blueprint, emojis, file_explorer_contents,
@@ -671,7 +672,8 @@ impl FileExplorerWidget
                             if is_doubleclicked == true
                             {
                                 let selected_file = content.actual_content.file_name().to_string_lossy().to_string();
-    
+                                //let selected_file = String::from("asd");
+
                                 // Scene
                                 if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
                                 {
@@ -681,6 +683,7 @@ impl FileExplorerWidget
                                 }
                                 // Blueprint
                                 else if selected_file.ends_with(FILE_EXTENSION_NAMES.blueprint)
+                                //if selected_file.ends_with("FILE_EXTENSION_NAMES.blueprint")
                                 {
                                     blueprint.save_file_path = selected_file;
     
@@ -690,6 +693,45 @@ impl FileExplorerWidget
                                     crate::CreateNewFlameObject::flameobject(None,
                                     scene, widget_functions, string_backups,
                                     current_project_dir, &editor_settings, blue_engine_args, window, blueprint.flameobject.as_ref())
+                                }
+                                // Texture
+                                else
+                                {
+                                    // List of file extension names for images
+                                    const EXT_NAMES: [&str; 2] =
+                                    [
+                                        ".png",
+                                        ".jpg",
+                                    ];
+                                    for ext_name in EXT_NAMES.iter()
+                                    {
+                                        if selected_file.ends_with(ext_name)
+                                        {
+                                            for flameobject in scene.flameobjects.iter_mut()
+                                            {
+                                                //let flameobject_selected_parent_idx = scene.flameobject_selected_parent_idx;
+                                                if flameobject.selected == true
+                                                {
+                                                    flameobject.settings.texture.file_location = crate::invert_pathtype(
+                                                        &content.actual_content.path().display().to_string(), current_project_dir);
+
+                                                    blue_flame_common::object_actions::update_shape::texture(&flameobject.settings,
+                                                        current_project_dir,
+                                                        blue_engine_args);
+                                                    //println!("flameobject.settings.texture.file_location: {}", flameobject.settings.texture.file_location);
+                                                    println!("flameobject_selected_parent_idx: {}", scene.flameobject_selected_parent_idx);
+                                                    crate::change_texture(
+                                                        &flameobject.settings,
+                                                        string_backups,
+                                                        widget_functions,
+                                                        &mut scene.undo_redo,
+                                                        flameobject.id,
+                                                        editor_settings);
+                                                }
+                                            }
+                                            
+                                        }
+                                    }
                                 }
                             }
                         }
