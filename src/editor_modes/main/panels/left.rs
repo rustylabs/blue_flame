@@ -1,9 +1,9 @@
 use std::{fs, path::PathBuf};
 
-use blue_engine_egui::{self, egui::{self, Ui}};
+use blue_engine_egui::{self, egui::{self, Response, Ui}};
 use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
-use blue_flame_common::{emojis::Emojis, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::FileExplorerContent, undo_redo, EditorSettings};
+use blue_flame_common::{emojis::{self, Emojis}, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::FileExplorerContent, undo_redo, EditorSettings};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
 };
@@ -437,47 +437,6 @@ impl FileExplorerWidget
 
         file_explorer_contents.0 = true;
     }
-    // Retrieves the specified directory's contents and pushes it to vector
-    fn retrieve_and_push_dirs(
-        path: &str,
-        file_explorer_contents: &mut Vec<FileExplorerContent>,
-        subdir_level: u16,
-        /*
-        file_explorer_contents: &mut Vec<FileExplorerContent>,
-        subdir_path: (&str /*Path*/, u16 /*Level number*/, &str /*Parent's name*/),
-        parent_idx: usize, /*Used to determine where to insert in the vector*/
-        */
-    )
-    {
-        let paths = fs::read_dir(format!("{}", path)).unwrap();
-        for path in paths
-        {
-            file_explorer_contents.push(FileExplorerContent
-            {
-                subdir_level,
-                is_collapsed: true,
-                selected: false,
-                actual_content: path.unwrap(),
-                childrens_content: None,
-            });
-        }
-
-        /*
-        let paths = fs::read_dir(format!("{}", subdir_path.0)).unwrap();
-
-        for path in paths
-        {
-            file_explorer_contents.insert(parent_idx + 1, FileExplorerContent
-            {
-                subdir_level: (subdir_path.1 + 1, Some(subdir_path.2.to_string())),
-                is_collapsed: true,
-                selected: false,
-                actual_content: path.unwrap(),
-            });
-        }
-        */
-
-    }
     fn display(scene: &mut Scene, blueprint: &mut Blueprint, editor_settings: &EditorSettings,
         game_editor_args: &mut GameEditorArgs, blue_engine_args: &mut BlueEngineArgs, ui: &mut Ui, window: &Window)
     {
@@ -491,6 +450,7 @@ impl FileExplorerWidget
             ui.separator();
         }
         ui.label("File Explorer");
+        
 
         //let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
         // Used to determine which file will be selected
@@ -502,14 +462,39 @@ impl FileExplorerWidget
         let mut change_selection = ChangeSelection{file_clicked: false, coordinates: Vec::new()};
 
 
-
-        egui::ScrollArea::vertical().show(ui, |ui|
+        fn right_click_menu(response: Response, emojis: &Emojis)
         {
+            response.context_menu(|ui|
+            {
+                if ui.button(format!("{} Create new folder", emojis.add)).clicked()
+                {
+
+                }
+            });
+        }
+
+        //egui::ScrollArea::vertical().show(ui, |ui|
+        egui::ScrollArea::vertical().show_viewport(ui, |ui, view_port|
+        {
+            
+            let response = ui.interact(view_port, ui.id(), egui::Sense::click());
+
+            right_click_menu(response, emojis);
+
             actually_display(scene, blueprint, emojis, file_explorer_contents,
                 editor_settings, game_editor_args.filepaths,
                 game_editor_args.project_config, &mut change_selection, current_project_dir, game_editor_args.string_backups, game_editor_args.widget_functions, blue_engine_args, ui, window);
+            
+            
+            // Adding seperaters
+            for _ in 0..2
+            {
+                ui.separator();
+            }
+
         });
 
+        // Reselect files
         if change_selection.file_clicked == true
         {
             let coordinate_element = change_selection.coordinates[0];
@@ -552,6 +537,7 @@ impl FileExplorerWidget
 
         }
 
+        // Recursive calls
         fn actually_display(
             scene: &mut Scene,
             blueprint: &mut Blueprint,
@@ -607,6 +593,8 @@ impl FileExplorerWidget
                         // Folder
                         if content.actual_content.path().is_dir()
                         {
+
+
                             let arrow = 
                             {
                                 if content.is_collapsed == false
@@ -632,7 +620,7 @@ impl FileExplorerWidget
                                 content.actual_content.file_name().to_str().unwrap(),
                                 //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
                             ));
-                            if response.clicked()
+                            if response.clicked() || response.secondary_clicked()
                             {
                                 idx_make_selected = Some(i);
                                 change_selection.file_clicked = true;
@@ -645,8 +633,10 @@ impl FileExplorerWidget
                                     content.childrens_content = Some(Vec::new());
                                     push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
                                 }
-
                             }
+
+                            // Right click menu
+                            right_click_menu(response, emojis);
 
                         }
                         // File
@@ -658,7 +648,7 @@ impl FileExplorerWidget
                                 content.actual_content.file_name().to_str().unwrap(),
                                 //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
                             ));
-                            if response.clicked()
+                            if response.clicked() || response.secondary_clicked()
                             {
                                 idx_make_selected = Some(i);
                                 change_selection.file_clicked = true;
