@@ -9,7 +9,7 @@ use blue_flame_common::db::scene;
 use blue_flame_common::emojis::Emojis;
 use blue_flame_common::structures::project_config;
 use serde::de::value;
-use crate::editor_mode_variables::Main;
+use crate::editor_mode_variables::main::Main;
 use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, BlueEngineArgs, GameEditorArgs, EditorMode, editor_mode_variables};
 use rfd::FileDialog;
 use blue_flame_common::radio_options::FilePickerMode;
@@ -286,7 +286,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                             game_editor_args.widget_functions.flameobject_old = None;
                             change_editor_mode = true;
                         }
-                        //*editor_mode = EditorMode::Main(crate::editor_mode_variables::Main::init());
+                        //*editor_mode = EditorMode::Main(crate::editor_mode_variables::main::Main::Main::init());
                     }
                 });
             });

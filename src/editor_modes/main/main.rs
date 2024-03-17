@@ -20,7 +20,7 @@ pub fn main(alert_window: &mut [AlertWindow], scene: &mut Scene, flameobject_blu
     blue_engine_args: &mut BlueEngineArgs, window: &Window
 )
 */
-pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint, sub_editor_mode: &mut editor_mode_variables::Main,
+pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint, sub_editor_mode: &mut editor_mode_variables::main::Main,
     editor_settings: &EditorSettings,
     game_editor_args: &mut GameEditorArgs, alert_window: &mut [AlertWindow], blue_engine_args: &mut BlueEngineArgs, window: &Window) -> bool // Return to change editor_mode
 {

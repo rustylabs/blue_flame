@@ -162,11 +162,6 @@ impl VecExtensions for Vec<Project>
     
 }
 
-
-
-
-
-
 pub struct AlertWindow
 {
     label       : String,
@@ -205,10 +200,6 @@ impl AlertWindow
 
 
 // For flameobjects
-
-
-
-
 
 
 mod issues
@@ -524,7 +515,46 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
 pub mod editor_mode_variables
 {
     //use super::*;
-    pub enum EditorMode{Project(Project), Main(Main)}
+    pub enum EditorMode{Project(Project), Main(main::Main)}
+    pub mod main
+    {
+        pub struct Main
+        {
+            pub create_new_object_window: bool,
+            pub file_explorer: FileExplorer,
+        }
+        impl Main
+        {
+            pub fn init() -> Self
+            {
+                Self
+                {
+                    file_explorer: FileExplorer::init(),
+                    create_new_object_window: false,
+                }
+            }
+        }
+
+        pub struct FileExplorer
+        {
+            pub show_rightclick_menu: bool,
+            pub show_newfolder_wind: bool,
+            pub new_folder_name: String,
+        }
+        impl FileExplorer
+        {
+            fn init() -> Self
+            {
+                Self
+                {
+                    show_rightclick_menu: false,
+                    show_newfolder_wind: false,
+                    new_folder_name: String::new(),
+                }
+            }
+        }
+    }
+
     pub struct Project
     {
         pub new_project_window: bool,
@@ -549,20 +579,7 @@ pub mod editor_mode_variables
             }
         }
     }
-    pub struct Main
-    {
-        pub create_new_object_window: bool,
-    }
-    impl Main
-    {
-        pub fn init() -> Self
-        {
-            Self
-            {
-                create_new_object_window: false,
-            }
-        }
-    }
+
 }
 
 // Flameobject blueprint stuff
@@ -793,7 +810,7 @@ fn main()
 
                 if editor_modes::projects::main(&mut scene, &mut projects, sub_editor_mode, &mut game_editor_args, &mut blue_engine_args, window) == true
                 {
-                    editor_mode = EditorMode::Main(editor_mode_variables::Main::init());
+                    editor_mode = EditorMode::Main(editor_mode_variables::main::Main::init());
                 }
                 /*
                 editor_modes::projects::main(&mut scene, &mut projects, &mut filepaths, &mut string_backups, &emojis, &mut widget_functions, &mut project_config,
@@ -929,6 +946,7 @@ fn directory_singleline(filepath_singleline: &mut String, starting_dir: Option<&
     return (response.unwrap(), selected_file);
 }
 
+// Right click menu for creating new objects
 fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::InputHelper, ctx: &egui::Context) -> Option<ObjectType>
 {
     let mut create_object: Option<ObjectType> = None;

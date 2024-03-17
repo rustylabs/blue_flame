@@ -1,9 +1,9 @@
 use std::{fs, path::PathBuf};
 
-use blue_engine_egui::{self, egui::{self, Response, Ui}};
+use blue_engine_egui::{self, egui::{self, Context, Response, Ui}};
 use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
-use blue_flame_common::{emojis::{self, Emojis}, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::FileExplorerContent, undo_redo, EditorSettings};
+use blue_flame_common::{emojis::{self, Emojis}, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::{FileExplorerContent, MouseFunctions}, undo_redo, EditorSettings};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
 };
@@ -15,7 +15,7 @@ pub fn main(scene: &mut Scene, blueprint.flameobject: &mut Option<Settings>, pre
    window_size: &WindowSize,
    blue_engine_args: &mut BlueEngineArgs, window: &Window)
 */
-pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint, sub_editor_mode: &mut editor_mode_variables::Main, game_editor_args: &mut GameEditorArgs,
+pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint, sub_editor_mode: &mut editor_mode_variables::main::Main, game_editor_args: &mut GameEditorArgs,
     editor_settings: &EditorSettings,
     blue_engine_args: &mut BlueEngineArgs, window: &Window)
 {
@@ -400,7 +400,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         {
             FileExplorerWidget::init(game_editor_args);
         }
-        FileExplorerWidget::display(scene, blueprint, editor_settings, game_editor_args, blue_engine_args, ui, window);
+        FileExplorerWidget::display(scene, blueprint, editor_settings, sub_editor_mode, game_editor_args, blue_engine_args, ui, window);
         //file_explorer_widget(ui, game_editor_args);
 
     });
@@ -437,13 +437,15 @@ impl FileExplorerWidget
 
         file_explorer_contents.0 = true;
     }
-    fn display(scene: &mut Scene, blueprint: &mut Blueprint, editor_settings: &EditorSettings,
+    fn display(scene: &mut Scene, blueprint: &mut Blueprint, editor_settings: &EditorSettings, sub_editor_mode: &mut editor_mode_variables::main::Main,
         game_editor_args: &mut GameEditorArgs, blue_engine_args: &mut BlueEngineArgs, ui: &mut Ui, window: &Window)
     {
 
         let current_project_dir: &str = &game_editor_args.current_project_dir;
         let emojis = game_editor_args.emojis;
         let file_explorer_contents = &mut game_editor_args.file_explorer_contents.1;
+        let window_size = game_editor_args.window_size;
+        let mouse_functions = &mut game_editor_args.mouse_functions;
 
         for _ in 0..2
         {
@@ -462,30 +464,27 @@ impl FileExplorerWidget
         let mut change_selection = ChangeSelection{file_clicked: false, coordinates: Vec::new()};
 
 
-        fn right_click_menu(response: Response, emojis: &Emojis)
-        {
-            response.context_menu(|ui|
-            {
-                if ui.button(format!("{} Create new folder", emojis.add)).clicked()
-                {
 
-                }
-            });
-        }
 
         //egui::ScrollArea::vertical().show(ui, |ui|
-        egui::ScrollArea::vertical().show_viewport(ui, |ui, view_port|
+        egui::ScrollArea::vertical().show(ui, |ui|
         {
-            
-            let response = ui.interact(view_port, ui.id(), egui::Sense::click());
-
-            right_click_menu(response, emojis);
+            let response = ui.interact(ui.available_rect_before_wrap(), egui::Id::new("right_click_detector"), egui::Sense::click());
+            if response.secondary_clicked()
+            {
+                mouse_functions.captured_coordinates = blue_engine_args.input.mouse().unwrap_or_default();
+                sub_editor_mode.file_explorer.show_rightclick_menu = true;
+            }
 
             actually_display(scene, blueprint, emojis, file_explorer_contents,
                 editor_settings, game_editor_args.filepaths,
-                game_editor_args.project_config, &mut change_selection, current_project_dir, game_editor_args.string_backups, game_editor_args.widget_functions, blue_engine_args, ui, window);
+                game_editor_args.project_config, &mut change_selection, current_project_dir, game_editor_args.string_backups, sub_editor_mode, mouse_functions,
+                game_editor_args.widget_functions, 
+                window_size, blue_engine_args, ui, window);
+
+
             
-            
+
             // Adding seperaters
             for _ in 0..2
             {
@@ -493,6 +492,80 @@ impl FileExplorerWidget
             }
 
         });
+
+        // Right click menu
+        if sub_editor_mode.file_explorer.show_rightclick_menu == true
+        {
+            egui::Area::new("right click").fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0, mouse_functions.captured_coordinates.1))
+            .show(blue_engine_args.ctx, |ui|
+            {
+
+                ui.visuals_mut().button_frame = false;
+                egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
+                {
+                    if ui.button(format!("{} New folder", emojis.add)).clicked()
+                    {
+                        sub_editor_mode.file_explorer.show_rightclick_menu = false;
+                        sub_editor_mode.file_explorer.show_newfolder_wind = true;
+                    }
+                });
+
+                // Disable right click menu
+                if blue_engine_args.input.key_pressed(VirtualKeyCode::Escape)
+                {
+                    sub_editor_mode.file_explorer.show_rightclick_menu = false;
+                }
+            });
+        }
+
+        // New folder window
+        if sub_editor_mode.file_explorer.show_newfolder_wind == true
+        {
+            // Shows window
+            egui::Window::new("New Folder")
+            .fixed_pos(egui::pos2(window_size.x/2f32, window_size.y/2f32))
+            .pivot(egui::Align2::CENTER_CENTER)
+            .default_size(egui::vec2(window_size.x/2f32, window_size.y/2f32))
+            .resizable(true)
+            //.open(&mut _create_new_project)
+            .show(blue_engine_args.ctx, |ui|
+            {
+
+                
+                ui.label("New folder:");
+                ui.add(egui::TextEdit::singleline(&mut sub_editor_mode.file_explorer.new_folder_name));
+
+                // Closes the window
+                let mut close_window = ||
+                {
+                    sub_editor_mode.file_explorer.new_folder_name = String::new();
+                    sub_editor_mode.file_explorer.show_newfolder_wind = false;
+                };
+
+                ui.horizontal(|ui|
+                {
+                    // Don't create folder
+                    if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
+                    {
+                        close_window();
+                    }
+                    // Creates folder
+                    if ui.button(format!("{} Create", emojis.add)).clicked()
+                    {
+                        close_window();
+                    }
+                });
+
+
+                // Disable new folder window and clears anything for new folder
+                if blue_engine_args.input.key_pressed(VirtualKeyCode::Escape)
+                {
+                    close_window();
+                }
+
+
+            });
+        }
 
         // Reselect files
         if change_selection.file_clicked == true
@@ -549,7 +622,10 @@ impl FileExplorerWidget
             change_selection: &mut ChangeSelection,
             current_project_dir: &str,
             string_backups: &mut StringBackups,
+            sub_editor_mode: &mut editor_mode_variables::main::Main,
+            mouse_functions: &mut MouseFunctions,
             widget_functions: &mut WidgetFunctions,
+            window_size: &WindowSize,
             blue_engine_args: &mut BlueEngineArgs,
             ui: &mut Ui,
             window: &Window,
@@ -589,12 +665,9 @@ impl FileExplorerWidget
                                 //ui.label("_");
                             }
                         }
-
                         // Folder
                         if content.actual_content.path().is_dir()
                         {
-
-
                             let arrow = 
                             {
                                 if content.is_collapsed == false
@@ -625,6 +698,12 @@ impl FileExplorerWidget
                                 idx_make_selected = Some(i);
                                 change_selection.file_clicked = true;
                             }
+                            // Right clicked
+                            if response.secondary_clicked()
+                            {
+                                sub_editor_mode.file_explorer.show_rightclick_menu = true;
+                                mouse_functions.captured_coordinates = blue_engine_args.input.mouse().unwrap_or_default();
+                            }
                             if response.double_clicked()
                             {
                                 content.is_collapsed = !content.is_collapsed;
@@ -634,9 +713,6 @@ impl FileExplorerWidget
                                     push_subdir(&content.actual_content.path().display().to_string(), &mut content.childrens_content, content.subdir_level);
                                 }
                             }
-
-                            // Right click menu
-                            right_click_menu(response, emojis);
 
                         }
                         // File
@@ -732,7 +808,8 @@ impl FileExplorerWidget
                     {
                         actually_display(scene, blueprint, emojis, &mut content.childrens_content,
                             editor_settings, filepaths,
-                            project_config, change_selection, current_project_dir, string_backups, widget_functions, blue_engine_args, ui, window);
+                            project_config, change_selection, current_project_dir, string_backups, sub_editor_mode, mouse_functions,
+                            widget_functions, window_size, blue_engine_args, ui, window);
                     }
                 }
                 if change_selection.file_clicked == false
