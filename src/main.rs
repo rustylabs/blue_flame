@@ -539,6 +539,7 @@ pub mod editor_mode_variables
         {
             pub show_rightclick_menu: bool,
             pub show_newfolder_wind: bool,
+            pub show_deleteitem_wind: bool,
             pub new_folder_name: String,
         }
         impl FileExplorer
@@ -549,6 +550,7 @@ pub mod editor_mode_variables
                 {
                     show_rightclick_menu: false,
                     show_newfolder_wind: false,
+                    show_deleteitem_wind: false,
                     new_folder_name: String::new(),
                 }
             }

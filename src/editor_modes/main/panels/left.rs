@@ -499,15 +499,40 @@ impl FileExplorerWidget
             egui::Area::new("right click").fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0, mouse_functions.captured_coordinates.1))
             .show(blue_engine_args.ctx, |ui|
             {
-
                 ui.visuals_mut().button_frame = false;
                 egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
                 {
                     if ui.button(format!("{} New folder", emojis.add)).clicked()
                     {
-                        sub_editor_mode.file_explorer.show_rightclick_menu = false;
                         sub_editor_mode.file_explorer.show_newfolder_wind = true;
+                        sub_editor_mode.file_explorer.show_rightclick_menu = false;
                     }
+                    // Only show delete option if an item is selected
+                    if find_selected_item(file_explorer_contents) == true
+                    {
+                        if ui.button(format!("{} Delete item", emojis.trash)).clicked()
+                        {
+                            sub_editor_mode.file_explorer.show_deleteitem_wind = true;
+                            sub_editor_mode.file_explorer.show_rightclick_menu = false;
+                        }
+                    }
+                    fn find_selected_item(file_explorer_contents: &mut Option<Vec<FileExplorerContent>>) -> bool
+                    {
+                        //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
+                        if let Some(contents) = file_explorer_contents
+                        {
+                            for content in contents.iter_mut()
+                            {
+                                if content.selected == true
+                                {
+                                    return true;
+                                }
+                                find_selected_item(&mut content.childrens_content);
+                            }
+                        }
+                        return false;
+                    }
+
                 });
 
                 // Disable right click menu
@@ -515,6 +540,38 @@ impl FileExplorerWidget
                 {
                     sub_editor_mode.file_explorer.show_rightclick_menu = false;
                 }
+            });
+        }
+
+        // Delete item window
+        if sub_editor_mode.file_explorer.show_deleteitem_wind == true
+        {
+            // Shows window
+            egui::Window::new("Delete item")
+            .fixed_pos(egui::pos2(window_size.x/2f32, window_size.y/2f32))
+            .pivot(egui::Align2::CENTER_CENTER)
+            .default_size(egui::vec2(window_size.x/2f32, window_size.y/2f32))
+            .resizable(true)
+            //.open(&mut _create_new_project)
+            .show(blue_engine_args.ctx, |ui|
+            {
+                ui.label("Are you sure you want to delete the selected item?");
+                ui.horizontal(|ui|
+                //ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui|
+                {
+                    // Don't delete item
+                    if ui.button(format!("{} No", emojis.cancel)).clicked()
+                    {
+                        sub_editor_mode.file_explorer.show_deleteitem_wind = false;
+                    }
+                    // Delete item
+                    if ui.button(format!("{} Yes", emojis.tick)).clicked()
+                    {
+
+
+                        sub_editor_mode.file_explorer.show_deleteitem_wind = false;
+                    }
+                });
             });
         }
 
@@ -530,38 +587,66 @@ impl FileExplorerWidget
             //.open(&mut _create_new_project)
             .show(blue_engine_args.ctx, |ui|
             {
-
-                
                 ui.label("New folder:");
                 ui.add(egui::TextEdit::singleline(&mut sub_editor_mode.file_explorer.new_folder_name));
 
                 // Closes the window
-                let mut close_window = ||
+                fn close_window(sub_editor_mode: &mut editor_mode_variables::main::Main)
                 {
                     sub_editor_mode.file_explorer.new_folder_name = String::new();
                     sub_editor_mode.file_explorer.show_newfolder_wind = false;
-                };
+                }
 
                 ui.horizontal(|ui|
                 {
                     // Don't create folder
                     if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
                     {
-                        close_window();
+                        close_window(sub_editor_mode);
                     }
                     // Creates folder
                     if ui.button(format!("{} Create", emojis.add)).clicked()
                     {
-                        close_window();
+                        let mut create_new_dir = PathBuf::from(current_project_dir.clone());
+
+                        find_selected_item(file_explorer_contents, &mut create_new_dir);
+
+                        fn find_selected_item(file_explorer_contents: &mut Option<Vec<FileExplorerContent>>, create_new_dir: &mut PathBuf)
+                        {
+                            //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
+                            if let Some(contents) = file_explorer_contents
+                            {
+                                for content in contents.iter_mut()
+                                {
+                                    if content.selected == true && content.actual_content.path().is_dir() == true
+                                    {
+                                        create_new_dir.push(content.actual_content.path().display().to_string());
+                                        break;
+                                    }
+                                    find_selected_item(&mut content.childrens_content, create_new_dir);
+                                }
+                            }
+                        }
+                        create_new_dir.push(sub_editor_mode.file_explorer.new_folder_name.clone());
+                        println!("create_new_dir: {}", create_new_dir.display().to_string());
+
+                        match std::fs::create_dir(create_new_dir.display().to_string())
+                        {
+                            Ok(_) => {},
+                            Err(e) => println!("Unable to create new dir due to: {}", e),
+                        }
+
+                        close_window(sub_editor_mode);
+                    }
+                    // Disable new folder window and clears anything for new folder
+                    if blue_engine_args.input.key_pressed(VirtualKeyCode::Escape)
+                    {
+                        close_window(sub_editor_mode);
                     }
                 });
 
 
-                // Disable new folder window and clears anything for new folder
-                if blue_engine_args.input.key_pressed(VirtualKeyCode::Escape)
-                {
-                    close_window();
-                }
+
 
 
             });
