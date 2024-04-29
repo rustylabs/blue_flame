@@ -1,10 +1,11 @@
-use std::{fs, path::PathBuf};
+use std::{fs::{self, DirEntry}, path::PathBuf};
 
 use blue_engine_egui::{self, egui::{self, Context, Response, Ui}};
 use blue_engine::header::VirtualKeyCode;
 use blue_engine::Window;
 use blue_flame_common::{emojis::{self, Emojis}, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::{FileExplorerContent, MouseFunctions}, undo_redo, EditorSettings};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
+use serde::de::value;
 use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
 };
 use crate::egui::Vec2;
@@ -409,6 +410,53 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 struct FileExplorerWidget;
 impl FileExplorerWidget
 {
+    fn refresh(file_explorer_contents: &mut Vec<FileExplorerContent>, paths_new: &mut Vec<FileExplorerContent>,
+        reading_dir: &str, subdir_level: u16)
+    {
+        //println!("reading_dir: {reading_dir}");
+        let paths_new_tmp = fs::read_dir(format!("{}", reading_dir)).unwrap();
+
+        //let mut paths_new: Vec<FileExplorerContent> = Vec::new();
+
+        for path_new_tmp in paths_new_tmp
+        {
+            paths_new.push(FileExplorerContent
+            {
+                subdir_level,
+                is_collapsed: true,
+                selected: false,
+                actual_content: path_new_tmp.unwrap(),
+                childrens_content: None,
+            });
+        }
+
+        for file_explorer_content in file_explorer_contents.iter_mut()
+        {
+            for path_new in paths_new.iter_mut()
+            {
+                if path_new.actual_content.file_name() == file_explorer_content.actual_content.file_name()
+                {
+                    path_new.subdir_level = file_explorer_content.subdir_level;
+                    path_new.is_collapsed = file_explorer_content.is_collapsed;
+                    path_new.selected = file_explorer_content.selected;
+
+                    // If we have expanded the folder to view sub folders/files then load up childrens_content via recursive calls
+                    if path_new.is_collapsed == false
+                    {
+                        path_new.childrens_content = Some(Vec::new());
+                        //path_new.childrens_content = Some(Vec::new());
+                        Self::refresh(
+                            file_explorer_content.childrens_content.as_mut().unwrap(),
+                            path_new.childrens_content.as_mut().unwrap(),
+                            file_explorer_content.actual_content.path().to_str().unwrap(),
+                            subdir_level + 1
+                        );
+                    }
+
+                }
+            }
+        }
+    }
     // Retrives all the dirs at parent level for the first time and pushes it to variable
     fn init(game_editor_args: &mut GameEditorArgs)
     {
@@ -452,8 +500,37 @@ impl FileExplorerWidget
             ui.separator();
         }
         ui.label("File Explorer");
-        
 
+        // Temperary for debugging, will remove when auto refresh is actually implemented
+        if ui.button("Refresh").clicked()
+        {
+            let mut paths_new: Vec<FileExplorerContent> = Vec::new();
+            Self::refresh(
+                file_explorer_contents.as_mut().unwrap(),
+                &mut paths_new,
+                current_project_dir,
+                0,
+            );
+
+            *file_explorer_contents = Some(paths_new);
+        }
+        /*
+        if ui.button("print all contents").clicked()
+        {
+            //content.actual_content.file_name().to_str().unwrap(),
+            if let Some(contents) = file_explorer_contents
+            {
+                for content in contents.iter()
+                {
+                    println!("content: {}, is_file: {}", content.actual_content.file_name().to_str().unwrap(), content.actual_content.path().is_file());
+                }
+                for _ in 0..2
+                {
+                    println!("---------------------");
+                }
+            }
+        }
+        */
         //let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
         // Used to determine which file will be selected
         struct ChangeSelection
@@ -567,7 +644,43 @@ impl FileExplorerWidget
                     // Delete item
                     if ui.button(format!("{} Yes", emojis.tick)).clicked()
                     {
-
+                        let mut selected_dir = PathBuf::from(current_project_dir.clone());
+                        find_selected_item(file_explorer_contents, &mut selected_dir);
+                        fn find_selected_item(file_explorer_contents: &mut Option<Vec<FileExplorerContent>>, selected_dir: &mut PathBuf)
+                        {
+                            //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
+                            if let Some(contents) = file_explorer_contents
+                            {
+                                for content in contents.iter_mut()
+                                {
+                                    if content.selected == true
+                                    {
+                                        selected_dir.push(content.actual_content.path());
+                                        if content.actual_content.path().is_dir() == true
+                                        {
+                                            match std::fs::remove_dir_all(selected_dir.display().to_string())
+                                            {
+                                                Ok(_) => {},
+                                                Err(e) => println!("Could not delete dir due to: {e}"),
+                                            }
+                                        }
+                                        else if content.actual_content.path().is_file() == true
+                                        {
+                                            match std::fs::remove_file(selected_dir.display().to_string())
+                                            {
+                                                Ok(_) => {},
+                                                Err(e) => println!("Could not delete file due to: {e}"),
+                                            }
+                                        }
+                                        //content.actual_content.file_name().to_str().unwrap()
+                                        //println!("{}", content.actual_content.file_name().to_str().unwrap());
+                                        //println!("{:?}", file_explorer_contents);
+                                        break;
+                                    }
+                                    find_selected_item(&mut content.childrens_content, selected_dir);
+                                }
+                            }
+                        }
 
                         sub_editor_mode.file_explorer.show_deleteitem_wind = false;
                     }
