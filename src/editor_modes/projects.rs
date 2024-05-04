@@ -93,7 +93,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                 crate::load_project_scene(false, scene, projects, game_editor_args, blue_engine_args, window);
                 change_editor_mode = true;
             }
-            if ui.button(format!("{} Create/import project", game_editor_args.emojis.add)).clicked()
+            if ui.button(format!("{} Create/import project", game_editor_args.emojis.addition.plus)).clicked()
             {
 
                 projects.push(Project::init());
@@ -247,7 +247,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                         projects.pop();
                     }
                     // Create the project
-                    if ui.button(format!("{} Create", game_editor_args.emojis.add)).clicked()
+                    if ui.button(format!("{} Create", game_editor_args.emojis.addition.plus)).clicked()
                     {
                         // Sets the scene and not flameobject to be true
                         *game_editor_args.viewmode = ViewModes::Scenes;

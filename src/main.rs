@@ -1664,7 +1664,7 @@ fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects:
             {
                 action_button = Some(false);
             }
-            if ui.button(format!("{} Create", emojis.add)).clicked()
+            if ui.button(format!("{} Create", emojis.addition.plus)).clicked()
             //|| ui.input(|i| i.key_pressed(egui::Key::Enter))
             || blue_engine_args.input.key_pressed(VirtualKeyCode::Return)
             {

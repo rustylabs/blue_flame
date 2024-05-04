@@ -106,7 +106,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             if let ViewModes::Objects = game_editor_args.viewmode
             {
                 // Create new flameobject
-                if ui.button(format!("{} Create object", game_editor_args.emojis.add)).clicked()
+                if ui.button(format!("{} Create object", game_editor_args.emojis.addition.plus)).clicked()
                 //|| ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.shift))
                 //|| input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
                 //&& sub_editor_mode.create_new_object_window == false
@@ -175,7 +175,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             else if let ViewModes::Scenes = game_editor_args.viewmode
             {
                 // Create new flameobject
-                if ui.button(format!("{} New scene", game_editor_args.emojis.add)).clicked()
+                if ui.button(format!("{} New scene", game_editor_args.emojis.addition.plus)).clicked()
                 {
                     for flameobject in scene.flameobjects.iter_mut()
                     {
@@ -198,7 +198,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             }
             else if let ViewModes::Blueprints = game_editor_args.viewmode
             {
-                if ui.button(format!("{} Create object", game_editor_args.emojis.add)).clicked()
+                if ui.button(format!("{} Create object", game_editor_args.emojis.addition.plus)).clicked()
                 {
                     blueprint.flameobject = Some(blue_flame_common::structures::flameobject::Settings::init(0, None));
                     sub_editor_mode.create_new_object_window = true;
@@ -384,7 +384,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         else if let ViewModes::Blueprints = game_editor_args.viewmode
         {
             ui.label("Load blueprint into scene:");
-            //ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
+            //ui.plus(egui::TextEdit::singleline(&mut blueprint.save_file_path));
             crate::directory_singleline(&mut blueprint.save_file_path, Some(game_editor_args.current_project_dir),
                 FilePickerMode::OpenFile, true, ui, game_editor_args.emojis);
             if ui.button("Load blueprint").clicked()
@@ -562,7 +562,7 @@ impl FileExplorerWidget
 
             
 
-            // Adding seperaters
+            // plusing seperaters
             for _ in 0..2
             {
                 ui.separator();
@@ -579,7 +579,7 @@ impl FileExplorerWidget
                 ui.visuals_mut().button_frame = false;
                 egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
                 {
-                    if ui.button(format!("{} New folder", emojis.add)).clicked()
+                    if ui.button(format!("{} New folder", emojis.addition.plus)).clicked()
                     {
                         sub_editor_mode.file_explorer.show_newfolder_wind = true;
                         sub_editor_mode.file_explorer.show_rightclick_menu = false;
@@ -718,7 +718,7 @@ impl FileExplorerWidget
                         close_window(sub_editor_mode);
                     }
                     // Creates folder
-                    if ui.button(format!("{} Create", emojis.add)).clicked()
+                    if ui.button(format!("{} Create", emojis.addition.plus)).clicked()
                     {
                         let mut create_new_dir = PathBuf::from(current_project_dir.clone());
 
