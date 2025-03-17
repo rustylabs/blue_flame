@@ -2,8 +2,8 @@ use std::borrow::BorrowMut;
 use std::{process::Command, path::PathBuf};
 use std::io::Write; 
 
-use blue_engine_egui::{self, egui::{self, Ui, InputState, Context}};
-use blue_engine::header::VirtualKeyCode;
+use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
+use blue_engine::header::KeyCode;
 use blue_engine::{Renderer, ObjectSettings, ObjectStorage, Window};
 use blue_flame_common::db::scene;
 use blue_flame_common::emojis::Emojis;
@@ -87,7 +87,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
         ui.horizontal(|ui|
         {
             if ui.button("Load scene").clicked()
-            || (blue_engine_args.input.key_pressed(VirtualKeyCode::Return) || blue_engine_args.input.key_pressed(VirtualKeyCode::NumpadEnter))
+            || (blue_engine_args.input.key_pressed(KeyCode::Enter) || blue_engine_args.input.key_pressed(KeyCode::NumpadEnter))
             {
                 // Load existing project
                 crate::load_project_scene(false, scene, projects, game_editor_args, blue_engine_args, window);

@@ -1,7 +1,7 @@
 use std::{fs::{self, DirEntry}, path::PathBuf};
 
-use blue_engine_egui::{self, egui::{self, Context, Response, Ui}};
-use blue_engine::header::VirtualKeyCode;
+use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
+use blue_engine::header::KeyCode;
 use blue_engine::Window;
 use blue_flame_common::{emojis::{self, Emojis}, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::{FileExplorerContent, MouseFunctions}, undo_redo, EditorSettings};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
@@ -108,7 +108,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 // Create new flameobject
                 if ui.button(format!("{} Create object", game_editor_args.emojis.addition.plus)).clicked()
                 //|| ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.shift))
-                //|| input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
+                //|| input.key_held(KeyCode::LShift) && input.key_pressed(KeyCode::A)
                 //&& sub_editor_mode.create_new_object_window == false
                 && sub_editor_mode.create_new_object_window == false
                 {
@@ -160,8 +160,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 }
 
                 if ui.button(format!("{} Save current scene", game_editor_args.emojis.save)).clicked()
-                || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::S)
-                //|| input.key_pressed(VirtualKeyCode::LControl || VirtualKeyCode::S)
+                || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyS)
+                //|| input.key_pressed(KeyCode::ControlLeft || KeyCode::KeyS)
                 {
                     if blue_flame_common::db::scene::save(scene, &game_editor_args.filepaths.current_scene, &game_editor_args.current_project_dir) == true
                     {
@@ -187,8 +187,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 }
 
                 if ui.button(format!("{} Save current scene", game_editor_args.emojis.save)).clicked()
-                || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::S)
-                //|| input.key_pressed(VirtualKeyCode::LControl || VirtualKeyCode::S)
+                || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyS)
+                //|| input.key_pressed(KeyCode::ControlLeft || KeyCode::KeyS)
                 {
                     if blue_flame_common::db::scene::save(scene, &game_editor_args.filepaths.current_scene, &game_editor_args.current_project_dir) == true
                     {
@@ -230,7 +230,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 // and also saves blueprint to its current assigned dir
                 // Top left hand side when in blueprint view mode
                 if ui.button(format!("{} Save blueprint", game_editor_args.emojis.save)).clicked()
-                || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::S)
+                || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyS)
                 {
                     crate::db::blueprint::save(&blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir);
                     match blueprint.flameobject
@@ -270,13 +270,13 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         ui.horizontal(|ui|
         {
             if ui.button(format!("{} Undo", game_editor_args.emojis.undo_redo.undo)).clicked()
-            || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::Z)
+            || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyZ)
             {
                 scene.undo_redo.undo(&mut scene.flameobjects, &mut game_editor_args.widget_functions, &mut scene.flameobject_selected_parent_idx,
                     game_editor_args.current_project_dir, blue_engine_args, window);
             }
             if ui.button(format!("{} Redo", game_editor_args.emojis.undo_redo.redo)).clicked()
-            || blue_engine_args.input.key_held(VirtualKeyCode::LControl) && blue_engine_args.input.key_pressed(VirtualKeyCode::Y)
+            || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyY)
             {
                 scene.undo_redo.redo(&mut scene.flameobjects, &mut game_editor_args.widget_functions, &game_editor_args.current_project_dir, blue_engine_args, window);
             }
@@ -337,7 +337,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                     {
                         // if we are not attempting to select multiple items
                         //if !ui.input(|i| i.modifiers.shift_only())
-                        if !blue_engine_args.input.key_held(VirtualKeyCode::LShift)
+                        if !blue_engine_args.input.key_held(KeyCode::ShiftLeft)
                         {
                             //Flameobject::change_choice(&mut scene.flameobjects, i as u16);
                             game_editor_args.string_backups.label = flameobject.settings.label.clone();
@@ -549,7 +549,7 @@ impl FileExplorerWidget
             let response = ui.interact(ui.available_rect_before_wrap(), egui::Id::new("right_click_detector"), egui::Sense::click());
             if response.secondary_clicked()
             {
-                mouse_functions.captured_coordinates = blue_engine_args.input.mouse().unwrap_or_default();
+                //mouse_functions.captured_coordinates = blue_engine_args.input.mouse().unwrap_or_default();
                 sub_editor_mode.file_explorer.show_rightclick_menu = true;
             }
 
@@ -573,7 +573,7 @@ impl FileExplorerWidget
         // Right click menu
         if sub_editor_mode.file_explorer.show_rightclick_menu == true
         {
-            egui::Area::new("right click").fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0, mouse_functions.captured_coordinates.1))
+            egui::Area::new("right click".into()).fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0, mouse_functions.captured_coordinates.1))
             .show(blue_engine_args.ctx, |ui|
             {
                 ui.visuals_mut().button_frame = false;
@@ -613,7 +613,7 @@ impl FileExplorerWidget
                 });
 
                 // Disable right click menu
-                if blue_engine_args.input.key_pressed(VirtualKeyCode::Escape)
+                if blue_engine_args.input.key_pressed(KeyCode::Escape)
                 {
                     sub_editor_mode.file_explorer.show_rightclick_menu = false;
                 }
@@ -752,7 +752,7 @@ impl FileExplorerWidget
                         close_window(sub_editor_mode);
                     }
                     // Disable new folder window and clears anything for new folder
-                    if blue_engine_args.input.key_pressed(VirtualKeyCode::Escape)
+                    if blue_engine_args.input.key_pressed(KeyCode::Escape)
                     {
                         close_window(sub_editor_mode);
                     }
@@ -900,7 +900,7 @@ impl FileExplorerWidget
                             if response.secondary_clicked()
                             {
                                 sub_editor_mode.file_explorer.show_rightclick_menu = true;
-                                mouse_functions.captured_coordinates = blue_engine_args.input.mouse().unwrap_or_default();
+                                //mouse_functions.captured_coordinates = blue_engine_args.input.mouse().unwrap_or_default();
                             }
                             if response.double_clicked()
                             {

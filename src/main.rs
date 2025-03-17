@@ -1,5 +1,5 @@
-use blue_engine::{header::{Engine, Renderer, ObjectStorage, /*ObjectSettings,*/ WindowDescriptor, PowerPreference}, Window, VirtualKeyCode};
-use blue_engine_egui::{self, egui::{self, Context, Response, Ui}};
+use blue_engine::{header::{Engine, ObjectStorage, PowerPreference, Renderer, WindowDescriptor}, KeyCode, Window};
+use blue_engine_utilities::egui::egui::{self, Context, Response, Ui};
 use blue_flame_common::{db::scene, emojis::Emojis, filepath_handling, structures::{flameobject::{self, Flameobject}, project_config::ProjectConfig, scene::Scene, BlueEngineArgs, FileExplorerContent, FilePaths, GameEditorArgs, MouseFunctions, Project, WhatChanged, WidgetFunctions, WindowSize}};
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
 use blue_flame_common::undo_redo;
@@ -300,22 +300,22 @@ fn move_direction_keys(key_movement: KeyMovement, input: &blue_engine::InputHelp
         KeyMovement::Vertical =>
         {
             //if ui.input(|i| i.key_pressed(egui::Key::ArrowDown))
-            if input.key_pressed_os(VirtualKeyCode::Down)
+            if input.key_pressed_os(KeyCode::ArrowDown)
             {
                 move_direction = 1;
             }
-            else if input.key_pressed_os(VirtualKeyCode::Up)
+            else if input.key_pressed_os(KeyCode::ArrowUp)
             {
                 move_direction = -1;
             }
         }
         KeyMovement::Horizontal =>
         {
-            if input.key_pressed_os(VirtualKeyCode::Right)
+            if input.key_pressed_os(KeyCode::ArrowRight)
             {
                 move_direction = 1;
             }
-            else if input.key_pressed_os(VirtualKeyCode::Left)
+            else if input.key_pressed_os(KeyCode::ArrowLeft)
             {
                 move_direction = -1;
             }
@@ -696,7 +696,8 @@ fn main()
             decorations         : true,
             resizable           : true,
             power_preference    : PowerPreference::LowPower,
-            backends            : blue_engine::Backends::VULKAN,
+            backends            : blue_engine::Backends::GL,
+            ..Default::default()
         }).unwrap();
 
 
@@ -721,10 +722,10 @@ fn main()
 
 
     // Start the egui context
-    let gui_context = blue_engine_egui::EGUI::new(&engine.event_loop, &mut engine.renderer);
+    let gui_context = blue_engine_utilities::egui::EGUI::new();
 
     // We add the gui as plugin, which runs once before everything else to fetch events, and once during render times for rendering and other stuff
-    engine.plugins.push(Box::new(gui_context));
+    engine.signals.add_signal("egui", Box::new(gui_context));
 
     // init selected_project_before_new
     if let EditorMode::Project(ref mut sub_editor_mode) = editor_mode
@@ -749,11 +750,10 @@ fn main()
         window,
         objects,
         input,
-        _,
-        plugins
+        camera,
+        signals
     |
     {
-
         /*
         let mut powerobject = view_modes_argument_passer::Projects
         {
@@ -767,10 +767,10 @@ fn main()
         //issues::issue_checks::labels(&mut flameobjects);
 
         // obtain the plugin
-        let egui_plugin = plugins[0]
-        // downcast it to obtain the plugin
-        .downcast_mut::<blue_engine_egui::EGUI>()
-        .expect("Plugin not found");
+        let egui_plugin = signals
+            .get_signal::<blue_engine_utilities::egui::EGUI>("egui")
+            .expect("Plugin not found")
+            .expect("Plugin type mismatch");
 
 
         // ui function will provide the context
@@ -783,6 +783,7 @@ fn main()
                 objects,
                 input,
                 ctx,
+                camera: camera.get_mut("main").unwrap(),
             };
 
             enable_shortcuts = true;
@@ -954,14 +955,14 @@ fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::I
     let mut create_object: Option<ObjectType> = None;
 
     // shift + A: Right click menu
-    if input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
+    if input.key_held(KeyCode::ShiftLeft) && input.key_pressed(KeyCode::KeyA)
     {
         mouse_functions.is_right_clicked = true;
-        mouse_functions.captured_coordinates = input.mouse().unwrap_or_default();
+        //mouse_functions.captured_coordinates = input.mouse_diff().unwrap_or_default();
     }
 
     // Fucks off the right click menu
-    if input.key_pressed(VirtualKeyCode::Escape)
+    if input.key_pressed(KeyCode::Escape)
     {
         mouse_functions.is_right_clicked = false;
     }
@@ -969,9 +970,10 @@ fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::I
     {
         //use blue_flame_common::radio_options::object_type::ObjectType;
         use blue_flame_common::radio_options::object_type::{light, shape};
+        use blue_engine_utilities::egui::egui;
 
         //egui::Area::new("right click").fixed_pos(egui::pos2(axis.x, axis.y)).show(ctx, |ui|
-        egui::Area::new("right click").fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0, mouse_functions.captured_coordinates.1)).show(ctx, |ui|
+        egui::Area::new("right click".into()).fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0, mouse_functions.captured_coordinates.1)).show(ctx, |ui|
         {
             ui.visuals_mut().button_frame = false;
             egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
@@ -986,7 +988,7 @@ fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::I
                 if mouse_functions.object_type_captured != None
                 {
                     const SUBMENU_DISTANCE_OFFSET: f32 = 60f32;
-                    egui::Area::new("sub menu").fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0 + SUBMENU_DISTANCE_OFFSET, mouse_functions.captured_coordinates.1)).show(ctx, |ui|
+                    egui::Area::new("sub menu".into()).fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0 + SUBMENU_DISTANCE_OFFSET, mouse_functions.captured_coordinates.1)).show(ctx, |ui|
                     {
                         ui.visuals_mut().button_frame = false;
                         egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
@@ -1052,13 +1054,13 @@ fn shortcut_commands(scene: &mut Scene, flameobjects_selected_parent_idx: &mut u
     //println!("x: {}, y: {}", input.mouse().unwrap_or_default().0, input.mouse().unwrap_or_default().1);
 
     // Undo (ctrl + Z)
-    if input.key_held(VirtualKeyCode::LControl) && input.key_pressed(VirtualKeyCode::Z)
+    if input.key_held(KeyCode::LControl) && input.key_pressed(KeyCode::Z)
     {
 
     }
     /*
     // Right click menu (shift + A)
-    if input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
+    if input.key_held(KeyCode::LShift) && input.key_pressed(KeyCode::A)
     {
         mouse_functions.is_right_clicked = true;
         mouse_functions.captured_coordinates = input.mouse().unwrap_or_default();
@@ -1131,12 +1133,12 @@ fn shortcut_commands(scene: &mut Scene, flameobjects_selected_parent_idx: &mut u
         });
         ui.visuals_mut().button_frame = true;
     }
-    if input.key_pressed_os(VirtualKeyCode::Escape) {mouse_functions.is_right_clicked = false}
+    if input.key_pressed_os(KeyCode::Escape) {mouse_functions.is_right_clicked = false}
 
 
     // Deselects every object when pressing alt + A
     //if ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.alt)
-    if input.key_held(VirtualKeyCode::LAlt) && input.key_pressed(VirtualKeyCode::A)
+    if input.key_held(KeyCode::LAlt) && input.key_pressed(KeyCode::A)
     {
         for flameobject in scene.flameobjects.iter_mut()
         {
@@ -1145,7 +1147,7 @@ fn shortcut_commands(scene: &mut Scene, flameobjects_selected_parent_idx: &mut u
     }
 
     // Selects all objects when pressing A
-    else if !input.key_held(VirtualKeyCode::LShift) && input.key_pressed(VirtualKeyCode::A)
+    else if !input.key_held(KeyCode::LShift) && input.key_pressed(KeyCode::A)
     {
         for flameobject in scene.flameobjects.iter_mut()
         {
@@ -1155,7 +1157,7 @@ fn shortcut_commands(scene: &mut Scene, flameobjects_selected_parent_idx: &mut u
 
     // Do something with mouse objects i.e. grab, rotate, size based on key input
     //else if let mou
-    else if input.key_pressed(VirtualKeyCode::G)
+    else if input.key_pressed(KeyCode::G)
     {
         mouse_functions.object_mouse_movement = Some(ObjectMouseMovement::Grab);
 
@@ -1170,17 +1172,17 @@ fn shortcut_commands(scene: &mut Scene, flameobjects_selected_parent_idx: &mut u
             };
         }
     }
-    else if input.key_pressed(VirtualKeyCode::S)
+    else if input.key_pressed(KeyCode::S)
     {
         mouse_functions.object_mouse_movement = Some(ObjectMouseMovement::Size);
     }
-    else if input.key_pressed(VirtualKeyCode::R)
+    else if input.key_pressed(KeyCode::R)
     {
         mouse_functions.object_mouse_movement = Some(ObjectMouseMovement::Rotation);
     }
 
     // Terminate any key preses
-    else if input.key_pressed(VirtualKeyCode::Escape) {mouse_functions.object_mouse_movement = None}
+    else if input.key_pressed(KeyCode::Escape) {mouse_functions.object_mouse_movement = None}
     match &mouse_functions.object_mouse_movement
     {
         Some(action) =>
@@ -1407,7 +1409,7 @@ fn right_panel_flameobject_settings(
             blue_flame_common::object_actions::update_shape::color(flameobject_settings, blue_engine_args);
         }
         // Save changes to undo_redo
-        else if blue_engine_args.input.mouse_released(0) && !response.changed()
+        else if blue_engine_args.input.mouse_released(blue_engine::MouseButton::Left) && !response.changed()
         {
             if let Some(WhatChanged::Color) = game_editor_args.widget_functions.has_changed
             {
@@ -1457,7 +1459,7 @@ fn right_panel_flameobject_settings(
             }
             */
             //if response.changed() && input.mouse_released(0) i.e. if it has lost focused/not being changed anymore the value you are done putting in the new value
-            if /*Dragging*/ response.drag_released() && !response.gained_focus() || /*Typing*/ response.changed() && blue_engine_args.input.mouse_released(0)
+            if /*Dragging*/ response.drag_stopped() && !response.gained_focus() || /*Typing*/ response.changed() && blue_engine_args.input.mouse_released(blue_engine::MouseButton::Left)
             {
                 save_2_undoredo = true;
                 if let Some(WhatChanged::Position) = game_editor_args.widget_functions.has_changed
@@ -1513,7 +1515,8 @@ fn right_panel_flameobject_settings(
                 //widget_functions.has_changed = Some(WhatChanged::Size);
                 update_size = true;
             }
-            if /*Dragging*/ response.drag_released() && !response.gained_focus() || /*Typing*/ response.changed() && blue_engine_args.input.mouse_released(0)
+            //if /*Dragging*/ response.drag_released() && !response.gained_focus() || /*Typing*/ response.changed() && blue_engine_args.input.mouse_released(0)
+            if /*Dragging*/ response.drag_stopped() && !response.gained_focus() || /*Typing*/ response.changed() && blue_engine_args.input.mouse_released(blue_engine::MouseButton::Left)
             {
                 save_2_undoredo = true;
             }
@@ -1660,13 +1663,13 @@ fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects:
         {
             if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
             //|| ui.input(|i| i.key_pressed(egui::Key::Escape))
-            || blue_engine_args.input.key_pressed(VirtualKeyCode::Escape)
+            || blue_engine_args.input.key_pressed(KeyCode::Escape)
             {
                 action_button = Some(false);
             }
             if ui.button(format!("{} Create", emojis.addition.plus)).clicked()
             //|| ui.input(|i| i.key_pressed(egui::Key::Enter))
-            || blue_engine_args.input.key_pressed(VirtualKeyCode::Return)
+            || blue_engine_args.input.key_pressed(KeyCode::Enter)
             {
                 action_button = Some(true);
             }

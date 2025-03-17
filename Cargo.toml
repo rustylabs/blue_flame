@@ -8,20 +8,18 @@ edition = "2021"
 [dependencies]
 # blue engine
 # 0.4.27 original
-#blue_engine = {version = "0.4.28", default-features = false}
-blue_engine = {version = "0.5.0", default-features = false}
-#blue_engine_egui = "0.4.4"
-blue_engine_egui = "0.5.0"
+blue_engine = "0.6.5"
+blue_engine_utilities = {version = "0.6.5", features = ["egui"]}
 
 # Prompts for file explorer
 rfd = "0.13.0"
 
 # Db shit
-postcard = {verison = "1.0.4", features = ["use-std"]}
+postcard = "1.1.1"
 serde = "1.0.157"
 
 # Dirs
 dirs = "3.0"
 
 # Common (my libraries)
-blue_flame_common = {path = "/home/nishant/.local/share/blue_flame/blue_flame_common/"}
+blue_flame_common = {path = "./blue_flame_common/"}

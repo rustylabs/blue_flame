@@ -1,5 +1,5 @@
-use blue_engine_egui::{self, egui::{self, Ui, InputState, Context}};
-use blue_engine::header::VirtualKeyCode;
+use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
+use blue_engine::{header::KeyCode, Camera};
 use blue_engine::Window;
 use blue_flame_common::emojis::Emojis;
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
@@ -161,7 +161,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             if let ViewModes::Objects = game_editor_args.viewmode
             {
                 if ui.button(format!("{} Delete object", game_editor_args.emojis.trash)).clicked()
-                || blue_engine_args.input.key_pressed(VirtualKeyCode::X) && *game_editor_args.enable_shortcuts == true
+                || blue_engine_args.input.key_pressed(KeyCode::KeyX) && *game_editor_args.enable_shortcuts == true
                 {
                     scene.undo_redo.save_action(crate::undo_redo::Action::Delete(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].copy()), &editor_settings);
 

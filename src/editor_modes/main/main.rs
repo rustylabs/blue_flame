@@ -1,5 +1,5 @@
-use blue_engine_egui::{self, egui::{self, Ui, InputState, Context}};
-use blue_engine::header::VirtualKeyCode;
+use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
+use blue_engine::header::KeyCode;
 use blue_engine::Window;
 use blue_flame_common::{emojis::Emojis, structures::flameobject};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
@@ -26,7 +26,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 {
     let change_editor_mode = false;
 
-    panels::menu_bar::main(alert_window, blue_engine_args, scene, game_editor_args.filepaths, game_editor_args.current_project_dir);
+    panels::menu_bar::main(alert_window, blue_engine_args, game_editor_args, scene);
     panels::left::main(scene, projects, blueprint, sub_editor_mode, game_editor_args, editor_settings, blue_engine_args, window);
     panels::right::main(scene, projects, blueprint, editor_settings, game_editor_args, blue_engine_args, window);
 
