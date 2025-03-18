@@ -14,7 +14,6 @@ pub mod blueprint
 
     pub fn save(flameobject_blueprint: &Option<flameobject::Settings>, filepath: &str, project_dir: &str)
     {
-        /*
         println!("Executed");
         match flameobject_blueprint
         {
@@ -30,7 +29,6 @@ pub mod blueprint
             }
             None => {println!("flameobject_blueprint is None, NOT saving!")}
         }
-        */
     }
 
     pub fn load(flameobject_blueprint: &mut Option<flameobject::Settings>, filepath: &str, project_dir: &str, loadshape_2_scene: bool,
@@ -79,8 +77,6 @@ pub mod projects
 
     pub fn save(projects: &[crate::Project], filepath: &crate::FilePaths)
     {
-
-        /*
         // This is where we actually save the file
 
         let data = postcard::to_stdvec(&(VERSION, projects)).unwrap();
@@ -90,7 +86,6 @@ pub mod projects
             Ok(_)               => println!("Project file saved!"),
             Err(e)       => println!("Save error: {e}"),
         }
-        */
     }
 
     pub fn load(projects: &mut Vec<crate::Project>, filepath: &crate::FilePaths)
@@ -185,7 +180,6 @@ pub mod project_config
 
     pub fn save(project_config: &mut ProjectConfig, filepaths: &mut crate::FilePaths, project_dir: &str,)
     {
-        /*
         // filepaths.project_config: blue_flame/project.conf
         // filepaths.current_scene: this is the current scene filepath
         project_config.last_scene_filepath = filepaths.current_scene.clone();
@@ -197,7 +191,6 @@ pub mod project_config
             Ok(_)               => println!("project_config saved!"),
             Err(e)       => println!("project_config save error: {e}"),
         }
-        */
     }
     pub fn load(project_config: &mut ProjectConfig, filepaths: &mut crate::FilePaths, project_dir: &str)
     {
