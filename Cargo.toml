@@ -12,6 +12,11 @@ edition = "2021"
 blue_engine = "0.6.5"
 blue_engine_utilities = {version = "0.6.5", features = ["egui"]}
 
+# Compile time evaluations
+build_assert = "0.0.1"
+const-str = "0.6.2"
+const_for = "0.1.5"
+
 # Prompts for file explorer
 rfd = "0.13.0"
 

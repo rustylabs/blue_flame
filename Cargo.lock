@@ -384,6 +384,9 @@ dependencies = [
  "blue_engine",
  "blue_engine_utilities",
  "blue_flame_common",
+ "build_assert",
+ "const-str",
+ "const_for",
  "dirs",
  "postcard",
  "rfd",
@@ -397,9 +400,19 @@ dependencies = [
  "blue_engine",
  "blue_engine_utilities",
  "dirs",
+ "indoc",
  "postcard",
  "regex",
  "serde",
+]
+
+[[package]]
+name = "build_assert"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b277df377083c63db7509b5e482fe630a639885427a74e81e25558662e50b7b5"
+dependencies = [
+ "env_id",
 ]
 
 [[package]]
@@ -582,6 +595,18 @@ checksum = "4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973"
 dependencies = [
  "crossbeam-utils",
 ]
+
+[[package]]
+name = "const-str"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e991226a70654b49d34de5ed064885f0bef0348a8e70018b8ff1ac80aa984a2"
+
+[[package]]
+name = "const_for"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9c50fcfdf972929aff202c16b80086aa3cfc6a3a820af714096c58c7c1d0582"
 
 [[package]]
 name = "core-foundation"
@@ -856,6 +881,16 @@ checksum = "186e05a59d4c50738528153b83b0b0194d3a29507dfec16eccd4b342903397d0"
 dependencies = [
  "log",
  "regex",
+]
+
+[[package]]
+name = "env_id"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d74f2251363d23650f2fccda0a795493e16c8684562f1c22afebebc78fd928af"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1461,6 +1496,12 @@ dependencies = [
  "equivalent",
  "hashbrown",
 ]
+
+[[package]]
+name = "indoc"
+version = "2.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4c7245a08504955605670dbf141fceab975f15ca21570696aebe9d2e71576bd"
 
 [[package]]
 name = "interpolate_name"

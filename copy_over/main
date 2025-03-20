@@ -11,7 +11,7 @@ fn main()
         {
             width               : 1280,
             height              : 720,
-            title               : "{project_name}",
+            title               : <project_name>,
             decorations         : true,
             resizable           : true,
             power_preference    : PowerPreference::HighPerformance,

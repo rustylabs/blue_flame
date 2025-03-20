@@ -1,5 +1,5 @@
 [package]
-name = "{project_name}"
+name = <project_name>
 version = "0.1.0"
 edition = "2021"
 
@@ -13,4 +13,4 @@ postcard = {verison = "1.0.4", features = ["use-std"]}
 serde = "1.0.157"
 
 # Common (my libraries)
-blue_flame_common = {path = "{library}"}
+blue_flame_common = {path = <library>}

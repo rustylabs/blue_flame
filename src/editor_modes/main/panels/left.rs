@@ -3,7 +3,7 @@ use std::{fs::{self, DirEntry}, path::PathBuf};
 use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
 use blue_engine::header::KeyCode;
 use blue_engine::Window;
-use blue_flame_common::{emojis::{self, Emojis}, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::{FileExplorerContent, MouseFunctions}, undo_redo, EditorSettings};
+use blue_flame_common::{emojis::EMOJIS, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::{FileExplorerContent, MouseFunctions}, undo_redo, EditorSettings};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use serde::de::value;
 use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
@@ -11,7 +11,7 @@ use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file,
 use crate::egui::Vec2;
 /*
 pub fn main(scene: &mut Scene, blueprint.flameobject: &mut Option<Settings>, previous_viewmode: &mut ViewModes,
-    projects: &mut Vec<Project>, filepaths: &mut FilePaths, string_backups: &mut StringBackups, emojis: &Emojis, blueprint_savefolderpath: &mut String,
+    projects: &mut Vec<Project>, filepaths: &mut FilePaths, string_backups: &mut StringBackups, EMOJIS: &Emojis, blueprint_savefolderpath: &mut String,
    widget_functions: &mut WidgetFunctions, project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes,
    window_size: &WindowSize,
    blue_engine_args: &mut BlueEngineArgs, window: &Window)
@@ -106,7 +106,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             if let ViewModes::Objects = game_editor_args.viewmode
             {
                 // Create new flameobject
-                if ui.button(format!("{} Create object", game_editor_args.emojis.addition.plus)).clicked()
+                if ui.button(format!("{} Create object", EMOJIS.addition.plus)).clicked()
                 //|| ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.shift))
                 //|| input.key_held(KeyCode::LShift) && input.key_pressed(KeyCode::A)
                 //&& sub_editor_mode.create_new_object_window == false
@@ -129,7 +129,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                     {
                         if flameobject.selected == true
                         {
-                            match crate::new_object_window(&mut flameobject.settings, projects, &game_editor_args.emojis, &game_editor_args.window_size, ui, blue_engine_args, window)
+                            match crate::new_object_window(&mut flameobject.settings, projects, &game_editor_args.window_size, ui, blue_engine_args, window)
                             {
                                 Some(action) =>
                                 {
@@ -159,7 +159,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                     }
                 }
 
-                if ui.button(format!("{} Save current scene", game_editor_args.emojis.save)).clicked()
+                if ui.button(format!("{} Save current scene", EMOJIS.save)).clicked()
                 || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyS)
                 //|| input.key_pressed(KeyCode::ControlLeft || KeyCode::KeyS)
                 {
@@ -175,7 +175,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             else if let ViewModes::Scenes = game_editor_args.viewmode
             {
                 // Create new flameobject
-                if ui.button(format!("{} New scene", game_editor_args.emojis.addition.plus)).clicked()
+                if ui.button(format!("{} New scene", EMOJIS.addition.plus)).clicked()
                 {
                     for flameobject in scene.flameobjects.iter_mut()
                     {
@@ -186,7 +186,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                     game_editor_args.filepaths.current_scene = String::new();
                 }
 
-                if ui.button(format!("{} Save current scene", game_editor_args.emojis.save)).clicked()
+                if ui.button(format!("{} Save current scene", EMOJIS.save)).clicked()
                 || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyS)
                 //|| input.key_pressed(KeyCode::ControlLeft || KeyCode::KeyS)
                 {
@@ -198,7 +198,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             }
             else if let ViewModes::Blueprints = game_editor_args.viewmode
             {
-                if ui.button(format!("{} Create object", game_editor_args.emojis.addition.plus)).clicked()
+                if ui.button(format!("{} Create object", EMOJIS.addition.plus)).clicked()
                 {
                     blueprint.flameobject = Some(blue_flame_common::structures::flameobject::Settings::init(0, None));
                     sub_editor_mode.create_new_object_window = true;
@@ -206,7 +206,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 if sub_editor_mode.create_new_object_window == true
                 {
                     let mut cancel_creation_object = false; // If user presses cancel then pop from flameobjects
-                    match crate::new_object_window(blueprint.flameobject.as_mut().unwrap(), projects, game_editor_args.emojis, game_editor_args.window_size,
+                    match crate::new_object_window(blueprint.flameobject.as_mut().unwrap(), projects, game_editor_args.window_size,
                     ui, blue_engine_args, window)
                     {
                         Some(action) =>
@@ -229,7 +229,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 // WHen user preses save for blueprint object, any regular object inherited from blueprint and its changes will be affected
                 // and also saves blueprint to its current assigned dir
                 // Top left hand side when in blueprint view mode
-                if ui.button(format!("{} Save blueprint", game_editor_args.emojis.save)).clicked()
+                if ui.button(format!("{} Save blueprint", EMOJIS.save)).clicked()
                 || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyS)
                 {
                     crate::db::blueprint::save(&blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir);
@@ -269,18 +269,18 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 
         ui.horizontal(|ui|
         {
-            if ui.button(format!("{} Undo", game_editor_args.emojis.undo_redo.undo)).clicked()
+            if ui.button(format!("{} Undo", EMOJIS.undo_redo.undo)).clicked()
             || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyZ)
             {
                 scene.undo_redo.undo(&mut scene.flameobjects, &mut game_editor_args.widget_functions, &mut scene.flameobject_selected_parent_idx,
                     game_editor_args.current_project_dir, blue_engine_args, window);
             }
-            if ui.button(format!("{} Redo", game_editor_args.emojis.undo_redo.redo)).clicked()
+            if ui.button(format!("{} Redo", EMOJIS.undo_redo.redo)).clicked()
             || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyY)
             {
                 scene.undo_redo.redo(&mut scene.flameobjects, &mut game_editor_args.widget_functions, &game_editor_args.current_project_dir, blue_engine_args, window);
             }
-            if ui.button(format!("{} Clear buf", game_editor_args.emojis.trash)).clicked()
+            if ui.button(format!("{} Clear buf", EMOJIS.trash)).clicked()
             {
                 scene.undo_redo.clear_buffer();
             }
@@ -291,7 +291,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         // Only created for testing purposes
         if let ViewModes::Objects = game_editor_args.viewmode
         {
-            if ui.button(format!("{} Blueprint in main scene", game_editor_args.emojis.load)).clicked()
+            if ui.button(format!("{} Blueprint in main scene", EMOJIS.load)).clicked()
             {
                 match blueprint.flameobject
                 {
@@ -355,7 +355,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                     ui.checkbox(&mut flameobject.visible, "");
                     if flameobject.visible == true
                     {
-                        ui.label(format!("{}", game_editor_args.emojis.eye));
+                        ui.label(format!("{}", EMOJIS.eye));
                     }
 
                     // Checks if variable names are correct or not
@@ -386,7 +386,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             ui.label("Load blueprint into scene:");
             //ui.plus(egui::TextEdit::singleline(&mut blueprint.save_file_path));
             crate::directory_singleline(&mut blueprint.save_file_path, Some(game_editor_args.current_project_dir),
-                FilePickerMode::OpenFile, true, ui, game_editor_args.emojis);
+                FilePickerMode::OpenFile, true, ui);
             if ui.button("Load blueprint").clicked()
             {
                 crate::db::blueprint::load(&mut blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir, true,
@@ -460,7 +460,7 @@ impl FileExplorerWidget
     // Retrives all the dirs at parent level for the first time and pushes it to variable
     fn init(game_editor_args: &mut GameEditorArgs)
     {
-        let mut file_explorer_contents = &mut game_editor_args.file_explorer_contents;
+        let file_explorer_contents = &mut game_editor_args.file_explorer_contents;
         let current_project_dir: &str = &game_editor_args.current_project_dir;
 
         let paths = fs::read_dir(format!("{}", &current_project_dir)).unwrap();
@@ -490,7 +490,6 @@ impl FileExplorerWidget
     {
 
         let current_project_dir: &str = &game_editor_args.current_project_dir;
-        let emojis = game_editor_args.emojis;
         let file_explorer_contents = &mut game_editor_args.file_explorer_contents.1;
         let window_size = game_editor_args.window_size;
         let mouse_functions = &mut game_editor_args.mouse_functions;
@@ -553,7 +552,7 @@ impl FileExplorerWidget
                 sub_editor_mode.file_explorer.show_rightclick_menu = true;
             }
 
-            actually_display(scene, blueprint, emojis, file_explorer_contents,
+            actually_display(scene, blueprint, file_explorer_contents,
                 editor_settings, game_editor_args.filepaths,
                 game_editor_args.project_config, &mut change_selection, current_project_dir, game_editor_args.string_backups, sub_editor_mode, mouse_functions,
                 game_editor_args.widget_functions, 
@@ -579,7 +578,7 @@ impl FileExplorerWidget
                 ui.visuals_mut().button_frame = false;
                 egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
                 {
-                    if ui.button(format!("{} New folder", emojis.addition.plus)).clicked()
+                    if ui.button(format!("{} New folder", EMOJIS.addition.plus)).clicked()
                     {
                         sub_editor_mode.file_explorer.show_newfolder_wind = true;
                         sub_editor_mode.file_explorer.show_rightclick_menu = false;
@@ -587,7 +586,7 @@ impl FileExplorerWidget
                     // Only show delete option if an item is selected
                     if find_selected_item(file_explorer_contents) == true
                     {
-                        if ui.button(format!("{} Delete item", emojis.trash)).clicked()
+                        if ui.button(format!("{} Delete item", EMOJIS.trash)).clicked()
                         {
                             sub_editor_mode.file_explorer.show_deleteitem_wind = true;
                             sub_editor_mode.file_explorer.show_rightclick_menu = false;
@@ -637,12 +636,12 @@ impl FileExplorerWidget
                 //ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui|
                 {
                     // Don't delete item
-                    if ui.button(format!("{} No", emojis.cancel)).clicked()
+                    if ui.button(format!("{} No", EMOJIS.cancel)).clicked()
                     {
                         sub_editor_mode.file_explorer.show_deleteitem_wind = false;
                     }
                     // Delete item
-                    if ui.button(format!("{} Yes", emojis.tick)).clicked()
+                    if ui.button(format!("{} Yes", EMOJIS.tick)).clicked()
                     {
                         let mut selected_dir = PathBuf::from(current_project_dir.clone());
                         find_selected_item(file_explorer_contents, &mut selected_dir);
@@ -713,12 +712,12 @@ impl FileExplorerWidget
                 ui.horizontal(|ui|
                 {
                     // Don't create folder
-                    if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
+                    if ui.button(format!("{} Cancel", EMOJIS.cancel)).clicked()
                     {
                         close_window(sub_editor_mode);
                     }
                     // Creates folder
-                    if ui.button(format!("{} Create", emojis.addition.plus)).clicked()
+                    if ui.button(format!("{} Create", EMOJIS.addition.plus)).clicked()
                     {
                         let mut create_new_dir = PathBuf::from(current_project_dir.clone());
 
@@ -812,7 +811,6 @@ impl FileExplorerWidget
         fn actually_display(
             scene: &mut Scene,
             blueprint: &mut Blueprint,
-            emojis: &Emojis,
             file_explorer_contents: &mut Option<Vec<FileExplorerContent>>,
             editor_settings: &EditorSettings,
             filepaths: &mut FilePaths,
@@ -831,7 +829,7 @@ impl FileExplorerWidget
         {
             if let Some(contents) = file_explorer_contents
             {
-                //let emojis = game_editor_args.emojis;
+                //let EMOJIS = EMOJIS;
                 //let current_project_dir: &str = &game_editor_args.current_project_dir;
 
                 let mut idx_make_selected: Option<usize> = None; // Make everything false but the one thing that was selected
@@ -870,11 +868,11 @@ impl FileExplorerWidget
                             {
                                 if content.is_collapsed == false
                                 {
-                                    emojis.arrows.down
+                                    EMOJIS.arrows.down
                                 }
                                 else
                                 {
-                                    emojis.arrows.right
+                                    EMOJIS.arrows.right
                                 }
                             };
                             if ui.button(format!("{}", arrow)).clicked()
@@ -887,7 +885,7 @@ impl FileExplorerWidget
                                 }
                             }
                             let response = ui.selectable_label(content.selected, format!("{} {}",
-                                emojis.file_icons.folder,
+                                EMOJIS.file_icons.folder,
                                 content.actual_content.file_name().to_str().unwrap(),
                                 //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
                             ));
@@ -918,7 +916,7 @@ impl FileExplorerWidget
                         {
                             let mut is_doubleclicked = false;
                             let response = ui.selectable_label(content.selected, format!("{} {}",
-                                emojis.file_icons.file,
+                                EMOJIS.file_icons.file,
                                 content.actual_content.file_name().to_str().unwrap(),
                                 //fullpath_to_relativepath(&content.actual_content.path().display().to_string(), current_project_dir),
                             ));
@@ -1004,7 +1002,7 @@ impl FileExplorerWidget
                     // Display subdirectories by calling itself
                     if content.is_collapsed == false
                     {
-                        actually_display(scene, blueprint, emojis, &mut content.childrens_content,
+                        actually_display(scene, blueprint, &mut content.childrens_content,
                             editor_settings, filepaths,
                             project_config, change_selection, current_project_dir, string_backups, sub_editor_mode, mouse_functions,
                             widget_functions, window_size, blue_engine_args, ui, window);

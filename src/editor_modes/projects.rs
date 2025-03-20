@@ -2,16 +2,11 @@ use std::borrow::BorrowMut;
 use std::{process::Command, path::PathBuf};
 use std::io::Write; 
 
-use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
+use blue_engine_utilities::egui::{egui, egui:: Context};
 use blue_engine::header::KeyCode;
-use blue_engine::{Renderer, ObjectSettings, ObjectStorage, Window};
-use blue_flame_common::db::scene;
-use blue_flame_common::emojis::Emojis;
-use blue_flame_common::structures::project_config;
-use serde::de::value;
-use crate::editor_mode_variables::main::Main;
-use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, BlueEngineArgs, GameEditorArgs, EditorMode, editor_mode_variables};
-use rfd::FileDialog;
+use blue_engine::Window;
+use blue_flame_common::emojis::EMOJIS;
+use crate::{Scene, WindowSize, Project, FilePaths, ViewModes, BlueEngineArgs, GameEditorArgs, editor_mode_variables};
 use blue_flame_common::radio_options::FilePickerMode;
 trait VecExtensions
 {
@@ -67,7 +62,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
     let window_size = &game_editor_args.window_size;
     let project_config = &mut game_editor_args.project_config;
     let widget_functions = &mut game_editor_args.widget_functions;
-    let emojis = &game_editor_args.emojis;
+    let emojis = &EMOJIS;
     */
     //let scene = &mut powerobject.scene;
     egui::Window::new("Project")
@@ -93,7 +88,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                 crate::load_project_scene(false, scene, projects, game_editor_args, blue_engine_args, window);
                 change_editor_mode = true;
             }
-            if ui.button(format!("{} Create/import project", game_editor_args.emojis.addition.plus)).clicked()
+            if ui.button(format!("{} Create/import project", EMOJIS.addition.plus)).clicked()
             {
 
                 projects.push(Project::init());
@@ -104,7 +99,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                 //game_editor_args.editor_modes.projects.1 = true;
                 sub_editor_mode.new_project_window = true;
             }
-            if ui.button(format!("{} Delete project", game_editor_args.emojis.trash)).clicked()
+            if ui.button(format!("{} Delete project", EMOJIS.trash)).clicked()
             {
                 sub_editor_mode.del_proj_win = true;
                 //game_editor_args.editor_modes.projects.3.0 = true;
@@ -113,6 +108,30 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
         });
 
         // Show all projects
+        {
+            let mut change_choice_proj: Option<u16> = None;
+            for (i, project) in projects.iter().enumerate()
+            {
+                if ui.selectable_label(project.status, format!("{}: {} {}",
+                project.name,
+                project.dir,
+                //GameTypeDimensions::elements(&projects[i].game_type),
+                //blue_flame_common::mapper::game_type(game_type_pos),
+    
+                crate::tab_spaces((game_editor_args.window_size.x/4f32) as u16))).clicked()
+                {
+                    //Project::change_choice(&mut projects, i as u8);
+                    change_choice_proj = Some(i as u16);
+                }
+            }
+            if let Some(i) = change_choice_proj
+            {
+                projects.change_choice(i);
+            }
+        }
+
+
+        /*
         for i in 0..projects.len()
         {
             // Gets position of what is true in the game_type:[true, false]
@@ -140,9 +159,10 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                 projects.change_choice(i as u16);
             }
         }
-
+        */
         // Shows "New Project" window after user presses "create/import project" button
         //if game_editor_args.editor_modes.projects.1 == true
+        
         if sub_editor_mode.new_project_window == true
         {
             egui::Window::new("New Project")
@@ -170,18 +190,18 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                     {
                         let mut path = PathBuf::from(value);
                         path.pop();
-                        crate::directory_singleline(&mut projects[len].dir, Some(&path.display().to_string()), FilePickerMode::OpenFolder, false, ui, game_editor_args.emojis);
+                        crate::directory_singleline(&mut projects[len].dir, Some(&path.display().to_string()), FilePickerMode::OpenFolder, false, ui);
                     }
                     None =>
                     {
-                        crate::directory_singleline(&mut projects[len].dir, None, FilePickerMode::OpenFolder, false, ui, game_editor_args.emojis);
+                        crate::directory_singleline(&mut projects[len].dir, None, FilePickerMode::OpenFolder, false, ui);
                     }
                 }
                 /*
                 ui.horizontal(|ui|
                 {
                     ui.add(egui::TextEdit::singleline(&mut projects[len].dir));
-                    if ui.button(format!("{}", game_editor_args.emojis.file)).clicked()
+                    if ui.button(format!("{}", EMOJIS.file)).clicked()
                     {
                         let home_dir = match dirs::home_dir()
                         {
@@ -240,14 +260,14 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                 // Shows Cancel and Create buttons
                 ui.horizontal(|ui|
                 {
-                    if ui.button(format!("{} Cancel", game_editor_args.emojis.cancel)).clicked()
+                    if ui.button(format!("{} Cancel", EMOJIS.cancel)).clicked()
                     {
                         //editor_mode.projects.1 = false;
                         sub_editor_mode.new_project_window = false;
                         projects.pop();
                     }
                     // Create the project
-                    if ui.button(format!("{} Create", game_editor_args.emojis.addition.plus)).clicked()
+                    if ui.button(format!("{} Create", EMOJIS.addition.plus)).clicked()
                     {
                         // Sets the scene and not flameobject to be true
                         *game_editor_args.viewmode = ViewModes::Scenes;
@@ -296,8 +316,8 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
         //if game_editor_args.editor_modes.projects.3.0 == true
         if sub_editor_mode.del_proj_win == true
         {
-            //delete_project(projects, game_editor_args.editor_modes, game_editor_args.filepaths, game_editor_args.emojis, game_editor_args.window_size, blue_engine_args.ctx);
-            delete_project(projects, sub_editor_mode, game_editor_args.filepaths, game_editor_args.emojis, game_editor_args.window_size, blue_engine_args.ctx);
+            //delete_project(projects, game_editor_args.editor_modes, game_editor_args.filepaths, EMOJIS, game_editor_args.window_size, blue_engine_args.ctx);
+            delete_project(projects, sub_editor_mode, game_editor_args.filepaths, game_editor_args.window_size, blue_engine_args.ctx);
         }
     });
     return change_editor_mode;
@@ -306,7 +326,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
 fn delete_project(projects: &mut Vec<Project>, editor_modes: &mut EditorModes, filepaths: &FilePaths, emojis: &Emojis, window_size: &WindowSize,
     ctx: &Context)
 */
-fn delete_project(projects: &mut Vec<Project>, sub_editor_mode: &mut editor_mode_variables::Project, filepaths: &FilePaths, emojis: &Emojis, window_size: &WindowSize,
+fn delete_project(projects: &mut Vec<Project>, sub_editor_mode: &mut editor_mode_variables::Project, filepaths: &FilePaths, window_size: &WindowSize,
     ctx: &Context)
 {
     for (i, project) in projects.iter_mut().enumerate()
@@ -329,12 +349,12 @@ fn delete_project(projects: &mut Vec<Project>, sub_editor_mode: &mut editor_mode
 
                 ui.horizontal(|ui|
                 {
-                    if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
+                    if ui.button(format!("{} Cancel", EMOJIS.cancel)).clicked()
                     {
                         //editor_modes.projects.3.0 = false;
                         sub_editor_mode.del_proj_win = false;
                     }
-                    if ui.button(format!("{} Yes", emojis.tick)).clicked()
+                    if ui.button(format!("{} Yes", EMOJIS.tick)).clicked()
                     {
                         //editor_modes.projects.3.0 = false;
                         sub_editor_mode.del_proj_win = false;
@@ -358,8 +378,13 @@ fn delete_project(projects: &mut Vec<Project>, sub_editor_mode: &mut editor_mode
     }
 }
 
+// This generates the files for the new project
 fn copy_files_over_new_project(project: &Project, sub_editor_mode: &crate::editor_mode_variables::Project, filepaths: &FilePaths)
 {
+    use build_assert::build_assert;
+    use const_str;
+    use const_for::const_for;
+
     let dir_src = String::from(format!("{}/src", project.dir));
 
     struct CopyOver
@@ -368,32 +393,120 @@ fn copy_files_over_new_project(project: &Project, sub_editor_mode: &crate::edito
         blue_flame      : &'static [u8],
         cargo           : &'static str,
     }
-    let copy_over = CopyOver
+    const COPY_OVER: CopyOver = CopyOver
     {
-        main            : include_str!("../../copy_over/main.rs"),
-        blue_flame      : include_bytes!("../../copy_over/blue_flame.rs"),
-        cargo           : include_str!("../../copy_over/Cargo.toml"),
+        main            : include_str!("../../copy_over/main"),
+        blue_flame      : include_bytes!("../../copy_over/blue_flame"),
+        cargo           : include_str!("../../copy_over/Cargo"),
     };
 
-    // main.rs
-    let mut loaded_content = String::from(copy_over.main);
-    loaded_content = loaded_content.replace("{project_name}", &project.name);
-    //loaded_content = loaded_content.replace("{scene_path}", &project.dir);
+    struct ReplaceValue
+    {
+        project_name: &'static str,
+        library: &'static str,
+    }
 
+    const REPLACE_VALUE: ReplaceValue = ReplaceValue{project_name: "<project_name>", library: "<library>"};
+
+    // Perform safety checks to ensure REPLACE_VALUE in the copy over files exist otherwise compile fail
+    const
+    {
+        struct CopyOverEnterStrip
+        {
+            main: &'static str,
+            cargo: &'static str,
+        }
+        struct CopyOverTokens<'a>
+        {
+            main: &'a[&'static str],
+            cargo: &'a[&'static str],
+        }
+
+        // Determine whether or not to pass compile check for each individual files
+        struct CompilePass
+        {
+            main: bool,
+            cargo: (bool/*project_name*/, bool /*library*/)
+        }
+
+        const COPY_OVER_ENTER_STRIP: CopyOverEnterStrip = CopyOverEnterStrip
+        {
+            main:
+            {
+                const TMP: &str = const_str::replace!(COPY_OVER.main, "\n", " ");
+                const_str::replace!(TMP, ",", "")
+            },
+            cargo:
+            {
+                const TMP: &str = const_str::replace!(COPY_OVER.cargo, "\n", " ");
+                const TMP1: &str = const_str::replace!(TMP, ",", "");
+                const_str::replace!(TMP1, "}", "")
+            },
+        };
+        const COPY_OVER_TOKENS: CopyOverTokens = CopyOverTokens
+        {
+            main: &const_str::split!(COPY_OVER_ENTER_STRIP.main, " "),
+            cargo: &const_str::split!(COPY_OVER_ENTER_STRIP.cargo, " "),
+        };
+
+        let mut compile_pass: CompilePass = CompilePass{main: false, cargo: (false, false)};
+
+        // main.rs
+        const_for!(i in 0..COPY_OVER_TOKENS.main.len() =>
+        {
+            if const_str::equal!(COPY_OVER_TOKENS.main[i], REPLACE_VALUE.project_name)
+            {
+                compile_pass.main = true;
+                break;
+            }
+        });
+        build_assert!(compile_pass.main);
+
+
+        // cargo.rs project_name
+        const_for!(i in 0..COPY_OVER_TOKENS.cargo.len() =>
+        {
+            if const_str::equal!(COPY_OVER_TOKENS.cargo[i], REPLACE_VALUE.project_name)
+            {
+                compile_pass.cargo.0 = true;
+                break;
+            }
+        });
+        build_assert!(compile_pass.cargo.0);
+
+
+        // cargo.rs library
+        const_for!(i in 0..COPY_OVER_TOKENS.cargo.len() =>
+        {
+            if const_str::equal!(COPY_OVER_TOKENS.cargo[i], REPLACE_VALUE.library)
+            {
+                compile_pass.cargo.1 = true;
+                break;
+            }
+        });
+        build_assert!(compile_pass.cargo.1);
+    }
+
+
+
+
+    // main.rs
+    let mut loaded_content = String::from(COPY_OVER.main);
+    loaded_content = loaded_content.replace(REPLACE_VALUE.project_name, &project.name);
+    //loaded_content = loaded_content.replace("{scene_path}", &project.dir);
     let mut output_file = std::fs::File::create(format!("{dir_src}/main.rs")).unwrap();
     output_file.write_all(loaded_content.as_bytes()).unwrap();
 
     // blue_flame.rs
-    let loaded_content = copy_over.blue_flame.to_vec();
+    let loaded_content = COPY_OVER.blue_flame.to_vec();
     let mut output_file = std::fs::File::create(format!("{dir_src}/blue_flame.rs")).unwrap();
     output_file.write_all(&loaded_content).unwrap();
 
     // Cargo.toml
-    let mut loaded_content = String::from(copy_over.cargo);
+    let mut loaded_content = String::from(COPY_OVER.cargo);
     //loaded_content = loaded_content.replace("{project_name}", &editor_modes.projects.2.1);
-    loaded_content = loaded_content.replace("{project_name}", &sub_editor_mode.new_project_label);
-    loaded_content = loaded_content.replace("{library}", &filepaths.library.to_str().unwrap());
+    loaded_content = loaded_content.replace(REPLACE_VALUE.project_name, &sub_editor_mode.new_project_label);
+    loaded_content = loaded_content.replace(REPLACE_VALUE.library, &filepaths.library.to_str().unwrap());
     let mut output_file = std::fs::File::create(format!("{dir_src}/../Cargo.toml")).unwrap();
     output_file.write_all(loaded_content.as_bytes()).unwrap();
 }
-

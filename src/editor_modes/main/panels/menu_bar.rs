@@ -3,7 +3,7 @@ use std::f32::consts::E;
 use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
 use blue_engine::{header::KeyCode, Camera};
 use blue_engine::Window;
-use blue_flame_common::{emojis::{self, Emojis}, structures::GameEditorArgs};
+use blue_flame_common::{emojis::EMOJIS, structures::GameEditorArgs};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, AlertWindow, BlueEngineArgs, EditorSettings,
     MouseFunctions,
@@ -12,7 +12,6 @@ use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunction
 pub fn main(alert_window: &mut [AlertWindow], blue_engine_args: &mut BlueEngineArgs, game_editor_args: &mut GameEditorArgs, scene: &mut Scene)
 {
     let current_project_dir: &str = &game_editor_args.current_project_dir;
-    let emojis = game_editor_args.emojis;
     let filepaths = &mut game_editor_args.filepaths;
     let project_config = &mut game_editor_args.project_config;
     let camera = &mut blue_engine_args.camera;
@@ -67,13 +66,13 @@ pub fn main(alert_window: &mut [AlertWindow], blue_engine_args: &mut BlueEngineA
 
             ui.horizontal_centered(|ui|
             {
-                zoom(project_config, camera, emojis, ui, blue_engine_args.input);
+                zoom(project_config, camera, ui, blue_engine_args.input);
             });
             /*
             ui.centered_and_justified(|ui|
             {
-                ui.button(format!("{}", emojis.addition.minus));
-                ui.button(format!("{}", emojis.addition.plus));
+                ui.button(format!("{}", EMOJIS.addition.minus));
+                ui.button(format!("{}", EMOJIS.addition.plus));
 
             });
             */
@@ -84,7 +83,7 @@ pub fn main(alert_window: &mut [AlertWindow], blue_engine_args: &mut BlueEngineA
     });
 }
 
-fn zoom(project_config: &mut ProjectConfig, camera: &mut Camera, emojis: &Emojis, ui: &mut Ui, input: &blue_engine::InputHelper)
+fn zoom(project_config: &mut ProjectConfig, camera: &mut Camera, ui: &mut Ui, input: &blue_engine::InputHelper)
 {
 
     const INCREMENT_ZOOM: u16 = 5;
@@ -111,7 +110,7 @@ fn zoom(project_config: &mut ProjectConfig, camera: &mut Camera, emojis: &Emojis
     ui.label("Zoom: ");
 
     // Zoom out
-    if ui.button(format!("{}", emojis.addition.minus)).clicked()
+    if ui.button(format!("{}", EMOJIS.addition.minus)).clicked()
     // || input.key_pressed(VirtualKeyCode::Scroll)
     {
         change_camera_position(project_config, camera, -1f32);
@@ -120,7 +119,7 @@ fn zoom(project_config: &mut ProjectConfig, camera: &mut Camera, emojis: &Emojis
     ui.add(egui::DragValue::new(&mut project_config.camera_position.zoom).speed(INCREMENT_ZOOM));
 
     // Zoom in
-    if ui.button(format!("{}", emojis.addition.plus)).clicked()
+    if ui.button(format!("{}", EMOJIS.addition.plus)).clicked()
     {
         change_camera_position(project_config, camera, 1f32);
     }

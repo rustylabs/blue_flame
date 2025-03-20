@@ -1,6 +1,6 @@
 use blue_engine::{header::{Engine, ObjectStorage, PowerPreference, Renderer, WindowDescriptor}, KeyCode, Window};
 use blue_engine_utilities::egui::egui::{self, Context, Response, Ui};
-use blue_flame_common::{db::scene, emojis::Emojis, filepath_handling, structures::{flameobject::{self, Flameobject}, project_config::ProjectConfig, scene::Scene, BlueEngineArgs, FileExplorerContent, FilePaths, GameEditorArgs, MouseFunctions, Project, WhatChanged, WidgetFunctions, WindowSize}};
+use blue_flame_common::{db::scene, emojis::EMOJIS, filepath_handling, structures::{flameobject::{self, Flameobject}, project_config::ProjectConfig, scene::Scene, BlueEngineArgs, FileExplorerContent, FilePaths, GameEditorArgs, MouseFunctions, Project, WhatChanged, WidgetFunctions, WindowSize}};
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
 use blue_flame_common::undo_redo;
 use blue_flame_common::structures::StringBackups;
@@ -22,6 +22,8 @@ mod editor_modes;
 // Directory related libraries
 use std::path::{Path, PathBuf};
 use dirs;
+
+
 
 
 // Generic way to create either flameobject or blueprint
@@ -169,15 +171,15 @@ pub struct AlertWindow
 }
 impl AlertWindow
 {
-    fn init(emojis: &Emojis) -> [Self; 6]
+    fn init() -> [Self; 6]
     {
         [
             Self{label: "Open".to_string(), state: false},
             Self{label: "New".to_string(), state: false},
-            Self{label: format!("{} Save", emojis.save), state: false},
+            Self{label: format!("{} Save", EMOJIS.save), state: false},
             Self{label: "Export settings".to_string(), state: false},
             Self{label: "Import settings".to_string(), state: false},
-            Self{label: format!("{} Settings", emojis.settings), state: false},
+            Self{label: format!("{} Settings", EMOJIS.settings), state: false},
         ]
     }
 
@@ -618,7 +620,6 @@ fn main()
         exit(0);
     }
 
-    let emojis = Emojis::init();
     let mut filepaths: FilePaths = FilePaths::init();
 
     //editor_modes::main::test();
@@ -685,7 +686,7 @@ fn main()
 
 
     
-    let mut alert_window = AlertWindow::init(&emojis);
+    let mut alert_window = AlertWindow::init();
 
     let mut engine = Engine::new_config(
         WindowDescriptor
@@ -792,7 +793,6 @@ fn main()
             {
                 filepaths: &mut filepaths,
                 string_backups: &mut string_backups,
-                emojis: &emojis,
                 widget_functions: &mut widget_functions,
                 project_config: &mut project_config,
                 current_project_dir: &mut current_project_dir,
@@ -874,7 +874,7 @@ fn main()
 
 
 // Single line edit for directories and contains addtional buttons such as file explorer
-fn directory_singleline(filepath_singleline: &mut String, starting_dir: Option<&str>, file_picker_mode: radio_options::FilePickerMode, make_relative: bool, ui: &mut Ui, emojis: &Emojis) -> (Response, bool)
+fn directory_singleline(filepath_singleline: &mut String, starting_dir: Option<&str>, file_picker_mode: radio_options::FilePickerMode, make_relative: bool, ui: &mut Ui) -> (Response, bool)
 {
     use radio_options::FilePickerMode;
     // bool return is to determine if file dir has been selected
@@ -884,7 +884,7 @@ fn directory_singleline(filepath_singleline: &mut String, starting_dir: Option<&
     ui.horizontal(|ui|
     {
         response = Some(ui.add(egui::TextEdit::singleline(filepath_singleline)));
-        if ui.button(format!("{}", emojis.file_icons.folder)).clicked()
+        if ui.button(format!("{}", EMOJIS.file_icons.folder)).clicked()
         {
             let starting_dir = match starting_dir
             {
@@ -1329,12 +1329,19 @@ fn right_panel_flameobject_settings(
 
     
     ui.separator();
-    // Locatin of texture
-    ui.label("TextureMode");
+    
+    ui.horizontal(|ui|
+    {
+        ui.label("TextureMode");
+        if ui.button(format!("{} New sprite", EMOJIS.addition.plus)).clicked()
+        {
+
+        }
+    });
     ui.label("Location of Texture");
     //let response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.texture.file_location));
     let response = directory_singleline(&mut flameobject_settings.texture.file_location,
-        Some(game_editor_args.current_project_dir), radio_options::FilePickerMode::OpenFile, true, ui, game_editor_args.emojis);
+        Some(game_editor_args.current_project_dir), radio_options::FilePickerMode::OpenFile, true, ui);
     if response.0.changed() || response.1 == true
     {
         *game_editor_args.enable_shortcuts = false;
@@ -1576,7 +1583,7 @@ fn tab_spaces(tab_spaces_times: u16) -> String
     return tab_spaces;
 }
 
-fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects: &mut [Project], emojis: &Emojis, window_size: &WindowSize,
+fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects: &mut [Project], window_size: &WindowSize,
     ui: &mut Ui,
     blue_engine_args: &mut BlueEngineArgs, window: &Window) -> Option<bool>
 {
@@ -1661,13 +1668,13 @@ fn new_object_window(flameobject_settings: &mut flameobject::Settings, projects:
         // Create or Cancel buttons
         ui.horizontal(|ui|
         {
-            if ui.button(format!("{} Cancel", emojis.cancel)).clicked()
+            if ui.button(format!("{} Cancel", EMOJIS.cancel)).clicked()
             //|| ui.input(|i| i.key_pressed(egui::Key::Escape))
             || blue_engine_args.input.key_pressed(KeyCode::Escape)
             {
                 action_button = Some(false);
             }
-            if ui.button(format!("{} Create", emojis.addition.plus)).clicked()
+            if ui.button(format!("{} Create", EMOJIS.addition.plus)).clicked()
             //|| ui.input(|i| i.key_pressed(egui::Key::Enter))
             || blue_engine_args.input.key_pressed(KeyCode::Enter)
             {

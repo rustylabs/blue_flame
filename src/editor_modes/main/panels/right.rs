@@ -1,7 +1,7 @@
 use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
 use blue_engine::{header::KeyCode, Camera};
 use blue_engine::Window;
-use blue_flame_common::emojis::Emojis;
+use blue_flame_common::emojis::EMOJIS;
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use crate::{AlertWindow, BlueEngineArgs, Blueprint, EditorSettings, FilePaths, GameEditorArgs, MouseFunctions, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES,
 };
@@ -73,7 +73,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             ui.label("Save location:");
             //ui.add(egui::TextEdit::singleline(&mut game_editor_args.filepaths.current_scene));
             crate::directory_singleline(&mut game_editor_args.filepaths.current_scene,
-                Some(game_editor_args.current_project_dir), FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.scene), true, ui, game_editor_args.emojis);
+                Some(game_editor_args.current_project_dir), FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.scene), true, ui);
             if ui.button("Invert filepath type").clicked()
             {
                 game_editor_args.filepaths.current_scene = crate::invert_pathtype(&game_editor_args.filepaths.current_scene, &game_editor_args.current_project_dir);
@@ -141,10 +141,10 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             //ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
             ui.label("Save current shape as a blueprint");
             crate::directory_singleline(&mut blueprint.save_file_path, Some(game_editor_args.current_project_dir),
-            FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.blueprint), true, ui, game_editor_args.emojis);
+            FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.blueprint), true, ui);
 
             // blue print save button
-            if ui.button(format!("{} Save current object as blueprint", game_editor_args.emojis.save)).clicked()
+            if ui.button(format!("{} Save current object as blueprint", EMOJIS.save)).clicked()
             {
                 if scene.flameobjects.len() > 0
                 {
@@ -160,7 +160,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         {
             if let ViewModes::Objects = game_editor_args.viewmode
             {
-                if ui.button(format!("{} Delete object", game_editor_args.emojis.trash)).clicked()
+                if ui.button(format!("{} Delete object", EMOJIS.trash)).clicked()
                 || blue_engine_args.input.key_pressed(KeyCode::KeyX) && *game_editor_args.enable_shortcuts == true
                 {
                     scene.undo_redo.save_action(crate::undo_redo::Action::Delete(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].copy()), &editor_settings);
@@ -200,7 +200,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             }
             else if let ViewModes::Scenes = game_editor_args.viewmode
             {
-                if ui.button(format!("{} Delete scene", game_editor_args.emojis.trash)).clicked()
+                if ui.button(format!("{} Delete scene", EMOJIS.trash)).clicked()
                 {
                 }
             }
