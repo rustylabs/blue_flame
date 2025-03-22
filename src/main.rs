@@ -1258,6 +1258,8 @@ fn right_panel_flameobject_settings(
     window: &Window,
 )
 {
+    use blue_flame_common::structures::flameobject::{Shape2D3DSepcificSettings::D2,
+        shape_2d_3d_specific_settings::shape_2d_settings::{Shape2DSettings, AnimatedSprites}, Texture};
     //let mut item_clicked = false;
     /*
     fn create_newobject_labelchange(flameobject_settings: &mut flameobject::Settings, enable_shortcuts: &mut bool, label_backup: &mut String,
@@ -1329,48 +1331,154 @@ fn right_panel_flameobject_settings(
 
     
     ui.separator();
+
+    ui.label("TextureMode");
     
     ui.horizontal(|ui|
     {
-        ui.label("TextureMode");
-        if ui.button(format!("{} New sprite", EMOJIS.addition.plus)).clicked()
+        ui.label("Location of Texture");
+        // Only show this if we are in 2D mode
+        for project in projects.iter()
         {
-
+            if project.status == true
+            {
+                if let crate::radio_options::GameTypeDimensions::D2 = project.game_type
+                {
+                    if ui.button(format!("{} New sprite for animation", EMOJIS.addition.plus)).clicked()
+                    {
+                        if let D2(Shape2DSettings{ref mut animated_sprites}) = flameobject_settings.shape_2d_3d_specific_settings
+                        {
+                            // If no animated sprites (i.e. multiple sprites/textures) create it then
+                            if let None = animated_sprites.sprites
+                            {
+                                animated_sprites.sprites = Some(vec![Texture::init()]);
+                                //flameobject_settings.shape_2d_3d_specific_settings = D2(Shape2DSettings{animated_sprites: Some(vec![Texture::init()])});
+                            }
+                            // Push another value into it
+                            else if let Some(ref mut sprites) = animated_sprites.sprites
+                            {
+                                sprites.push(Texture::init());
+                            }
+                        }
+                    }
+                }
+            }
         }
     });
-    ui.label("Location of Texture");
+
     //let response = ui.add(egui::TextEdit::singleline(&mut flameobject_settings.texture.file_location));
-    let response = directory_singleline(&mut flameobject_settings.texture.file_location,
-        Some(game_editor_args.current_project_dir), radio_options::FilePickerMode::OpenFile, true, ui);
-    if response.0.changed() || response.1 == true
+    // Shows primary sprite/texture
+
+    let mut response = None;
+    ui.horizontal(|ui|
     {
-        *game_editor_args.enable_shortcuts = false;
-        blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args);
-    }
-    if ui.button("Invert filepath type").clicked()
+        response = Some(directory_singleline(&mut flameobject_settings.texture.file_location,
+            Some(game_editor_args.current_project_dir), radio_options::FilePickerMode::OpenFile, true, ui));
+        
+        // Clear texture field
+        if ui.button(format!("{}", EMOJIS.trash)).clicked()
+        {
+            flameobject_settings.texture.file_location = String::new();
+        }
+    });
+    
+    // For sprites/animations
+    if let D2(Shape2DSettings{ref mut animated_sprites}) = flameobject_settings.shape_2d_3d_specific_settings
     {
-        flameobject_settings.texture.file_location = invert_pathtype(&flameobject_settings.texture.file_location, &game_editor_args.current_project_dir);
+        let mut remove_idx: Option<usize> = None;
+        if let Some(ref mut sprites) = animated_sprites.sprites
+        {
+            ui.separator();
+            ui.label("Animation control");
+
+            // Show rest of animated sprites/textures
+            for (i, sprite) in sprites.iter_mut().enumerate()
+            {
+                ui.horizontal(|ui|
+                {
+                    directory_singleline(&mut sprite.file_location,
+                        Some(game_editor_args.current_project_dir), radio_options::FilePickerMode::OpenFile, true, ui);
+
+                    // Delete the animated sprite
+                    if ui.button(format!("{}", EMOJIS.trash)).clicked()
+                    {
+                        remove_idx = Some(i);
+                    }
+                });
+            }
+
+            if let Some(idx) = remove_idx
+            {
+                sprites.remove(idx);
+            }
+
+            // Shows animation speed the user wishes to set it at
+            ui.horizontal(|ui|
+            {
+                ui.label("Animation speed: ");
+                ui.add(egui::DragValue::new(&mut animated_sprites.animation_speed).speed(editor_settings.slider_speed));
+            });
+        }
     }
 
-    // Save texture change to undo_redo after clicking off text field
-    //if blue_engine_args.input.mouse_pressed(0) || response.0.lost_focus()
-    if response.0.lost_focus() || response.1 == true
+    if let Some(response) = response
     {
-        //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings.clone(), flameobject_selected_parent_idx)));
-        // If label has been modified after clicking off the field do something
-        // Save history to undo_redo()
-        if flameobject_settings.texture.file_location != game_editor_args.string_backups.texture
+        if response.0.changed() || response.1 == true
         {
-            change_texture(flameobject_settings, game_editor_args.string_backups, game_editor_args.widget_functions, undo_redo, flameobject_id, editor_settings)
+            *game_editor_args.enable_shortcuts = false;
+            blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args);
         }
-        /*
-        if flameobject_settings.texture.file_location != string_backups.texture
+    
+        // Save texture change to undo_redo after clicking off text field
+        //if blue_engine_args.input.mouse_pressed(0) || response.0.lost_focus()
+        if response.0.lost_focus() || response.1 == true
         {
-            let mut flameobject_copyover = flameobject_settings.clone();
-            flameobject_copyover.texture.file_location = string_backups.texture.clone();
-            undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover, flameobject_settings.clone(), flameobject_id)), editor_settings);
+            //undo_redo.save_action(undo_redo::Action::Update((flameobject_settings.clone(), flameobject_selected_parent_idx)));
+            // If label has been modified after clicking off the field do something
+            // Save history to undo_redo()
+            if flameobject_settings.texture.file_location != game_editor_args.string_backups.texture
+            {
+                change_texture(flameobject_settings, game_editor_args.string_backups, game_editor_args.widget_functions, undo_redo, flameobject_id, editor_settings)
+            }
+            /*
+            if flameobject_settings.texture.file_location != string_backups.texture
+            {
+                let mut flameobject_copyover = flameobject_settings.clone();
+                flameobject_copyover.texture.file_location = string_backups.texture.clone();
+                undo_redo.save_action(undo_redo::Action::Update((flameobject_copyover, flameobject_settings.clone(), flameobject_id)), editor_settings);
+            }
+            */
+        }
+    }
+
+
+
+
+    // Similar to code above but for multiple sprite/textures
+    /*
+    for (i, texture_file_location) in flameobject_settings.texture.file_location.iter_mut().enumerate()
+    {
+        // Skip first entry as we are already doing this above
+        if i == 0 {continue;}
+
+        directory_singleline(texture_file_location,
+            Some(game_editor_args.current_project_dir), radio_options::FilePickerMode::OpenFile, true, ui);
+    }
+    */
+    if ui.button("Invert filepath type").clicked()
+    {
+        /*
+        for texture_file_location in flameobject_settings.texture.file_location.iter_mut()
+        {
+            *texture_file_location = invert_pathtype(texture_file_location, &game_editor_args.current_project_dir);
         }
         */
+    }
+
+    // If we have animated sprites (more than one textures show additional options such as speed of sprite etc)
+    if flameobject_settings.texture.file_location.len() > 0
+    {
+
     }
 
     // Radio buttons for texturemodes
@@ -1421,7 +1529,7 @@ fn right_panel_flameobject_settings(
             if let Some(WhatChanged::Color) = game_editor_args.widget_functions.has_changed
             {
                 println!("lost focus color");
-                if let Option::Some(ref value) = game_editor_args.widget_functions.flameobject_old
+                if let Some(ref value) = game_editor_args.widget_functions.flameobject_old
                 {
                     undo_redo.save_action(undo_redo::Action::Update((value.clone(), flameobject_settings.clone(), flameobject_id)), editor_settings);
                     game_editor_args.widget_functions.flameobject_old = Some(flameobject_settings.clone());
