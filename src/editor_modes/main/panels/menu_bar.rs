@@ -3,7 +3,7 @@ use std::f32::consts::E;
 use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
 use blue_engine::{header::KeyCode, Camera};
 use blue_engine::Window;
-use blue_flame_common::{emojis::EMOJIS, structures::GameEditorArgs};
+use blue_flame_common::{emojis::EMOJIS, structures::structures::GameEditorArgs};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, AlertWindow, BlueEngineArgs, EditorSettings,
     MouseFunctions,

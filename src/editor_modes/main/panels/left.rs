@@ -3,7 +3,8 @@ use std::{fs::{self, DirEntry}, path::PathBuf};
 use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
 use blue_engine::header::KeyCode;
 use blue_engine::Window;
-use blue_flame_common::{emojis::EMOJIS, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode, structures::{FileExplorerContent, MouseFunctions}, undo_redo, EditorSettings};
+use blue_flame_common::{EditorSettings, undo_redo, emojis::EMOJIS, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode,
+    structures::{file_explorer::FileExplorerContent, structures::MouseFunctions}};
 use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
 use serde::de::value;
 use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES

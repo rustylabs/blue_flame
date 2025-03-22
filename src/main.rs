@@ -1,9 +1,11 @@
 use blue_engine::{header::{Engine, ObjectStorage, PowerPreference, Renderer, WindowDescriptor}, KeyCode, Window};
 use blue_engine_utilities::egui::egui::{self, Context, Response, Ui};
-use blue_flame_common::{db::scene, emojis::EMOJIS, filepath_handling, structures::{flameobject::{self, Flameobject}, project_config::ProjectConfig, scene::Scene, BlueEngineArgs, FileExplorerContent, FilePaths, GameEditorArgs, MouseFunctions, Project, WhatChanged, WidgetFunctions, WindowSize}};
+use blue_flame_common::{db::scene, emojis::EMOJIS, filepath_handling, structures::{file_explorer::{FileExplorerContent, FilePaths}, flameobject::{self, Flameobject},
+structures::{project_config::ProjectConfig, scene::Scene, BlueEngineArgs, GameEditorArgs, MouseFunctions, Project, WhatChanged, WidgetFunctions, WindowSize}}};
+
 use blue_flame_common::radio_options::{ViewModes, object_type::ObjectType, ObjectMouseMovement};
 use blue_flame_common::undo_redo;
-use blue_flame_common::structures::StringBackups;
+use blue_flame_common::structures::structures::StringBackups;
 use editor_mode_variables::EditorMode;
 use rfd::FileDialog;
 use serde::de::value;
@@ -1349,15 +1351,15 @@ fn right_panel_flameobject_settings(
                         if let D2(Shape2DSettings{ref mut animated_sprites}) = flameobject_settings.shape_2d_3d_specific_settings
                         {
                             // If no animated sprites (i.e. multiple sprites/textures) create it then
-                            if let None = animated_sprites.sprites
+                            if let None = animated_sprites
                             {
-                                animated_sprites.sprites = Some(vec![Texture::init()]);
+                                *animated_sprites = Some(AnimatedSprites::init());
                                 //flameobject_settings.shape_2d_3d_specific_settings = D2(Shape2DSettings{animated_sprites: Some(vec![Texture::init()])});
                             }
                             // Push another value into it
-                            else if let Some(ref mut sprites) = animated_sprites.sprites
+                            else if let Some(animated_sprites) = animated_sprites
                             {
-                                sprites.push(Texture::init());
+                                animated_sprites.sprites.push(Texture::init());
                             }
                         }
                     }
@@ -1386,13 +1388,13 @@ fn right_panel_flameobject_settings(
     if let D2(Shape2DSettings{ref mut animated_sprites}) = flameobject_settings.shape_2d_3d_specific_settings
     {
         let mut remove_idx: Option<usize> = None;
-        if let Some(ref mut sprites) = animated_sprites.sprites
+        if let Some(animated_sprites) = animated_sprites
         {
             ui.separator();
             ui.label("Animation control");
 
             // Show rest of animated sprites/textures
-            for (i, sprite) in sprites.iter_mut().enumerate()
+            for (i, sprite) in animated_sprites.sprites.iter_mut().enumerate()
             {
                 ui.horizontal(|ui|
                 {
@@ -1409,7 +1411,7 @@ fn right_panel_flameobject_settings(
 
             if let Some(idx) = remove_idx
             {
-                sprites.remove(idx);
+                animated_sprites.sprites.remove(idx);
             }
 
             // Shows animation speed the user wishes to set it at
@@ -1419,6 +1421,24 @@ fn right_panel_flameobject_settings(
                 ui.add(egui::DragValue::new(&mut animated_sprites.animation_speed).speed(editor_settings.slider_speed));
             });
         }
+
+        {
+            let mut make_animated_sprites_none = false;
+            if let Some(animated_sprites) = animated_sprites
+            {
+                if animated_sprites.sprites.len() < 1
+                {
+                    make_animated_sprites_none = true;
+                }
+            }
+
+            if make_animated_sprites_none == true
+            {
+                *animated_sprites = None;
+            }
+        }
+
+ 
     }
 
     if let Some(response) = response
