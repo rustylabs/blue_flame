@@ -3,11 +3,17 @@ use std::{process::Command, path::PathBuf};
 use std::io::Write; 
 
 use blue_engine_utilities::egui::{egui, egui:: Context};
-use blue_engine::header::KeyCode;
-use blue_engine::Window;
-use blue_flame_common::emojis::EMOJIS;
+use blue_engine::
+{
+    header::KeyCode,
+    Window,
+};
+use blue_flame_common::
+{
+    structures::emojis::EMOJIS,
+    radio_options::FilePickerMode,
+};
 use crate::{Scene, WindowSize, Project, FilePaths, ViewModes, BlueEngineArgs, GameEditorArgs, editor_mode_variables};
-use blue_flame_common::radio_options::FilePickerMode;
 trait VecExtensions
 {
     fn return_selected_dir(&self) -> Option<&String>;

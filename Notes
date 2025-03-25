@@ -1,0 +1,39 @@
+Useful code for later:
+
+trait VecExtensions
+{
+    fn return_selected_dir(&self) -> Option<&String>;
+    fn change_choice(&mut self, choice_true: u16);
+}
+
+
+impl VecExtensions for Vec<Project>
+{
+    fn return_selected_dir(&self) -> Option<&String>
+    {
+        for list in self.iter()
+        {
+            if list.status == true
+            {
+                return Some(&list.dir);
+            }
+        }
+        return None;
+    }
+    fn change_choice(&mut self, choice_true: u16)
+    {
+        for (i, item) in self.iter_mut().enumerate()
+        {
+            if i as u16 == choice_true
+            {
+                item.status = true;
+                //*current_project_dir = item.dir.clone();
+            }
+            else
+            {
+                item.status = false;
+            }
+        }
+    }
+    
+}

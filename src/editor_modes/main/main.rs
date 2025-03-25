@@ -1,11 +1,5 @@
-use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
-use blue_engine::header::KeyCode;
 use blue_engine::Window;
-use blue_flame_common::{emojis::Emojis, structures::flameobject};
-use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
-use crate::{Scene, WindowSize, Project, FilePaths, StringBackups, WidgetFunctions, ProjectConfig, ViewModes, AlertWindow, BlueEngineArgs, EditorSettings,
-    MouseFunctions, Blueprint, GameEditorArgs, editor_mode_variables
-};
+use crate::{Scene, Project, FilePaths, ProjectConfig, ViewModes, AlertWindow, BlueEngineArgs, EditorSettings, Blueprint, GameEditorArgs, editor_mode_variables};
 
 use crate::editor_modes::main::panels;
 
@@ -28,7 +22,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 
     panels::menu_bar::main(alert_window, blue_engine_args, game_editor_args, scene);
     panels::left::main(scene, projects, blueprint, sub_editor_mode, game_editor_args, editor_settings, blue_engine_args, window);
-    panels::right::main(scene, projects, blueprint, editor_settings, game_editor_args, blue_engine_args, window);
+    panels::right::main::main(scene, projects, blueprint, editor_settings, game_editor_args, blue_engine_args, window);
 
 
 
@@ -39,7 +33,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             match crate::right_click_menu(game_editor_args.mouse_functions, blue_engine_args.input, blue_engine_args.ctx)
             {
                 Some(object_type_captured) => crate::CreateNewFlameObject::flameobject(Some(&object_type_captured), scene,
-                    &mut game_editor_args.widget_functions, game_editor_args.string_backups, &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, None),
+                    &mut game_editor_args.widget_functions, &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, None),
                 None => {},
             }
         }
@@ -50,7 +44,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 }
 
 // Used when choosing different scenes
-pub fn load_scene_by_file(scene: &mut Scene, current_project_dir: &str, filepaths: &mut FilePaths, string_backups_label: &mut String,
+pub fn load_scene_by_file(scene: &mut Scene, current_project_dir: &str, filepaths: &mut FilePaths,
     project_config: &mut ProjectConfig,
     blue_engine_args: &mut BlueEngineArgs, window: &Window)
 {
@@ -60,13 +54,5 @@ pub fn load_scene_by_file(scene: &mut Scene, current_project_dir: &str, filepath
         project_config.last_scene_filepath = filepaths.current_scene.clone();
         crate::db::project_config::save(project_config, filepaths, &current_project_dir);
 
-        // Assign string backups variable with the current selected flameobject
-        for flameobject in scene.flameobjects.iter()
-        {
-            if flameobject.selected == true
-            {
-                *string_backups_label = flameobject.settings.label.clone();
-            }
-        }
     }
 }

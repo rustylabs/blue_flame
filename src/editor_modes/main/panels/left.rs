@@ -1,22 +1,12 @@
-use std::{fs::{self, DirEntry}, path::PathBuf};
+use std::{fs, path::PathBuf};
 
-use blue_engine_utilities::egui::{egui, egui::{Ui, InputState, Context}};
-use blue_engine::header::KeyCode;
-use blue_engine::Window;
-use blue_flame_common::{EditorSettings, undo_redo, emojis::EMOJIS, filepath_handling::fullpath_to_relativepath, radio_options::FilePickerMode,
-    structures::{file_explorer::FileExplorerContent, structures::MouseFunctions}};
-use blue_flame_common::structures::{flameobject::Flameobject, flameobject::Settings};
-use serde::de::value;
-use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, StringBackups, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
+use blue_engine_utilities::egui::{egui, egui::Ui};
+use blue_engine::{Window, header::KeyCode};
+use blue_flame_common::{EditorSettings, radio_options::FilePickerMode,
+    structures::{flameobject::Flameobject, emojis::EMOJIS, file_explorer::FileExplorerContent, structures::MouseFunctions}};
+use crate::{editor_mode_variables, editor_modes::main::main::load_scene_by_file, BlueEngineArgs, Blueprint, FilePaths, GameEditorArgs, Project, ProjectConfig, Scene, ViewModes, WidgetFunctions, WindowSize, FILE_EXTENSION_NAMES
 };
-use crate::egui::Vec2;
-/*
-pub fn main(scene: &mut Scene, blueprint.flameobject: &mut Option<Settings>, previous_viewmode: &mut ViewModes,
-    projects: &mut Vec<Project>, filepaths: &mut FilePaths, string_backups: &mut StringBackups, EMOJIS: &Emojis, blueprint_savefolderpath: &mut String,
-   widget_functions: &mut WidgetFunctions, project_config: &mut ProjectConfig, current_project_dir: &mut String, editor_modes: &mut EditorModes,
-   window_size: &WindowSize,
-   blue_engine_args: &mut BlueEngineArgs, window: &Window)
-*/
+
 pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint, sub_editor_mode: &mut editor_mode_variables::main::Main, game_editor_args: &mut GameEditorArgs,
     editor_settings: &EditorSettings,
     blue_engine_args: &mut BlueEngineArgs, window: &Window)
@@ -106,59 +96,6 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         {
             if let ViewModes::Objects = game_editor_args.viewmode
             {
-                // Create new flameobject
-                if ui.button(format!("{} Create object", EMOJIS.addition.plus)).clicked()
-                //|| ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.shift))
-                //|| input.key_held(KeyCode::LShift) && input.key_pressed(KeyCode::A)
-                //&& sub_editor_mode.create_new_object_window == false
-                && sub_editor_mode.create_new_object_window == false
-                {
-                    sub_editor_mode.create_new_object_window = true;
-
-                    let len = scene.flameobjects.len() as u16;
-
-                    scene.flameobjects.push(Flameobject::init(len, None));
-                    Flameobject::change_choice(&mut scene.flameobjects, len);
-                    
-                }
-
-                // Determines to display "create new object" window
-                if sub_editor_mode.create_new_object_window == true
-                {
-                    let mut cancel_creation_object = false; // If user presses cancel then pop from flameobjects
-                    for (i, flameobject) in scene.flameobjects.iter_mut().enumerate()
-                    {
-                        if flameobject.selected == true
-                        {
-                            match crate::new_object_window(&mut flameobject.settings, projects, &game_editor_args.window_size, ui, blue_engine_args, window)
-                            {
-                                Some(action) =>
-                                {
-                                    match action
-                                    {
-                                        // ⛔ Cancel
-                                        false => cancel_creation_object = true,
-                                        // ➕ Create
-                                        true =>
-                                        {
-                                            scene.flameobject_selected_parent_idx = i as u16;
-                                            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(projects), blue_engine_args, window);
-                                            sub_editor_mode.create_new_object_window = false;
-                                            break;
-                                        }
-                                    }
-                                },
-                                None => {}
-                            }
-                        }
-                    }
-                    // If user presses cancel then pop from flameobjects
-                    if cancel_creation_object == true
-                    {
-                        scene.flameobjects.pop();
-                        sub_editor_mode.create_new_object_window = false;
-                    }
-                }
 
                 if ui.button(format!("{} Save current scene", EMOJIS.save)).clicked()
                 || blue_engine_args.input.key_held(KeyCode::ControlLeft) && blue_engine_args.input.key_pressed(KeyCode::KeyS)
@@ -199,34 +136,6 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             }
             else if let ViewModes::Blueprints = game_editor_args.viewmode
             {
-                if ui.button(format!("{} Create object", EMOJIS.addition.plus)).clicked()
-                {
-                    blueprint.flameobject = Some(blue_flame_common::structures::flameobject::Settings::init(0, None));
-                    sub_editor_mode.create_new_object_window = true;
-                }
-                if sub_editor_mode.create_new_object_window == true
-                {
-                    let mut cancel_creation_object = false; // If user presses cancel then pop from flameobjects
-                    match crate::new_object_window(blueprint.flameobject.as_mut().unwrap(), projects, game_editor_args.window_size,
-                    ui, blue_engine_args, window)
-                    {
-                        Some(action) =>
-                        {
-                            match action
-                            {
-                                // ⛔ Cancel
-                                false => sub_editor_mode.create_new_object_window = false,
-                                // ➕ Create
-                                true =>
-                                {
-                                    blue_flame_common::object_actions::create_shape(blueprint.flameobject.as_ref().unwrap(), &Project::selected_dir(projects), blue_engine_args, window);
-                                    sub_editor_mode.create_new_object_window = false;
-                                }
-                            }
-                        },
-                        None => {}
-                    }
-                }
                 // WHen user preses save for blueprint object, any regular object inherited from blueprint and its changes will be affected
                 // and also saves blueprint to its current assigned dir
                 // Top left hand side when in blueprint view mode
@@ -310,7 +219,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                             &Project::selected_dir(&projects), blue_engine_args, window);
                         */
                         crate::CreateNewFlameObject::flameobject(None,
-                            scene, game_editor_args.widget_functions, game_editor_args.string_backups,
+                            scene, game_editor_args.widget_functions,
                             &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, Some(value))
                     }
                     None => println!("None in blueprint.flameobject"),
@@ -341,7 +250,6 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                         if !blue_engine_args.input.key_held(KeyCode::ShiftLeft)
                         {
                             //Flameobject::change_choice(&mut scene.flameobjects, i as u16);
-                            game_editor_args.string_backups.label = flameobject.settings.label.clone();
                             scene.flameobject_selected_parent_idx = i as u16;
                             change_choice = true;
                         }
@@ -555,7 +463,7 @@ impl FileExplorerWidget
 
             actually_display(scene, blueprint, file_explorer_contents,
                 editor_settings, game_editor_args.filepaths,
-                game_editor_args.project_config, &mut change_selection, current_project_dir, game_editor_args.string_backups, sub_editor_mode, mouse_functions,
+                game_editor_args.project_config, &mut change_selection, current_project_dir, sub_editor_mode, mouse_functions,
                 game_editor_args.widget_functions, 
                 window_size, blue_engine_args, ui, window);
 
@@ -818,7 +726,6 @@ impl FileExplorerWidget
             project_config: &mut ProjectConfig,
             change_selection: &mut ChangeSelection,
             current_project_dir: &str,
-            string_backups: &mut StringBackups,
             sub_editor_mode: &mut editor_mode_variables::main::Main,
             mouse_functions: &mut MouseFunctions,
             widget_functions: &mut WidgetFunctions,
@@ -941,7 +848,7 @@ impl FileExplorerWidget
                                 if selected_file.ends_with(FILE_EXTENSION_NAMES.scene)
                                 {
                                     filepaths.current_scene = selected_file;
-                                    load_scene_by_file(scene, current_project_dir, filepaths, &mut string_backups.label, 
+                                    load_scene_by_file(scene, current_project_dir, filepaths, 
                                         project_config, blue_engine_args, window);
                                 }
                                 // Blueprint
@@ -954,7 +861,7 @@ impl FileExplorerWidget
                                         false, blue_engine_args, window);
     
                                     crate::CreateNewFlameObject::flameobject(None,
-                                    scene, widget_functions, string_backups,
+                                    scene, widget_functions,
                                     current_project_dir, &editor_settings, blue_engine_args, window, blueprint.flameobject.as_ref())
                                 }
                                 // Texture
@@ -983,13 +890,14 @@ impl FileExplorerWidget
                                                         blue_engine_args);
                                                     //println!("flameobject.settings.texture.file_location: {}", flameobject.settings.texture.file_location);
                                                     println!("flameobject_selected_parent_idx: {}", scene.flameobject_selected_parent_idx);
+                                                    /*
                                                     crate::change_texture(
                                                         &flameobject.settings,
-                                                        string_backups,
                                                         widget_functions,
                                                         &mut scene.undo_redo,
                                                         flameobject.id,
                                                         editor_settings);
+                                                    */
                                                 }
                                             }
                                             
@@ -1005,7 +913,7 @@ impl FileExplorerWidget
                     {
                         actually_display(scene, blueprint, &mut content.childrens_content,
                             editor_settings, filepaths,
-                            project_config, change_selection, current_project_dir, string_backups, sub_editor_mode, mouse_functions,
+                            project_config, change_selection, current_project_dir, sub_editor_mode, mouse_functions,
                             widget_functions, window_size, blue_engine_args, ui, window);
                     }
                 }
