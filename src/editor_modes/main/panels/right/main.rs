@@ -195,6 +195,8 @@ fn right_panel_flameobject_settings(
     
 
     // Object name
+    ui.label(format!("label_key: {}", flameobject_settings.label_key));
+    
     ui.add(egui::TextEdit::singleline(&mut flameobject_settings.label));
 
 

@@ -10,7 +10,7 @@ use blue_flame_common::
     filepath_handling,
     structures::
     {
-        emojis::EMOJIS, file_explorer::{FileExplorerContent, FilePaths}, flameobject::{self, Flameobject},
+        emojis::EMOJIS, file_explorer::FilePaths, flameobject::{self, Flameobject},
         structures::
         {
             project_config::ProjectConfig, scene::Scene, BlueEngineArgs, GameEditorArgs, MouseFunctions, Project, WhatChanged, WidgetFunctions, WindowSize
@@ -565,7 +565,6 @@ pub const FILE_EXTENSION_NAMES: FileExtensionNames = FileExtensionNames
 //const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
 {
-    let mut file_explorer_contents: (bool, Option<Vec<FileExplorerContent>>) = (false, None);
 
     //use editor_mode_variables::EditorMode;
 
@@ -738,7 +737,6 @@ fn main()
                 widget_functions: &mut widget_functions,
                 project_config: &mut project_config,
                 current_project_dir: &mut current_project_dir,
-                file_explorer_contents: &mut file_explorer_contents,
                 //editor_modes: &mut editor_modes,
                 window_size: &window_size,
                 viewmode: &mut viewmode,
