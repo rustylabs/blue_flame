@@ -41,7 +41,9 @@ struct CreateNewFlameObject;
 impl CreateNewFlameObject
 {
     pub fn flameobject(object_type_captured: Option<&ObjectType>, scene: &mut Scene, widget_functions: &mut WidgetFunctions, project_dir: &str,
-        editor_settings: &EditorSettings, blue_engine_args: &mut BlueEngineArgs, window: &Window, blueprint: Option<&flameobject::Settings>)
+        editor_settings: &EditorSettings, blue_engine_args: &mut BlueEngineArgs, window: &Window, blueprint: Option<&flameobject::Settings>,
+        child_flameobject_selected_idx: Option<usize>,
+    )
     {
         let len = scene.flameobjects.len() as u16;
         //let id = Flameobject::get_available_id(&mut scene.flameobjects);
@@ -49,17 +51,35 @@ impl CreateNewFlameObject
         scene.flameobject_highest_id += 1;
         //println!("id: {}", id);
 
+        // If this is a child object we are creating
+        if let Some(child_flameobject_selected_idx) = child_flameobject_selected_idx
+        {
+            if let None = scene.flameobjects[child_flameobject_selected_idx].child_flameobject
+            {
+                scene.flameobjects[child_flameobject_selected_idx].child_flameobject = Some(vec![Flameobject::init(id, None, false)])
+            }
+            else if let Some(ref mut child_flameobject) = scene.flameobjects[child_flameobject_selected_idx].child_flameobject
+            {
+                child_flameobject.push(Flameobject::init(id, None, false));
+            }
+        }
+
         match blueprint
         {
             // Is blueprint
             Some(value) =>
             {
-                scene.flameobjects.push(Flameobject::init(id, None));
+                let tmp_label_key;
+
+                scene.flameobjects.push(Flameobject::init(id, None, false));
+                tmp_label_key = scene.flameobjects[len as usize].settings.label_key.clone(); // Gets the object label_key
                 scene.flameobjects[len as usize].settings = value.clone();
-                scene.flameobjects[len as usize].settings.blueprint_key = Some((String::from(format!("{}", value.label)), true));
+                scene.flameobjects[len as usize].settings.label_key = tmp_label_key; // Sets it back to the original object's label_key to avoid double label_key issues
+                scene.flameobjects[len as usize].settings.blueprint_key = Some((String::from(format!("{}", value.label_key)), true));
+                //scene.flameobjects[len as usize].settings.label_key = 
             }
             // If new object then do regular
-            None => scene.flameobjects.push(Flameobject::init(id, Some(*object_type_captured.unwrap()))),
+            None => scene.flameobjects.push(Flameobject::init(id, Some(*object_type_captured.unwrap()), false)),
         }
 
         // Check if label is the same then change label name
@@ -130,7 +150,7 @@ impl CreateNewFlameObject
         blue_engine_args: &mut BlueEngineArgs, window: &Window)
     {
         //flameobject_blueprint = Some(Flameobject::init(len, Some(*object_type_captured)));
-        *flameobject_blueprint = Some(flameobject::Settings::init(0, Some(*object_type_captured)));
+        *flameobject_blueprint = Some(flameobject::Settings::init(0, Some(*object_type_captured), true));
         blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, blue_engine_args, window);
     }
 }
@@ -552,7 +572,7 @@ pub mod editor_mode_variables
 // Flameobject blueprint stuff
 pub struct Blueprint
 {
-    flameobject: Option<flameobject::Settings>,
+    flameobject_settings: Option<flameobject::Settings>,
     save_file_path: String,
 }
 
@@ -609,12 +629,11 @@ fn main()
     // Used for flameobject's blueprints
     let mut blueprint = Blueprint
     {
-        flameobject: None,
+        flameobject_settings: None,
         save_file_path: String::new(),
     };
 
     let mut viewmode = ViewModes::Objects;
-    let mut previous_viewmode = viewmode.clone();
     //let mut previous_viewmode = editor_modes.main.1.clone();
 
     // i.e. Are we in projects or main scene mode?
@@ -740,7 +759,6 @@ fn main()
                 //editor_modes: &mut editor_modes,
                 window_size: &window_size,
                 viewmode: &mut viewmode,
-                previous_viewmode: &mut previous_viewmode,
                 mouse_functions: &mut mouse_functions,
                 enable_shortcuts: &mut enable_shortcuts,
             };
@@ -766,14 +784,14 @@ fn main()
             }
             // After passing the projects screen, load the main scene
             //else if editor_modes.main.0 == true
-            else if let EditorMode::Main(ref mut sub_editor_mode) = editor_mode
+            //else if let EditorMode::Main(ref mut sub_editor_mode) = editor_mode
+            else if let EditorMode::Main(_) = editor_mode
             {
                 //struct AlertWindow{alert_window: }
                 if editor_modes::main::main::main(
                     &mut scene,
                     &mut projects,
                     &mut blueprint,
-                    sub_editor_mode,
                     &editor_settings,
                     &mut game_editor_args,
                     &mut alert_window,
@@ -898,7 +916,8 @@ fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::I
         use blue_engine_utilities::egui::egui;
 
         //egui::Area::new("right click").fixed_pos(egui::pos2(axis.x, axis.y)).show(ctx, |ui|
-        egui::Area::new("right click".into()).fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0, mouse_functions.captured_coordinates.1)).show(ctx, |ui|
+        //egui::Area::new("right click".into()).fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0, mouse_functions.captured_coordinates.1)).show(ctx, |ui|
+        egui::Area::new("right click".into()).fixed_pos(egui::pos2(960f32/2f32, 720f32/2f32)).show(ctx, |ui|
         {
             ui.visuals_mut().button_frame = false;
             egui::Frame::menu(&egui::Style::default()).show(ui, |ui|
@@ -913,7 +932,8 @@ fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::I
                 if mouse_functions.object_type_captured != None
                 {
                     const SUBMENU_DISTANCE_OFFSET: f32 = 60f32;
-                    egui::Area::new("sub menu".into()).fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0 + SUBMENU_DISTANCE_OFFSET, mouse_functions.captured_coordinates.1)).show(ctx, |ui|
+                    //egui::Area::new("sub menu".into()).fixed_pos(egui::pos2(mouse_functions.captured_coordinates.0 + SUBMENU_DISTANCE_OFFSET, mouse_functions.captured_coordinates.1)).show(ctx, |ui|
+                    egui::Area::new("sub menu".into()).fixed_pos(egui::pos2(960f32/2f32 + SUBMENU_DISTANCE_OFFSET, 720f32/2f32)).show(ctx, |ui|
                     {
                         ui.visuals_mut().button_frame = false;
                         egui::Frame::menu(&egui::Style::default()).show(ui, |ui|

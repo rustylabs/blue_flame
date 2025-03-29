@@ -14,14 +14,14 @@ pub fn main(alert_window: &mut [AlertWindow], scene: &mut Scene, flameobject_blu
     blue_engine_args: &mut BlueEngineArgs, window: &Window
 )
 */
-pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint, sub_editor_mode: &mut editor_mode_variables::main::Main,
+pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blueprint,
     editor_settings: &EditorSettings,
     game_editor_args: &mut GameEditorArgs, alert_window: &mut [AlertWindow], blue_engine_args: &mut BlueEngineArgs, window: &Window) -> bool // Return to change editor_mode
 {
     let change_editor_mode = false;
 
     panels::menu_bar::main(alert_window, blue_engine_args, game_editor_args, scene);
-    panels::left::main(scene, projects, blueprint, sub_editor_mode, game_editor_args, editor_settings, blue_engine_args, window);
+    panels::left::main(scene, projects, blueprint, game_editor_args, editor_settings, blue_engine_args, window);
     panels::right::main::main(scene, projects, blueprint, editor_settings, game_editor_args, blue_engine_args, window);
 
 
@@ -33,7 +33,19 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             match crate::right_click_menu(game_editor_args.mouse_functions, blue_engine_args.input, blue_engine_args.ctx)
             {
                 Some(object_type_captured) => crate::CreateNewFlameObject::flameobject(Some(&object_type_captured), scene,
-                    &mut game_editor_args.widget_functions, &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, None),
+                    &mut game_editor_args.widget_functions, &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, None, 
+                    None),
+                None => {},
+            }
+        }
+    }
+    else if let ViewModes::Blueprints = game_editor_args.viewmode
+    {
+        if *game_editor_args.enable_shortcuts == true
+        {
+            match crate::right_click_menu(game_editor_args.mouse_functions, blue_engine_args.input, blue_engine_args.ctx)
+            {
+                Some(object_type_captured) => crate::CreateNewFlameObject::blueprint(&object_type_captured, &mut blueprint.flameobject_settings, &game_editor_args.current_project_dir, blue_engine_args, window),
                 None => {},
             }
         }

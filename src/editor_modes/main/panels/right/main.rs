@@ -78,7 +78,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
     
             else if let ViewModes::Blueprints = game_editor_args.viewmode
             {
-                match blueprint.flameobject
+                match blueprint.flameobject_settings
                 {
                     Some(ref mut flameobject_settings) => 
                     {
@@ -87,16 +87,6 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                     }
                     None => {}
                 }
-    
-                if *game_editor_args.enable_shortcuts == true
-                {
-                    match crate::right_click_menu(game_editor_args.mouse_functions, blue_engine_args.input, blue_engine_args.ctx)
-                    {
-                        Some(object_type_captured) => crate::CreateNewFlameObject::blueprint(&object_type_captured, &mut blueprint.flameobject, &game_editor_args.current_project_dir, blue_engine_args, window),
-                        None => {},
-                    }
-                }
-    
             }
     
             for _ in 0..2
@@ -118,10 +108,10 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 {
                     if scene.flameobjects.len() > 0
                     {
-                        blueprint.flameobject = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                        blueprint.flameobject_settings = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
                     }
-                    //crate::save_blueprint(&blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir);
-                    crate::db::blueprint::save(&blueprint.flameobject, &blueprint.save_file_path, &game_editor_args.current_project_dir);
+                    //crate::save_blueprint(&blueprint.flameobject_settings, &blueprint.save_file_path, &game_editor_args.current_project_dir);
+                    crate::db::blueprint::save(&blueprint.flameobject_settings, &blueprint.save_file_path, &game_editor_args.current_project_dir);
                 }
             }
     
@@ -133,7 +123,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                     if ui.button(format!("{} Delete object", EMOJIS.trash)).clicked()
                     || blue_engine_args.input.key_pressed(KeyCode::KeyX) && *game_editor_args.enable_shortcuts == true
                     {
-                        scene.undo_redo.save_action(crate::undo_redo::Action::Delete(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].copy()), &editor_settings);
+                        //scene.undo_redo.save_action(crate::undo_redo::Action::Delete(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].copy()), &editor_settings);
     
                         let mut remove_indexes: Vec<usize> = Vec::new();
                         //let mut copy_over_undoredo: Vec<(flameobject::Flameobject, u16)> = Vec::new();

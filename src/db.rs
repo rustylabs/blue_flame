@@ -15,7 +15,6 @@ pub mod blueprint
 
     pub fn save(flameobject_blueprint: &Option<flameobject::Settings>, filepath: &str, project_dir: &str)
     {
-        println!("Executed");
         match flameobject_blueprint
         {
             Some(value) =>
@@ -33,7 +32,7 @@ pub mod blueprint
     }
 
     pub fn load(flameobject_blueprint: &mut Option<flameobject::Settings>, filepath: &str, project_dir: &str, loadshape_2_scene: bool,
-    /*Game engine shit*/ blue_engine_args: &mut BlueEngineArgs, window: &Window)
+        blue_engine_args: &mut BlueEngineArgs, window: &Window)
     {
         let mut file = match std::fs::File::open(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)))
         {
