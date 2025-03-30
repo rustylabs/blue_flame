@@ -40,29 +40,32 @@ use dirs;
 struct CreateNewFlameObject;
 impl CreateNewFlameObject
 {
+    pub fn child(flameobject: &mut Flameobject, new_id: u16, project_dir: &str, blue_engine_args: &mut BlueEngineArgs, window: &Window)
+    {
+        let len;
+        if let Some(ref mut children) = flameobject.children
+        {
+            children.push(Flameobject::init(new_id, None, false));
+            len = children.len();
+        }
+        else
+        {
+            flameobject.children = Some(vec![Flameobject::init(new_id, None, false)]);
+            len = flameobject.children.as_ref().unwrap().len();
+        }
+
+        blue_flame_common::object_actions::create_shape(&flameobject.children.as_ref().unwrap()[len-1].settings,
+        project_dir, blue_engine_args, window);
+    }
+
     pub fn flameobject(object_type_captured: Option<&ObjectType>, scene: &mut Scene, widget_functions: &mut WidgetFunctions, project_dir: &str,
-        editor_settings: &EditorSettings, blue_engine_args: &mut BlueEngineArgs, window: &Window, blueprint: Option<&flameobject::Settings>,
-        child_flameobject_selected_idx: Option<usize>,
+        blue_engine_args: &mut BlueEngineArgs, window: &Window, blueprint: Option<&flameobject::Settings>,
     )
     {
-        let len = scene.flameobjects.len() as u16;
+        let len = scene.flameobjects.len();
         //let id = Flameobject::get_available_id(&mut scene.flameobjects);
-        let id = scene.flameobject_highest_id;
-        scene.flameobject_highest_id += 1;
+        let id = scene.get_available_id(&scene.flameobjects);
         //println!("id: {}", id);
-
-        // If this is a child object we are creating
-        if let Some(child_flameobject_selected_idx) = child_flameobject_selected_idx
-        {
-            if let None = scene.flameobjects[child_flameobject_selected_idx].child_flameobject
-            {
-                scene.flameobjects[child_flameobject_selected_idx].child_flameobject = Some(vec![Flameobject::init(id, None, false)])
-            }
-            else if let Some(ref mut child_flameobject) = scene.flameobjects[child_flameobject_selected_idx].child_flameobject
-            {
-                child_flameobject.push(Flameobject::init(id, None, false));
-            }
-        }
 
         match blueprint
         {
@@ -78,7 +81,7 @@ impl CreateNewFlameObject
                 scene.flameobjects[len as usize].settings.blueprint_key = Some((String::from(format!("{}", value.label_key)), true));
                 //scene.flameobjects[len as usize].settings.label_key = 
             }
-            // If new object then do regular
+            // If not importing blueprint just do a regular object creation
             None => scene.flameobjects.push(Flameobject::init(id, Some(*object_type_captured.unwrap()), false)),
         }
 
@@ -117,6 +120,7 @@ impl CreateNewFlameObject
         }
         
         Flameobject::change_choice(&mut scene.flameobjects, len);
+        /*
         scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
         scene.undo_redo.save_action(
             undo_redo::Action::Create(
@@ -124,7 +128,8 @@ impl CreateNewFlameObject
                     scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.object_type,
                     scene.flameobjects[scene.flameobject_selected_parent_idx as usize].id)),
                     editor_settings);
-        blue_flame_common::object_actions::create_shape(&scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings, project_dir, blue_engine_args, window);
+        */
+        blue_flame_common::object_actions::create_shape(&scene.flameobjects[len].settings, project_dir, blue_engine_args, window);
         /*
         for (i, flameobject) in scene.flameobjects.iter().enumerate()
         {
@@ -407,10 +412,6 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
     {
         for (i, flameobject) in scene.flameobjects.iter().enumerate()
         {
-            if flameobject.selected == true
-            {
-                scene.flameobject_selected_parent_idx = i as u16;
-            }
             blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(projects), blue_engine_args, window);
         }
         return;
@@ -479,14 +480,17 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             }
             */
 
+            /*
             for (i, flameobject) in scene.flameobjects.iter().enumerate()
             {
                 if flameobject.selected == true {scene.flameobject_selected_parent_idx = i as u16}
             }
+            */
         }
     }
 
     //widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+    /*
     if scene.flameobjects.len() > 0
     {
         game_editor_args.widget_functions.flameobject_old = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
@@ -495,6 +499,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
     {
         game_editor_args.widget_functions.flameobject_old = None;
     }
+    */
 }
 
 
@@ -996,19 +1001,6 @@ fn tab_spaces(tab_spaces_times: u16) -> String
     return tab_spaces;
 }
 
-
-// Determines if any flameobject is selected and then returns true or false
-fn any_flameobject_selected(flameobjects: &[Flameobject]) -> bool
-{
-    for flameobject in flameobjects.iter()
-    {
-        if flameobject.selected == true
-        {
-            return true;
-        }
-    }
-    return false;
-}
 
 fn save_blueprint(flameobject_blueprint: &Option<flameobject::Settings>, folderpath: &str, current_project_dir: &str)
 {

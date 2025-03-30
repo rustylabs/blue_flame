@@ -25,9 +25,10 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         {
             if let ViewModes::Objects = game_editor_args.viewmode
             {
-                if scene.flameobjects.len() > 0 && crate::any_flameobject_selected(&scene.flameobjects)
+                if scene.flameobjects.len() > 0 && scene.get_selected_flameobject_idx(&scene.flameobjects) != None
                 {
-                    let flameobject = &mut scene.flameobjects[scene.flameobject_selected_parent_idx as usize];
+                    let idx = scene.get_selected_flameobject_idx(&scene.flameobjects).unwrap();
+                    let flameobject = &mut scene.flameobjects[idx];
     
                     right_panel_flameobject_settings(
                     &mut flameobject.settings,
@@ -78,14 +79,10 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
     
             else if let ViewModes::Blueprints = game_editor_args.viewmode
             {
-                match blueprint.flameobject_settings
+                if let Some(ref mut flameobject_settings) = blueprint.flameobject_settings
                 {
-                    Some(ref mut flameobject_settings) => 
-                    {
-                        right_panel_flameobject_settings(flameobject_settings, &projects,
-                            editor_settings, game_editor_args, blue_engine_args, ui, window);
-                    }
-                    None => {}
+                    right_panel_flameobject_settings(flameobject_settings, &projects,
+                        editor_settings, game_editor_args, blue_engine_args, ui, window);
                 }
             }
     
@@ -97,21 +94,22 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             // Blue print save related stuff
             if let ViewModes::Objects = game_editor_args.viewmode
             {
-                // single line edit for blue print save location
-                //ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
-                ui.label("Save current shape as a blueprint");
-                crate::directory_singleline(&mut blueprint.save_file_path, Some(game_editor_args.current_project_dir),
-                FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.blueprint), true, ui);
-    
-                // blue print save button
-                if ui.button(format!("{} Save current object as blueprint", EMOJIS.save)).clicked()
+                // If ONLY one object is selected then show save blueprint button
+                if let Some(selected_flameobject_idx) = scene.get_selected_flameobject_idx(&scene.flameobjects)
                 {
-                    if scene.flameobjects.len() > 0
+                    // single line edit for blue print save location
+                    //ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
+                    ui.label("Save current shape as a blueprint");
+                    crate::directory_singleline(&mut blueprint.save_file_path, Some(game_editor_args.current_project_dir),
+                    FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.blueprint), true, ui);
+
+                    // blue print save button
+                    if ui.button(format!("{} Save current object as blueprint", EMOJIS.save)).clicked()
                     {
-                        blueprint.flameobject_settings = Some(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].settings.clone());
+                        blueprint.flameobject_settings = Some(scene.flameobjects[selected_flameobject_idx].settings.clone());
+                        crate::db::blueprint::save(&blueprint.flameobject_settings, &blueprint.save_file_path, &game_editor_args.current_project_dir);
                     }
-                    //crate::save_blueprint(&blueprint.flameobject_settings, &blueprint.save_file_path, &game_editor_args.current_project_dir);
-                    crate::db::blueprint::save(&blueprint.flameobject_settings, &blueprint.save_file_path, &game_editor_args.current_project_dir);
+                
                 }
             }
     
@@ -142,19 +140,6 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                         for remove_index in remove_indexes.iter().rev()
                         {
                             scene.flameobjects.remove(*remove_index);
-                        }
-                        //copy_over_undoredo.0 = scene.flameobject_selected_parent_idx;
-                        
-                        //Flameobject::recalculate_id(&mut scene.flameobjects);
-                        //flameobjects_selected_parent_idx = (scene.flameobjects.len() - 1) as u16;
-    
-                        if scene.flameobjects.len() > 0
-                        {
-                            scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
-                        }
-                        else
-                        {
-                            scene.flameobject_selected_parent_idx = 0;
                         }
                     }
                 }

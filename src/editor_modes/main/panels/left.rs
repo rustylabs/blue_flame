@@ -189,23 +189,19 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         {
             if ui.button(format!("{} Create object", EMOJIS.addition.plus)).clicked()
             {
-                let mut child_flameobject_selected_idx: Option<usize> = None;
-                for (i, flameobject) in scene.flameobjects.iter_mut().enumerate()
+                let mut selected_idx: Option<usize> = None;
+                for (i, flameobject) in scene.flameobjects.iter().enumerate()
                 {
                     if flameobject.selected == true
                     {
-                        child_flameobject_selected_idx = Some(i);
+                        selected_idx = Some(i);
                         break;
-
                     }
                 }
-
-                if let Some(child_flameobject_selected_idx) = child_flameobject_selected_idx
+                if let Some(selected_idx) = selected_idx
                 {
-                    CreateNewFlameObject::flameobject(None,
-                        scene, game_editor_args.widget_functions,
-                        &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, None,
-                        Some(child_flameobject_selected_idx))
+                    let new_id = scene.get_available_id(&scene.flameobjects);
+                    CreateNewFlameObject::child(&mut scene.flameobjects[selected_idx], new_id, &game_editor_args.current_project_dir, blue_engine_args, window);
                 }
             }
         });
@@ -244,11 +240,9 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 
                     blueprint.save_file_path = invert_pathtype(file.to_str().unwrap(), &game_editor_args.current_project_dir);
 
-
                     CreateNewFlameObject::flameobject(None,
                         scene, game_editor_args.widget_functions,
-                        &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, blueprint.flameobject_settings.as_ref(),
-                        None)
+                        &game_editor_args.current_project_dir, blue_engine_args, window, blueprint.flameobject_settings.as_ref())
                 }
             }
         }
@@ -258,63 +252,72 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         // Displays all flameobjects/scenes button
         if let ViewModes::Objects = game_editor_args.viewmode
         {
-            // Only change chance labels if a single select was performed on labels
-            let mut change_choice = false;
 
-            for (i, flameobject) in scene.flameobjects.iter_mut().enumerate()
+
+            display_all_flameobjects(&mut scene.flameobjects, blue_engine_args, ui);
+
+            // Disaplays all the objects in a list
+            fn display_all_flameobjects(flameobjects: &mut Vec<Flameobject>, blue_engine_args: &mut BlueEngineArgs, ui: &mut egui::Ui)
             {
-                ui.horizontal(|ui|
+                // Only change chance labels if a single select was performed on labels
+                let mut change_choice: Option<usize> = None;
+
+                for (i, flameobject) in flameobjects.iter_mut().enumerate()
                 {
-
-                    ui.collapsing(format!("id: {}", flameobject.id), |ui|
+                    ui.horizontal(|ui|
                     {
-                        if let Some(ref mut child_flameobject) = flameobject.child_flameobject
+                        ui.collapsing(format!("idx: {}", i), |ui|
                         {
-                            
+                            if let Some(ref mut children) = flameobject.children
+                            {
+                                display_all_flameobjects(children, blue_engine_args, ui);
+                            }
+                        });
+    
+                        if ui.selectable_label(flameobject.selected, &flameobject.settings.label).clicked()
+                        {
+                            // if we are not attempting to select multiple items
+                            //if !ui.input(|i| i.modifiers.shift_only())
+                            if !blue_engine_args.input.key_held(KeyCode::ShiftLeft)
+                            {
+                                change_choice = Some(i);
+                            }
+                            // Multiple select via shift click keys
+                            else
+                            {
+                                flameobject.selected = !flameobject.selected;
+                            }
+    
+                            //println!("label_backup: {}", label_backup);
                         }
+                        ui.checkbox(&mut flameobject.visible, "");
+                        if flameobject.visible == true
+                        {
+                            ui.label(format!("{}", EMOJIS.eye));
+                        }
+    
+                        // Checks if variable names are correct or not
+                        // Warnings
+                        /*
+                        if flameobjects[i].0.label.1.warning == true
+                        {
+                            ui.label(issues::output_symbols().0);
+                        }
+                        // Errors
+                        if flameobjects[i].0.label.1.error == true
+                        {
+                            ui.label(issues::output_symbols().1);
+                        }
+                        */
+    
                     });
-
-                    if ui.selectable_label(flameobject.selected, &flameobject.settings.label).clicked()
-                    {
-                        // if we are not attempting to select multiple items
-                        //if !ui.input(|i| i.modifiers.shift_only())
-                        if !blue_engine_args.input.key_held(KeyCode::ShiftLeft)
-                        {
-                            //Flameobject::change_choice(&mut scene.flameobjects, i as u16);
-                            scene.flameobject_selected_parent_idx = i as u16;
-                            change_choice = true;
-                        }
-                        // Multiple select via shift click keys
-                        else
-                        {
-                            flameobject.selected = !flameobject.selected;
-                        }
-
-                        //println!("label_backup: {}", label_backup);
-                    }
-                    ui.checkbox(&mut flameobject.visible, "");
-                    if flameobject.visible == true
-                    {
-                        ui.label(format!("{}", EMOJIS.eye));
-                    }
-
-                    // Checks if variable names are correct or not
-                    // Warnings
-                    /*
-                    if flameobjects[i].0.label.1.warning == true
-                    {
-                        ui.label(issues::output_symbols().0);
-                    }
-                    // Errors
-                    if flameobjects[i].0.label.1.error == true
-                    {
-                        ui.label(issues::output_symbols().1);
-                    }
-                    */
-
-                });
+                }
+                if let Some(idx) = change_choice
+                {
+                    Flameobject::change_choice(flameobjects, idx);
+                }
             }
-            if change_choice == true {Flameobject::change_choice(&mut scene.flameobjects, scene.flameobject_selected_parent_idx)}
+
         }
         else if let ViewModes::Scenes = game_editor_args.viewmode
         {

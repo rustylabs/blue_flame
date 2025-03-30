@@ -33,8 +33,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             match crate::right_click_menu(game_editor_args.mouse_functions, blue_engine_args.input, blue_engine_args.ctx)
             {
                 Some(object_type_captured) => crate::CreateNewFlameObject::flameobject(Some(&object_type_captured), scene,
-                    &mut game_editor_args.widget_functions, &game_editor_args.current_project_dir, &editor_settings, blue_engine_args, window, None, 
-                    None),
+                    &mut game_editor_args.widget_functions, &game_editor_args.current_project_dir, blue_engine_args, window, None),
                 None => {},
             }
         }
