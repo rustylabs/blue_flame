@@ -4,12 +4,8 @@ use blue_flame_common::
 {
     object_actions,
     radio_options::ViewModes,
-    structures::
-    {
-        flameobject,
-        structures::{BlueEngineArgs, GameEditorArgs},
-    },
-    EditorSettings
+    structures::{flameobject, BlueEngineArgs, GameEditorArgs},
+    EditorSettings,
 };
 
 

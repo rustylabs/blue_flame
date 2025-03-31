@@ -12,7 +12,9 @@ use blue_flame_common::
             self, shape_2d_3d_specific_settings::shape_2d_settings::
             {AnimatedSprites, Shape2DSettings}, Shape2D3DSepcificSettings::D2, Texture
         },
-        structures::{GameEditorArgs, BlueEngineArgs, Project},
+        GameEditorArgs,
+        BlueEngineArgs,
+        Project,
     },
 };
 

@@ -266,7 +266,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 {
                     ui.horizontal(|ui|
                     {
-                        ui.collapsing(format!("idx: {}", i), |ui|
+                        ui.collapsing(format!("id: {}", flameobject.id), |ui|
                         {
                             if let Some(ref mut children) = flameobject.children
                             {

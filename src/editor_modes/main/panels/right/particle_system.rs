@@ -6,9 +6,9 @@ use blue_flame_common::
     {
         emojis::EMOJIS,
         flameobject::{self, ParticleSystem},
-        structures::GameEditorArgs
+        GameEditorArgs,
     },
-    EditorSettings
+    EditorSettings,
 };
 
 use crate::directory_singleline;

@@ -5,7 +5,8 @@ use blue_flame_common::
     structures::
     {
         emojis::EMOJIS,
-        flameobject, structures::GameEditorArgs
+        flameobject,
+        GameEditorArgs,
     },
 };
 

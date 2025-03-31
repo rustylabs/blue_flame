@@ -1,7 +1,7 @@
 // Manages all projects and points to scenes
 // Blue prints for a particular object's settings such as texture, color etc, essecially saving the flameboject's settings structure
 
-use blue_flame_common::structures::structures::BlueEngineArgs;
+use blue_flame_common::structures::BlueEngineArgs;
 pub mod blueprint
 {
     use super::*;
@@ -172,7 +172,7 @@ pub mod scenes
 pub mod project_config
 {
     use std::io::Read;
-    use blue_flame_common::structures::structures::project_config::ProjectConfig;
+    use blue_flame_common::structures::project_config::ProjectConfig;
     use blue_flame_common::filepath_handling::*;
 
 

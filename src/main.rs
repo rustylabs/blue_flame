@@ -5,16 +5,19 @@ use blue_flame_common::
     EditorSettings,
     radio_options,
     FileExtensionNames,
-    undo_redo,
     radio_options::{ViewModes, object_type::ObjectType},
     filepath_handling,
     structures::
     {
         emojis::EMOJIS, file_explorer::FilePaths, flameobject::{self, Flameobject},
-        structures::
-        {
-            project_config::ProjectConfig, scene::Scene, BlueEngineArgs, GameEditorArgs, MouseFunctions, Project, WhatChanged, WidgetFunctions, WindowSize
-        }
+        project_config::ProjectConfig,
+        scene::Scene,
+        BlueEngineArgs,
+        GameEditorArgs,
+        MouseFunctions,
+        Project,
+        WidgetFunctions,
+        WindowSize
     }
 };
 
@@ -793,7 +796,7 @@ fn main()
             else if let EditorMode::Main(_) = editor_mode
             {
                 //struct AlertWindow{alert_window: }
-                if editor_modes::main::main::main(
+                if editor_modes::main::main(
                     &mut scene,
                     &mut projects,
                     &mut blueprint,

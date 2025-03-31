@@ -1,6 +1,6 @@
 use blue_engine_utilities::egui::{egui, egui::Ui};
 use blue_engine::Camera;
-use blue_flame_common::structures::{emojis::EMOJIS, structures::GameEditorArgs};
+use blue_flame_common::structures::{emojis::EMOJIS, GameEditorArgs};
 use crate::{Scene, ProjectConfig, AlertWindow, BlueEngineArgs};
 
 pub fn main(alert_window: &mut [AlertWindow], blue_engine_args: &mut BlueEngineArgs, game_editor_args: &mut GameEditorArgs, scene: &mut Scene)
