@@ -59,11 +59,11 @@ pub fn load_scene_by_file(scene: &mut Scene, current_project_dir: &str, filepath
     project_config: &mut ProjectConfig,
     blue_engine_args: &mut BlueEngineArgs, window: &Window)
 {
-    if blue_flame_common::db::scene::load(scene, current_project_dir, &filepaths.current_scene, true,
+    if blue_flame_common::db::scene::load(scene, &filepaths.current_scene, true,
         blue_engine_args, window) == true
     {
         project_config.last_scene_filepath = filepaths.current_scene.clone();
-        crate::db::project_config::save(project_config, filepaths, &current_project_dir);
+        crate::db::project_config::save(project_config, filepaths);
 
     }
 }

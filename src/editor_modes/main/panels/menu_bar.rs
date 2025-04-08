@@ -37,7 +37,7 @@ pub fn main(alert_window: &mut [AlertWindow], blue_engine_args: &mut BlueEngineA
                     {
                         if list.label == "💾 Save"
                         {
-                            blue_flame_common::db::scene::save(&scene, &filepaths.current_scene, &current_project_dir);
+                            blue_flame_common::db::scene::save(&scene, &filepaths.current_scene);
                             break;
                         }
 

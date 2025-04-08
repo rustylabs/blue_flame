@@ -1,7 +1,7 @@
 use blue_engine_utilities::egui::egui::{self, Ui};
+use rfd::FileDialog;
 use blue_flame_common::
 {
-    radio_options::FilePickerMode,
     EditorSettings,
 
     structures::
@@ -14,12 +14,8 @@ use blue_flame_common::
         },
         GameEditorArgs,
         BlueEngineArgs,
-        Project,
     },
 };
-
-
-use crate::directory_singleline;
 
 
 
@@ -28,7 +24,6 @@ pub fn main(
     blue_engine_args: &mut BlueEngineArgs,
     flameobject_settings: &mut flameobject::Settings,
     editor_settings: &EditorSettings,
-    projects: &Vec<Project>,
     ui: &mut Ui
 )
 {
@@ -64,20 +59,33 @@ pub fn main(
         //let mut response = None;
         ui.horizontal(|ui|
         {
+            /*
             let response = directory_singleline(&mut flameobject_settings.texture.file_location,
                 Some(game_editor_args.current_project_dir), FilePickerMode::OpenFile, true, ui);
+            */
+
+            if ui.button(format!("{}", EMOJIS.file_icons.file)).clicked()
+            {
+                if let Some(file ) = FileDialog::new().set_directory(&game_editor_args.current_project_dir)
+                .pick_file()
+                {
+                    flameobject_settings.texture.file_location = file.to_str().unwrap().to_string();
+                    blue_flame_common::object_actions::update_shape::texture(flameobject_settings, blue_engine_args);
+                }
+            }
             
             // Clear texture field
             if ui.button(format!("{}", EMOJIS.trash)).clicked()
             {
                 flameobject_settings.texture.file_location = String::new();
             }
-        
+            /*
             if response.0.changed() || response.1 == true
             {
                 *game_editor_args.enable_shortcuts = false;
                 blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args);
             }
+            */
         });
         
         // For sprites/animations
@@ -98,8 +106,11 @@ pub fn main(
                     {
                         ui.horizontal(|ui|
                         {
-                            directory_singleline(&mut sprite.file_location,
-                                Some(game_editor_args.current_project_dir), FilePickerMode::OpenFile, true, ui);
+                            if let Some(file ) = FileDialog::new().set_directory(&game_editor_args.current_project_dir)
+                            .pick_file()
+                            {
+                                flameobject_settings.texture.file_location = file.to_str().unwrap().to_string();
+                            }
             
                             // Delete the animated sprite
                             if ui.button(format!("{}", EMOJIS.trash)).clicked()
@@ -161,7 +172,7 @@ pub fn main(
             {
                 if ui.radio_value(&mut flameobject_settings.texture.mode, element, Texture::label(&element)).changed()
                 {
-                    blue_flame_common::object_actions::update_shape::texture(flameobject_settings, &Project::selected_dir(&projects), blue_engine_args);
+                    blue_flame_common::object_actions::update_shape::texture(flameobject_settings, blue_engine_args);
                 }
             }
         }

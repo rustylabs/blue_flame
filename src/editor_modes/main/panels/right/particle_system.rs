@@ -1,7 +1,8 @@
 use blue_engine_utilities::egui::egui::{self, Ui};
+use rfd::FileDialog;
 use blue_flame_common::
 {
-    radio_options::FilePickerMode,
+    FileExtensionNames,
     structures::
     {
         emojis::EMOJIS,
@@ -11,7 +12,6 @@ use blue_flame_common::
     EditorSettings,
 };
 
-use crate::directory_singleline;
 
 pub fn main(
     game_editor_args: &mut GameEditorArgs,
@@ -50,11 +50,25 @@ pub fn main(
                     ui.checkbox(&mut particle_system.enabled, "Particle System Enabled");
     
                     ui.label("Texture");
-                    ui.label("Location of Texture");
+
+                    ui.horizontal(|ui|
+                    {
+                        ui.label("Location of Texture");
+                        if ui.button(format!("{}", EMOJIS.file_icons.file)).clicked()
+                        {
+                            if let Some(file ) = FileDialog::new().set_directory(&game_editor_args.current_project_dir)
+                            .pick_file()
+                            {
+                                flameobject_settings.texture.file_location = file.to_str().unwrap().to_string();
+                            }
+                        }
+                    });
+
+                    /*
                     directory_singleline(&mut flameobject_settings.texture.file_location,
                         Some(game_editor_args.current_project_dir), FilePickerMode::OpenFile, true, ui);
         
-        
+                    */
                     ui.label("Offset");
                     ui.horizontal(|ui|
                     {

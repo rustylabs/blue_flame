@@ -508,7 +508,7 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
         }
     }
 
-    db::projects::save(projects, filepaths);
+    db::all_projects_manager::save(projects, filepaths);
 
 
 
@@ -695,7 +695,7 @@ fn main()
 
 
     // Load all dbs into memory
-    db::projects::load(&mut projects, &filepaths);
+    db::all_projects_manager::load(&mut projects, &filepaths);
     //db::scenes::load(&mut scenes);
 
     
@@ -1000,7 +1000,7 @@ fn main()
                                                 }
                                             }
                                             projects.remove(i);
-                                            db::projects::save(&mut projects, &mut filepaths);
+                                            db::all_projects_manager::save(&mut projects, &mut filepaths);
                                         }                           
                                     });
 

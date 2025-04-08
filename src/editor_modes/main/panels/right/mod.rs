@@ -5,11 +5,12 @@ pub mod box_collider;
 pub mod linked_code;
 
 use blue_engine_utilities::egui::egui::{self, Ui};
-use blue_engine::header::KeyCode;
+use blue_engine::KeyCode;
 use blue_engine::Window;
-use blue_flame_common::structures::{emojis::EMOJIS, flameobject};
-use crate::{BlueEngineArgs, Blueprint, EditorSettings, GameEditorArgs, Project, Scene, ViewModes, FILE_EXTENSION_NAMES};
-use blue_flame_common::radio_options::FilePickerMode;
+use blue_flame_common::structures::{emojis::EMOJIS, flameobject::{self, Flameobject}};
+use blue_flame_common::FileExtensionNames;
+use crate::{BlueEngineArgs, Blueprint, EditorSettings, GameEditorArgs, Project, Scene, ViewModes};
+use rfd::FileDialog;
 use crate::editor_modes::main::load_scene_by_file;
 /*
 pub fn main(scene: &mut Scene, flameobject_blueprint: &mut Option<Settings>,
@@ -31,21 +32,76 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
         {
             if let ViewModes::Objects = game_editor_args.viewmode
             {
-                if scene.flameobjects.len() > 0 && scene.get_selected_flameobject_idx(&scene.flameobjects) != None
+                if let Some(selected_id) = Flameobject::get_selected_id(&scene.flameobjects)
                 {
-                    let idx = scene.get_selected_flameobject_idx(&scene.flameobjects).unwrap();
-                    let flameobject = &mut scene.flameobjects[idx];
-    
-                    right_panel_flameobject_settings(
-                    &mut flameobject.settings,
-                    projects,
-                    editor_settings,
-                    game_editor_args,
-                    blue_engine_args,
-                    ui,
-                    window);
-    
+                    fn recursive_call(flameobjects: &mut[Flameobject],
+                        selected_id: u16, 
+                        projects: &Vec<Project>,
+                        blueprint: &mut Blueprint,
+                        editor_settings: &EditorSettings,
+                        game_editor_args: &mut GameEditorArgs,
+                        blue_engine_args: &mut BlueEngineArgs,
+                        ui: &mut Ui,
+                        window: &Window,
+                    )
+                    {
+                        for flameobject in flameobjects.iter_mut()
+                        {
+                            recursive_call(&mut flameobject.children,
+                                selected_id,
+                                projects,
+                                blueprint,
+                                editor_settings,
+                                game_editor_args,
+                                blue_engine_args,
+                                ui,
+                                window,
+                            );
+                            if flameobject.id == selected_id
+                            {
+                                right_panel_flameobject_settings(
+                                    //&mut flameobject.settings,
+                                    &mut flameobject.settings,
+                                    editor_settings,
+                                    game_editor_args,
+                                    blue_engine_args,
+                                    ui,
+                                    window);
+
+                                ui.separator();
+                                // single line edit for blue print save location
+                                //ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
+                                ui.label("Save current shape as a blueprint");
+
+                                // blue print save button
+                                if ui.button(format!("{} Save current object as blueprint", EMOJIS.save)).clicked()
+                                {
+                                    if let Some(file ) = FileDialog::new().set_directory(&game_editor_args.current_project_dir)
+                                    .add_filter(FileExtensionNames::name(FileExtensionNames::Blueprint), &[FileExtensionNames::extension_name(FileExtensionNames::Blueprint)])
+                                    .set_file_name(FileExtensionNames::add_extension_name(FileExtensionNames::Blueprint, &flameobject.settings.label))
+                                    .save_file()
+                                    {
+                                        blueprint.save_file_path = file.display().to_string();
+                                        blueprint.flameobject_settings = Some(flameobject.settings.clone());
+                                        crate::db::blueprint::save(&blueprint.flameobject_settings, &blueprint.save_file_path);
+
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    recursive_call(&mut scene.flameobjects,
+                        selected_id,
+                        projects,
+                        blueprint,
+                        editor_settings,
+                        game_editor_args,
+                        blue_engine_args,
+                        ui,
+                        window,
+                    );
                 }
+
             }
             else if let ViewModes::Scenes = game_editor_args.viewmode
             {
@@ -55,16 +111,35 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
     
                 ui.label("Save location:");
                 //ui.add(egui::TextEdit::singleline(&mut game_editor_args.filepaths.current_scene));
+                /*
                 crate::directory_singleline(&mut game_editor_args.filepaths.current_scene,
-                    Some(game_editor_args.current_project_dir), FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.scene), true, ui);
-                if ui.button("Invert filepath type").clicked()
+                    Some(game_editor_args.current_project_dir), FilePickerMode::SaveFile(FileExtensionNames::extension_name(FileExtensionNames::Scene)), true, ui);
+                */
+                if ui.button(format!("{} Save scene", EMOJIS.save)).clicked()
                 {
-                    game_editor_args.filepaths.current_scene = crate::invert_pathtype(&game_editor_args.filepaths.current_scene, &game_editor_args.current_project_dir);
+                    if let Some(file ) = FileDialog::new().set_directory(&game_editor_args.current_project_dir)
+                    .add_filter(FileExtensionNames::name(FileExtensionNames::Scene), &[format!("{}", FileExtensionNames::extension_name(FileExtensionNames::Scene))])
+                    .set_file_name(FileExtensionNames::add_extension_name(FileExtensionNames::Scene, &scene.label))
+                    .save_file()
+                    {
+                        game_editor_args.filepaths.current_scene = file.to_str().unwrap().to_string();
+                    }
+                    blue_flame_common::db::scene::save(&scene, &game_editor_args.filepaths.current_scene);
                 }
                 if ui.button("Load scene").clicked()
                 {
-                    load_scene_by_file(scene, game_editor_args.current_project_dir, game_editor_args.filepaths,
-                        game_editor_args.project_config, blue_engine_args, window);
+                    if let Some(file ) = FileDialog::new().set_directory(&game_editor_args.current_project_dir)
+                    .add_filter(FileExtensionNames::name(FileExtensionNames::Scene), &[format!("{}", FileExtensionNames::extension_name(FileExtensionNames::Scene))])
+                    .set_file_name(FileExtensionNames::add_extension_name(FileExtensionNames::Scene, &scene.label))
+                    .pick_file()
+                    {
+                        game_editor_args.filepaths.current_scene = file.display().to_string();
+
+                        load_scene_by_file(scene, game_editor_args.current_project_dir, game_editor_args.filepaths,
+                            game_editor_args.project_config, blue_engine_args, window);
+                    }
+
+
                     /*
                     if blue_flame_common::db::scene::load(scene, &game_editor_args.current_project_dir, &game_editor_args.filepaths.current_scene, true,
                         blue_engine_args, window) == true
@@ -87,7 +162,7 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
             {
                 if let Some(ref mut flameobject_settings) = blueprint.flameobject_settings
                 {
-                    right_panel_flameobject_settings(flameobject_settings, &projects,
+                    right_panel_flameobject_settings(flameobject_settings,
                         editor_settings, game_editor_args, blue_engine_args, ui, window);
                 }
             }
@@ -97,55 +172,49 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
                 ui.separator();
             }
     
-            // Blue print save related stuff
-            if let ViewModes::Objects = game_editor_args.viewmode
-            {
-                // If ONLY one object is selected then show save blueprint button
-                if let Some(selected_flameobject_idx) = scene.get_selected_flameobject_idx(&scene.flameobjects)
-                {
-                    // single line edit for blue print save location
-                    //ui.add(egui::TextEdit::singleline(&mut blueprint.save_file_path));
-                    ui.label("Save current shape as a blueprint");
-                    crate::directory_singleline(&mut blueprint.save_file_path, Some(game_editor_args.current_project_dir),
-                    FilePickerMode::SaveFile(FILE_EXTENSION_NAMES.blueprint), true, ui);
-
-                    // blue print save button
-                    if ui.button(format!("{} Save current object as blueprint", EMOJIS.save)).clicked()
-                    {
-                        blueprint.flameobject_settings = Some(scene.flameobjects[selected_flameobject_idx].settings.clone());
-                        crate::db::blueprint::save(&blueprint.flameobject_settings, &blueprint.save_file_path, &game_editor_args.current_project_dir);
-                    }
-                }
-            }
-    
             // Delete button
             ui.horizontal(|ui|
             {
                 if let ViewModes::Objects = game_editor_args.viewmode
                 {
-                    if ui.button(format!("{} Delete object", EMOJIS.trash)).clicked()
+                    if ui.button(format!("{} Delete objects", EMOJIS.trash)).clicked()
                     || blue_engine_args.input.key_pressed(KeyCode::KeyX) && *game_editor_args.enable_shortcuts == true
                     {
                         //scene.undo_redo.save_action(crate::undo_redo::Action::Delete(scene.flameobjects[scene.flameobject_selected_parent_idx as usize].copy()), &editor_settings);
-    
-                        let mut remove_indexes: Vec<usize> = Vec::new();
-                        //let mut copy_over_undoredo: Vec<(flameobject::Flameobject, u16)> = Vec::new();
-                        //let mut copy_over_undoredo: (u16, Vec<(flameobject::Flameobject, u16)>) = (0, Vec::new());
-                        
-                        // Deletes object from game engine and stores the index of vector to remove
-                        for (i, flameobject) in scene.flameobjects.iter().enumerate()
+                        fn recursive_call(flameobjects: &mut Vec<Flameobject>, blue_engine_args: &mut BlueEngineArgs)
                         {
-                            if flameobject.selected == true
+                            let mut remove_indexes: Vec<usize> = Vec::new();
+                            //let mut copy_over_undoredo: Vec<(flameobject::Flameobject, u16)> = Vec::new();
+                            //let mut copy_over_undoredo: (u16, Vec<(flameobject::Flameobject, u16)>) = (0, Vec::new());
+                            
+                            // Deletes object from game engine and stores the index of vector to remove
+                            for (i, flameobject) in flameobjects.iter_mut().enumerate()
                             {
-                                blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, blue_engine_args);
-                                remove_indexes.push(i);
+                                recursive_call(&mut flameobject.children, blue_engine_args);
+
+                                if flameobject.selected == true
+                                {
+                                    fn object_actions_del_recursive_call(flameobjects: &[Flameobject], blue_engine_args: &mut BlueEngineArgs)
+                                    {
+                                        for flameobject in flameobjects.iter()
+                                        {
+                                            object_actions_del_recursive_call(&flameobject.children, blue_engine_args);
+                                            blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, blue_engine_args);
+                                        }
+                                    }
+                                    object_actions_del_recursive_call(&flameobject.children, blue_engine_args);
+                                    blue_flame_common::object_actions::delete_shape(&flameobject.settings.label, blue_engine_args);
+                                    remove_indexes.push(i);
+                                }
+                            }
+                            // Removes any element in flameobjects from vector based on the remove_indexes vector
+                            for remove_index in remove_indexes.iter().rev()
+                            {
+                                flameobjects.remove(*remove_index);
                             }
                         }
-                        // Removes any element in flameobjects from vector based on the remove_indexes vector
-                        for remove_index in remove_indexes.iter().rev()
-                        {
-                            scene.flameobjects.remove(*remove_index);
-                        }
+                        recursive_call(&mut scene.flameobjects, blue_engine_args);
+
                     }
                 }
                 else if let ViewModes::Scenes = game_editor_args.viewmode
@@ -164,7 +233,6 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, blueprint: &mut Blue
 
 fn right_panel_flameobject_settings(
     flameobject_settings: &mut flameobject::Settings,
-    projects: &Vec<Project>,
     editor_settings: &EditorSettings,
     game_editor_args: &mut GameEditorArgs,
     blue_engine_args: &mut BlueEngineArgs,
@@ -201,7 +269,7 @@ fn right_panel_flameobject_settings(
 
     
     ui.separator();
-    texture::main(game_editor_args, blue_engine_args, flameobject_settings, editor_settings, projects, ui);
+    texture::main(game_editor_args, blue_engine_args, flameobject_settings, editor_settings, ui);
 
 
     new_sub_section("Color", ui);

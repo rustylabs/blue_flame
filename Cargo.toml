@@ -11,6 +11,8 @@ edition = "2021"
 # 0.4.27 original
 blue_engine = "0.6.5"
 blue_engine_utilities = {version = "0.6.5", features = ["egui"]}
+#blue_engine = "0.7.1"
+#blue_engine_utilities = {version = "0.7.1", features = ["egui"]}
 
 # Compile time evaluations
 build_assert = "0.0.1"

@@ -1,13 +1,10 @@
 use std::borrow::BorrowMut;
 use std::{process::Command, path::PathBuf};
 use std::io::Write; 
+use rfd::FileDialog;
 
 use blue_engine_utilities::egui::{egui, egui:: Context};
-use blue_engine::
-{
-    header::KeyCode,
-    Window,
-};
+use blue_engine::{KeyCode, Window};
 use blue_flame_common::
 {
     structures::emojis::EMOJIS,
@@ -180,13 +177,15 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
             .show(blue_engine_args.ctx, |ui|
             {
 
-                let len = projects.len() - 1;
+                let idx = projects.len() - 1;
 
 
                 ui.label("Project name:");
-                ui.add(egui::TextEdit::singleline(&mut projects[len].name));
+                ui.add(egui::TextEdit::singleline(&mut projects[idx].name));
                 ui.separator();
                 ui.label("Project directory:");
+
+                let mut previous_project_path;
 
                 // Sets new project (after pressing create button) to true
                 //projects[len].status = true;
@@ -194,15 +193,33 @@ pub fn main(scene: &mut Scene, projects: &mut Vec<Project>, sub_editor_mode: &mu
                 {
                     Some(ref value) =>
                     {
-                        let mut path = PathBuf::from(value);
-                        path.pop();
-                        crate::directory_singleline(&mut projects[len].dir, Some(&path.display().to_string()), FilePickerMode::OpenFolder, false, ui);
+                        previous_project_path = PathBuf::from(value);
+                        previous_project_path.pop();
+                        //crate::directory_singleline(&mut projects[idx].dir, Some(&path.display().to_string()), FilePickerMode::OpenFolder, false, ui);
                     }
                     None =>
                     {
-                        crate::directory_singleline(&mut projects[len].dir, None, FilePickerMode::OpenFolder, false, ui);
+                        previous_project_path = PathBuf::from("/");
+                        //crate::directory_singleline(&mut projects[idx].dir, None, FilePickerMode::OpenFolder, false, ui);
                     }
                 }
+
+                ui.horizontal(|ui|
+                {
+                    if ui.button(format!("{} Select folder", EMOJIS.file_icons.folder)).clicked()
+                    {
+                        if let Some(folder ) = FileDialog::new().set_directory(previous_project_path)
+                        .pick_folder()
+                        {
+                            projects[idx].dir = folder.display().to_string();
+                            //flameobject_settings.texture.file_location = file.to_str().unwrap().to_string();
+                        }
+                    }
+
+                    ui.label(format!("Project dir: {}", projects[idx].dir));
+                });
+
+
                 /*
                 ui.horizontal(|ui|
                 {
@@ -375,7 +392,7 @@ fn delete_project(projects: &mut Vec<Project>, sub_editor_mode: &mut editor_mode
                             }
                         }
                         projects.remove(i);
-                        crate::db::projects::save(projects, filepaths);
+                        crate::db::all_projects_manager::save(projects, filepaths);
                     }
                 });
             });

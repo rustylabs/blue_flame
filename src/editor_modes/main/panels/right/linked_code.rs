@@ -1,7 +1,8 @@
 use blue_engine_utilities::egui::egui::{self, Ui};
+use rfd::FileDialog;
 use blue_flame_common::
 {
-    radio_options::FilePickerMode,
+    FileExtensionNames,
     structures::
     {
         emojis::EMOJIS,
@@ -9,8 +10,6 @@ use blue_flame_common::
         GameEditorArgs,
     },
 };
-
-use crate::directory_singleline;
 
 pub fn main(
     game_editor_args: &mut GameEditorArgs,
@@ -20,7 +19,20 @@ pub fn main(
 {
     egui::CollapsingHeader::new(format!("{} Linked Code", EMOJIS.script)).default_open(false).show(ui, |ui|
     {
+        /*
         directory_singleline(&mut flameobject_settings.linked_code,
             Some(game_editor_args.current_project_dir), FilePickerMode::OpenFile, true, ui);
+        */
+
+        if ui.button(format!("{}", EMOJIS.file_icons.file)).clicked()
+        {
+            if let Some(file ) = FileDialog::new().set_directory(&game_editor_args.current_project_dir)
+            .add_filter("Rust", &["rs"])
+            .pick_file()
+            {
+                flameobject_settings.linked_code = file.to_str().unwrap().to_string();
+            }
+        }
+
     });
 }

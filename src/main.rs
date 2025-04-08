@@ -1,12 +1,9 @@
-use blue_engine::{header::{Engine, PowerPreference, WindowDescriptor}, KeyCode, Window};
+use blue_engine::{Engine, PowerPreference, WindowDescriptor, KeyCode, Window};
 use blue_engine_utilities::egui::egui::{self, Response, Ui};
 use blue_flame_common::
 {
     EditorSettings,
-    radio_options,
-    FileExtensionNames,
     radio_options::{ViewModes, object_type::ObjectType},
-    filepath_handling,
     structures::
     {
         emojis::EMOJIS, file_explorer::FilePaths, flameobject::{self, Flameobject},
@@ -22,7 +19,6 @@ use blue_flame_common::
 };
 
 use editor_mode_variables::EditorMode;
-use rfd::FileDialog;
 use std::process::exit;
 
 mod object_settings;
@@ -32,33 +28,25 @@ mod practice;
 mod editor_modes;
 
 
-// Directory related libraries
-use std::path::{Path, PathBuf};
-use dirs;
-
-
 
 
 // Generic way to create either flameobject or blueprint
 struct CreateNewFlameObject;
 impl CreateNewFlameObject
 {
-    pub fn child(flameobject: &mut Flameobject, new_id: u16, project_dir: &str, blue_engine_args: &mut BlueEngineArgs, window: &Window)
+    // Child needs to be pushed before calling this function
+    pub fn child(flameobject: &mut Flameobject, blueprint: Option<&flameobject::Settings>, project_dir: &str, blue_engine_args: &mut BlueEngineArgs, window: &Window)
     {
-        let len;
-        if let Some(ref mut children) = flameobject.children
+        // If its a blueprint then copy its contents over to the newly created object
+        if let Some(blueprint) = blueprint
         {
-            children.push(Flameobject::init(new_id, None, false));
-            len = children.len();
-        }
-        else
-        {
-            flameobject.children = Some(vec![Flameobject::init(new_id, None, false)]);
-            len = flameobject.children.as_ref().unwrap().len();
+            let tmp_label_key = flameobject.settings.label_key.clone();
+            flameobject.settings = blueprint.clone();
+            flameobject.settings.label_key = tmp_label_key; // Sets it back to the original object's label_key to avoid double label_key issues
+            flameobject.settings.blueprint_key = Some((blueprint.label_key.clone(), true));
         }
 
-        blue_flame_common::object_actions::create_shape(&flameobject.children.as_ref().unwrap()[len-1].settings,
-        project_dir, blue_engine_args, window);
+        blue_flame_common::object_actions::create_shape(&flameobject.settings, blue_engine_args, window);
     }
 
     pub fn flameobject(object_type_captured: Option<&ObjectType>, scene: &mut Scene, widget_functions: &mut WidgetFunctions, project_dir: &str,
@@ -67,7 +55,7 @@ impl CreateNewFlameObject
     {
         let len = scene.flameobjects.len();
         //let id = Flameobject::get_available_id(&mut scene.flameobjects);
-        let id = scene.get_available_id(&scene.flameobjects);
+        let id = Flameobject::get_available_id(&scene.flameobjects, None);
         //println!("id: {}", id);
 
         match blueprint
@@ -78,10 +66,10 @@ impl CreateNewFlameObject
                 let tmp_label_key;
 
                 scene.flameobjects.push(Flameobject::init(id, None, false));
-                tmp_label_key = scene.flameobjects[len as usize].settings.label_key.clone(); // Gets the object label_key
-                scene.flameobjects[len as usize].settings = value.clone();
-                scene.flameobjects[len as usize].settings.label_key = tmp_label_key; // Sets it back to the original object's label_key to avoid double label_key issues
-                scene.flameobjects[len as usize].settings.blueprint_key = Some((String::from(format!("{}", value.label_key)), true));
+                tmp_label_key = scene.flameobjects[len].settings.label_key.clone(); // Gets the object label_key
+                scene.flameobjects[len].settings = value.clone();
+                scene.flameobjects[len].settings.label_key = tmp_label_key; // Sets it back to the original object's label_key to avoid double label_key issues
+                scene.flameobjects[len].settings.blueprint_key = Some((String::from(format!("{}", value.label_key)), true));
                 //scene.flameobjects[len as usize].settings.label_key = 
             }
             // If not importing blueprint just do a regular object creation
@@ -122,7 +110,7 @@ impl CreateNewFlameObject
             }
         }
         
-        Flameobject::change_choice(&mut scene.flameobjects, len);
+        Flameobject::change_choice(&mut scene.flameobjects, id);
         /*
         scene.flameobject_selected_parent_idx = scene.flameobjects.len() as u16 - 1;
         scene.undo_redo.save_action(
@@ -132,7 +120,7 @@ impl CreateNewFlameObject
                     scene.flameobjects[scene.flameobject_selected_parent_idx as usize].id)),
                     editor_settings);
         */
-        blue_flame_common::object_actions::create_shape(&scene.flameobjects[len].settings, project_dir, blue_engine_args, window);
+        blue_flame_common::object_actions::create_shape(&scene.flameobjects[len].settings, blue_engine_args, window);
         /*
         for (i, flameobject) in scene.flameobjects.iter().enumerate()
         {
@@ -159,7 +147,7 @@ impl CreateNewFlameObject
     {
         //flameobject_blueprint = Some(Flameobject::init(len, Some(*object_type_captured)));
         *flameobject_blueprint = Some(flameobject::Settings::init(0, Some(*object_type_captured), true));
-        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, blue_engine_args, window);
+        blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), blue_engine_args, window);
     }
 }
 
@@ -267,70 +255,14 @@ mod issues
 
 struct Debug
 {
-    practice            : bool,
-    resolution          : bool,
+    practice: bool,
+    resolution: bool,
 }
 
 
-
-// Creates library dir if it does not exist and also statically builds src dir into binary executable
-/*
-fn init_lib(lib_path: &PathBuf)
-{
-    match
-        Command::new("sh")
-        .arg("-c")
-        .arg(format!("cargo new \"{}\" --lib", lib_path.to_str().unwrap()))
-        //.arg("cargo new \"../testing\" --bin")
-        .output()
-        {
-            Ok(_)              => println!("Created lib dir"),
-            Err(e)      => println!("Unable to create lib dir: {e}"),
-        }
-}
-*/
-// Is it horrizontal or vertical key press movement
-enum KeyMovement
-{
-    Vertical,
-    Horizontal,
-}
-// Based on key presses should we return 1 or -1
-fn move_direction_keys(key_movement: KeyMovement, input: &blue_engine::InputHelper) -> i8
-{
-    let mut move_direction: i8 = 0;
-
-    match key_movement
-    {
-        KeyMovement::Vertical =>
-        {
-            //if ui.input(|i| i.key_pressed(egui::Key::ArrowDown))
-            if input.key_pressed_os(KeyCode::ArrowDown)
-            {
-                move_direction = 1;
-            }
-            else if input.key_pressed_os(KeyCode::ArrowUp)
-            {
-                move_direction = -1;
-            }
-        }
-        KeyMovement::Horizontal =>
-        {
-            if input.key_pressed_os(KeyCode::ArrowRight)
-            {
-                move_direction = 1;
-            }
-            else if input.key_pressed_os(KeyCode::ArrowLeft)
-            {
-                move_direction = -1;
-            }
-        }
-    }
-
-    return move_direction;
-}
 // Converts from fullpath to relativepath and vice versa
 //fn invert_pathtype(filepath: &str, projects: &Vec<Project>) -> String
+/*
 fn invert_pathtype(filepath: &str, current_project_dir: &str) -> String
 {
     let mut newpath = String::new();
@@ -366,6 +298,7 @@ fn invert_pathtype(filepath: &str, current_project_dir: &str) -> String
     */
     return newpath.to_string();
 }
+*/
 
 
 // Has radio buttons and creates flameobject
@@ -402,7 +335,7 @@ fn object_management(flameobject_settings: &mut flameobject::Settings, projects:
     }
     if change_shape == true
     {
-        blue_flame_common::object_actions::create_shape(&flameobject_settings, &Project::selected_dir(&projects), blue_engine_args, window);
+        blue_flame_common::object_actions::create_shape(&flameobject_settings, blue_engine_args, window);
     }
     
 }
@@ -413,19 +346,19 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
     // If we have already loaded up the project just load the stuff from memory rather than db
     if is_loaded == true
     {
-        for (i, flameobject) in scene.flameobjects.iter().enumerate()
+        for flameobject in scene.flameobjects.iter()
         {
-            blue_flame_common::object_actions::create_shape(&flameobject.settings, &Project::selected_dir(projects), blue_engine_args, window);
+            blue_flame_common::object_actions::create_shape(&flameobject.settings, blue_engine_args, window);
         }
         return;
     }
 
-    let projects_len = projects.len() - 1;
+    // Test this out later
 
-    //Project::change_choice(projects, projects_len);
+    let projects_idx = projects.len() - 1;
     for (i, project) in projects.iter_mut().enumerate()
     {
-        if i == projects_len
+        if i == projects_idx
         {
             project.status = true;
             *game_editor_args.current_project_dir = project.dir.clone();
@@ -435,10 +368,10 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             project.status = false;
         }
     }
+    db::all_projects_manager::save(projects, game_editor_args.filepaths);
 
-    db::projects::save(projects, game_editor_args.filepaths);
 
-
+    // Loads the project
 
     for project in projects.iter()
     {
@@ -449,8 +382,8 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             // Creates blue_flame dir in project_dir
             match std::fs::create_dir(format!("{}/blue_flame", project.dir))
             {
-                Ok(_)              => println!("Config dir for project created succesfully in {}/blue_flame", project.dir),
-                Err(e)      => println!("Unable to create config dir for project due to: {e}"),
+                Ok(_) => println!("Config dir for project created succesfully in {}/blue_flame", project.dir),
+                Err(e) => println!("Unable to create config dir for project due to: {e}"),
             }
 
             //filepaths.scene.push("blue_flame");
@@ -462,11 +395,11 @@ fn load_project_scene(is_loaded: bool, scene: &mut Scene, projects: &mut [Projec
             game_editor_args.editor_modes.projects.1 = false;
             game_editor_args.editor_modes.main.0 = true;
             */
-
-            db::project_config::load(game_editor_args.project_config, game_editor_args.filepaths, game_editor_args.current_project_dir);
+            game_editor_args.filepaths.project_config = format!("{}/blue_flame/project.conf", project.dir);
+            db::project_config::load(game_editor_args.project_config, game_editor_args.filepaths);
 
             //db::scenes::load(scenes, filepaths);
-            blue_flame_common::db::scene::load(scene, &Project::selected_dir(&projects),
+            blue_flame_common::db::scene::load(scene,
             &game_editor_args.project_config.last_scene_filepath , true, blue_engine_args, window);
 
             // Matching the length size issue for undoredo
@@ -584,12 +517,6 @@ pub struct Blueprint
     save_file_path: String,
 }
 
-pub const FILE_EXTENSION_NAMES: FileExtensionNames = FileExtensionNames
-{
-    scene: ".bsce",
-    blueprint: ".bprint",
-};
-
 //const FLAMEOBJECT_BLUEPRINT_LABEL: &'static str = "FLAMEOBJECT_BLUEPRINT";
 fn main()
 {
@@ -685,7 +612,7 @@ fn main()
 
 
     // Load all dbs into memory
-    db::projects::load(&mut projects, &filepaths);
+    db::all_projects_manager::load(&mut projects, &filepaths);
     //db::scenes::load(&mut scenes);
 
     
@@ -809,29 +736,6 @@ fn main()
                 {
                     editor_mode = EditorMode::Project(editor_mode_variables::Project::init());
                 }
-                /*
-                editor_modes::main::main::main(
-                    &mut alert_window,
-                    &mut scene,
-                    &mut flameobject_blueprint,
-                    &mut previous_viewmode,
-                    &mut projects,
-                    &mut filepaths,
-                    &mut string_backups,
-                    &emojis,
-                    &mut blueprint_savefolderpath,
-                    &mut enable_shortcuts,
-                    &editor_settings,
-                    &mut widget_functions,
-                    &mut project_config,
-                    &mut current_project_dir,
-                    &mut editor_modes,
-                    &window_size,
-                    &mut mouse_functions,
-                    &mut blue_engine_args,
-                    window
-                );
-                */
             }
         }, window)
     }).unwrap();
@@ -839,6 +743,7 @@ fn main()
 }
 
 
+/*
 // Single line edit for directories and contains file explorer button
 fn directory_singleline(filepath_singleline: &mut String, starting_dir: Option<&str>, file_picker_mode: radio_options::FilePickerMode, make_relative: bool, ui: &mut Ui) -> (Response, bool)
 {
@@ -899,6 +804,7 @@ fn directory_singleline(filepath_singleline: &mut String, starting_dir: Option<&
     });
     return (response.unwrap(), selected_file);
 }
+*/
 
 // Right click menu for creating new objects
 fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::InputHelper, ctx: &egui::Context) -> Option<ObjectType>
@@ -978,19 +884,6 @@ fn right_click_menu(mouse_functions: &mut MouseFunctions, input: &blue_engine::I
     return create_object;
 }
 
-mod shortcut_commands
-{
-    // Determines what keyboard shortcut user has pressed, i.e. shift+A will then call right_click_menu()
-    fn shortcut_commands()
-    {
-
-    }
-    use super::*;
-    // Right click menu to add stuff such as object or light etc, pressed by shift + A
-
-
-}
-
 
 
 fn tab_spaces(tab_spaces_times: u16) -> String
@@ -1002,10 +895,4 @@ fn tab_spaces(tab_spaces_times: u16) -> String
         tab_spaces.push(' ');
     }
     return tab_spaces;
-}
-
-
-fn save_blueprint(flameobject_blueprint: &Option<flameobject::Settings>, folderpath: &str, current_project_dir: &str)
-{
-    db::blueprint::save(&flameobject_blueprint, folderpath, current_project_dir);
 }

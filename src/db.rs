@@ -7,13 +7,12 @@ pub mod blueprint
     use super::*;
     use std::io::Read;
     use blue_flame_common::structures::flameobject;
-    use blue_engine::{ObjectStorage, Window, Renderer};
-    use crate::filepath_handling;
+    use blue_engine::Window;
     
 
     const VERSION: f32 = 0.1;
 
-    pub fn save(flameobject_blueprint: &Option<flameobject::Settings>, filepath: &str, project_dir: &str)
+    pub fn save(flameobject_blueprint: &Option<flameobject::Settings>, filepath: &str)
     {
         match flameobject_blueprint
         {
@@ -21,7 +20,7 @@ pub mod blueprint
             {
                 let data = postcard::to_stdvec(&(VERSION, value)).unwrap();
                 //match std::fs::write(format!("{}/{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir), value.label), &data)
-                match std::fs::write(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)), &data)
+                match std::fs::write(filepath, &data)
                 {
                     Ok(_)               => {println!("blueprints saved!")},
                     Err(e)       => {println!("blueprints save error: {e}")},
@@ -31,10 +30,10 @@ pub mod blueprint
         }
     }
 
-    pub fn load(flameobject_blueprint: &mut Option<flameobject::Settings>, filepath: &str, project_dir: &str, loadshape_2_scene: bool,
+    pub fn load(flameobject_blueprint: &mut Option<flameobject::Settings>, filepath: &str, loadshape_2_scene: bool,
         blue_engine_args: &mut BlueEngineArgs, window: &Window)
     {
-        let mut file = match std::fs::File::open(format!("{}", filepath_handling::relativepath_to_fullpath(filepath, project_dir)))
+        let mut file = match std::fs::File::open(filepath)
         {
             Ok(d) => {println!("blueprints: {} loaded!", filepath); d},
             Err(e) => {println!("Load error on blueprints: {}: {e}", filepath); return},
@@ -59,14 +58,14 @@ pub mod blueprint
 
         if loadshape_2_scene == true
         {
-            blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), project_dir, blue_engine_args, window);
+            blue_flame_common::object_actions::create_shape(flameobject_blueprint.as_ref().unwrap(), blue_engine_args, window);
         }
 
         //println!("db version blueprints {FILE_NAME}: {}", version);
     }
 }
 
-pub mod projects
+pub mod all_projects_manager
 {
     use std::io::Read;
 
@@ -81,7 +80,7 @@ pub mod projects
 
         let data = postcard::to_stdvec(&(VERSION, projects)).unwrap();
 
-        match std::fs::write(format!("{}/{FILE_NAME}", filepath.projects.display()), &data)
+        match std::fs::write(format!("{}/{FILE_NAME}", filepath.all_projects_manager.display()), &data)
         {
             Ok(_)               => println!("Project file saved!"),
             Err(e)       => println!("Save error: {e}"),
@@ -90,7 +89,7 @@ pub mod projects
 
     pub fn load(projects: &mut Vec<crate::Project>, filepath: &crate::FilePaths)
     {
-        let mut file = match std::fs::File::open(format!("{}/{FILE_NAME}", filepath.projects.display(), ))
+        let mut file = match std::fs::File::open(format!("{}/{FILE_NAME}", filepath.all_projects_manager.display(), ))
         {
             Ok(d)               => {println!("Project: {FILE_NAME} loaded!"); d},
             Err(e)             => {println!("Load projects error on {FILE_NAME} {e}"); return;}
@@ -173,12 +172,11 @@ pub mod project_config
 {
     use std::io::Read;
     use blue_flame_common::structures::project_config::ProjectConfig;
-    use blue_flame_common::filepath_handling::*;
-
+    
 
     const VERSION: f32 = 0.1;
 
-    pub fn save(project_config: &mut ProjectConfig, filepaths: &mut crate::FilePaths, project_dir: &str,)
+    pub fn save(project_config: &mut ProjectConfig, filepaths: &mut crate::FilePaths)
     {
         // filepaths.project_config: blue_flame/project.conf
         // filepaths.current_scene: this is the current scene filepath
@@ -186,16 +184,16 @@ pub mod project_config
 
         let data = postcard::to_stdvec(&(VERSION, project_config)).unwrap();
 
-        match std::fs::write(format!("{}", relativepath_to_fullpath(filepaths.project_config, project_dir)), &data)
+        match std::fs::write(&filepaths.project_config, &data)
         {
             Ok(_)               => println!("project_config saved!"),
             Err(e)       => println!("project_config save error: {e}"),
         }
     }
-    pub fn load(project_config: &mut ProjectConfig, filepaths: &mut crate::FilePaths, project_dir: &str)
+    pub fn load(project_config: &mut ProjectConfig, filepaths: &mut crate::FilePaths)
     {
         // current_scene
-        let mut file = match std::fs::File::open(format!("{}", relativepath_to_fullpath(filepaths.project_config, project_dir)))
+        let mut file = match std::fs::File::open(&filepaths.project_config)
         {
             Ok(d)               => {println!("project_config loaded!"); d},
             Err(e)             => {println!("project_config load error: {e}"); return;}
